@@ -1,0 +1,8 @@
+{
+  "name": "helm-d",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@dsh-security/skill-protocol",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": ["dist", "references", "scripts", "cordis.patch.yml"],
+  "scripts": { "build": "tsc -p tsconfig.json" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "dependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-tools": "*"
+  }
+}
