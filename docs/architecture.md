@@ -1,171 +1,146 @@
 # 架构设计
 
-> 目标：把 `Security-Skill-plan-c`（包 / 分层骨架）与 `r0crawl_skills-main`（目录 / 路由 / 证据内容）整合成一个可安装、可组合、可渐进披露的 dsh 插件体系。核心原则见 `principles.md`。
+> 目标：把 `Security-Skill-plan-c`（包 / 分层骨架）与 `r0crawl_skills-main`（目录 / 路由 / 证据内容）整合成可安装、可组合、可渐进披露的 dsh 插件体系。
+> 本版已对齐 deepseek-harness 真实扩展点（`agent/session-start`、`systemPrompt`、`ctx.tools`、agent preset），并新增「会话引导层」承载 persona 首条注入。核心原则见 `principles.md`。
 
 ## 0. 定位
 
 - 每个领域技能 = 一个 dsh bundle（npm 包 + `dsh.bundle.patch`）。
 - 每个 bundle 自包含：`src/`（插件代码）+ `references/`（知识库）+ `scripts/`（工具脚本）。
 - 知识不注入 prompt，靠 `read_reference` 工具按需读，控 token。
-- 组合靠 agent preset，按需挂 bundle，不全量加载。
+- persona / 框架只在全新会话注入一次（首条）；系统提示只放可发现性。
 
-## 1. 分层
+## 1. 三个扩展面
+
+harness 给插件三类扩展点，helm-d 各占一个，互不越界：
+
+| 扩展面 | harness hook | 承载 | 触发时机 |
+|---|---|---|---|
+| 首条注入 | `agent/session-start` + `agent.inject()` | persona / CTF 框架 | 全新会话一次（`source='startup'`） |
+| 系统提示 | `ctx.systemPrompt.section()` | 可发现性元数据 | 每个 step 组装 |
+| 按需知识 | `ctx.tools.register()` + `references/` | 领域规则 / 工作流 / 工具用法 | 模型调用工具时 |
+
+三者分工：首条注入负责「是谁 / 干什么」（身份层）；系统提示负责「能查到什么 / 边界在哪」（发现层）；按需知识负责「具体怎么做」（知识层）。前两层都不替模型下结论。
+
+## 2. 分层
 
 ```mermaid
 flowchart TD
-  subgraph L0["L0 包层（pnpm monorepo，每领域一个 bundle）"]
-    direction LR
-    B0["@dsh-security/router"]
-    B1["@dsh-security/skill-android"]
-    B2["@dsh-security/skill-web"]
-    B3["@dsh-security/skill-native"]
-    B4["@dsh-security/skill-protocol"]
-    B5["@dsh-security/skill-malware"]
-    B6["@dsh-security/skill-ai-security"]
-    B7["@dsh-security/skill-evidence"]
+  subgraph L1["L1 会话引导层 — bootstrap"]
+    A["agent/session-start → agent.inject<br/>CTF persona / 框架<br/>仅 source=startup，注入一次作为首条"]
   end
-  subgraph L1["L1 路由层 router"]
-    R1["systemPrompt.section(order=100-199)<br/>仅可发现性元数据 + 授权边界"]
-    R2["skill_catalog 工具<br/>列出可用参考与路由"]
-    R3["read_reference 工具<br/>按需读 references/*.md"]
+  subgraph L2["L2 系统提示层 — router"]
+    B["systemPrompt.section (order 100–199)<br/>可发现性元数据"]
   end
-  subgraph L2["L2 领域技能层"]
-    S1["references 工作流 / 规则（不注入）"]
-    S2["领域工具<br/>decompile / fingerprint / hook / parse"]
+  subgraph L3["L3 工具层 — router + 领域 bundle"]
+    C["skill_catalog / read_reference<br/>领域工具 decompile / fingerprint / hook / parse"]
   end
-  subgraph L3["L3 知识库层"]
-    K["references/*.md<br/>不注入，read_reference 读取"]
+  subgraph L4["L4 知识库层"]
+    D["references/*.md —— 不注入，read_reference 按需读"]
   end
-  subgraph L4["L4 组合层 agent presets"]
-    P1["minimal"]
-    P2["standard"]
-    P3["full-reverse"]
+  subgraph L5["L5 组合层"]
+    E["presets: minimal / standard / full-reverse"]
   end
-  subgraph L5["L5 证据层"]
-    E1["evidence/case 工具 + 契约"]
-    E2["examples 作为 fixtures"]
+  subgraph L6["L6 证据层"]
+    F["evidence/case 契约 + examples fixtures"]
   end
-  L0 --> L1 --> L2 --> L3
-  L0 --> L4 --> L2
-  L4 --> L5
+
+  L1 --> L2 --> L3 --> L4
+  E -.挂载.-> L3
+  L3 --> F
 ```
 
-## 2. 目录结构
+## 3. 目录结构
 
 ```text
-dsh-security/                          # pnpm workspace
+helm-d/                          # pnpm workspace
 ├── pnpm-workspace.yaml
 ├── packages/
-│   ├── router/
-│   │   ├── package.json               # name: @dsh-security/router, dsh.bundle.patch
+│   ├── bootstrap/               # L1 会话引导（首条注入）
+│   │   ├── package.json         # name: @dsh-security/bootstrap
+│   │   ├── cordis.patch.yml
+│   │   ├── src/index.ts         # agent/session-start → agent.inject
+│   │   └── prompt.md            # persona 提示词（自包含，随包分发）
+│   ├── router/                  # L2 系统提示 + L3 路由工具
+│   │   ├── package.json         # name: @dsh-security/router
 │   │   ├── cordis.patch.yml
 │   │   ├── src/index.ts
-│   │   └── references/routes.md       # 路由表（参考，不注入）
-│   ├── skill-android/
-│   │   ├── package.json
-│   │   ├── cordis.patch.yml
+│   │   ├── prompt.md            # 系统提示词（工程代理工作规范 二改）
+│   │   └── references/routes.md # 路由表（参考，不注入）
+│   ├── skill-android/           # L3 领域工具
 │   │   ├── src/index.ts
-│   │   ├── references/                # mobile-analysis 归并
-│   │   └── scripts/                   # fingerprint / decompile / frida
+│   │   ├── references/          # mobile-analysis 归并
+│   │   └── scripts/             # fingerprint / decompile / frida
 │   ├── skill-web/
 │   ├── skill-native/
 │   ├── skill-protocol/
 │   ├── skill-malware/
 │   ├── skill-ai-security/
-│   └── skill-evidence/
+│   └── skill-evidence/          # L6 证据
 ├── presets/
 │   ├── minimal/agent.cordis.yml
 │   ├── standard/agent.cordis.yml
 │   └── full-reverse/agent.cordis.yml
-└── examples/                          # fixtures
+└── examples/                    # fixtures
 ```
 
-## 3. 每层关键件
+## 4. 每层关键件
 
-### 3.1 L0 bundle manifest
+### 4.1 L1 会话引导（首条注入）
 
-```json
-{
-  "name": "@dsh-security/skill-android",
-  "version": "0.1.0",
-  "type": "module",
-  "main": "src/index.js",
-  "files": ["src", "references", "scripts", "cordis.patch.yml"],
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+全新会话开始时（`agent/session-start`，`source='startup'`）注入一次 persona。用 `agent.inject()` 而不是 `followup()`/`steer()`：注入内容不唤醒 driver，会与第一条用户消息在同一首个 step 被一起认领，成为模型可见历史的首条。
+
+```ts
+export const name = 'helm-x-bootstrap'
+
+export function apply(ctx: Context): void {
+  ctx.on('agent/session-start', ({ agent, source }) => {
+    if (source !== 'startup') return
+    agent.inject(createUserMessage({
+      content: [{ type: 'text', text: prompt }],
+      source: { kind: 'plugin', plugin: name },
+    }))
+  })
 }
 ```
 
-```yaml
-# cordis.patch.yml
-- insert:
-    - id: skill-android
-      name: '@dsh-security/skill-android'
-```
-
-### 3.2 L1 router 插件（prompt 仅保留可发现性元数据 + 授权边界）
+### 4.2 L2 系统提示（工程纪律 + 可发现性，文本在 `prompt.md`）
 
 ```ts
-import type { Context } from '@deepseek-ai/cordis'
-import { defineTool } from '@deepseek-ai/dsh-tools'
-
 export const name = 'security-router'
 export const inject = ['systemPrompt', 'tools']
 
-export function apply(ctx: Context) {
+export function apply(ctx: Context): void {
   ctx.systemPrompt.section({
-    name: 'security-discovery',
+    name: 'security-system-prompt',
     order: 110,
-    text: [
-      'Security references are available on demand.',
-      'When a task needs a technique, rule, or workflow, call skill_catalog or read_reference instead of assuming.',
-      'Authorized scope: only targets the user is authorized to test.',
-    ].join('\n'),
+    text: promptText, // 来自 prompt.md
   })
-
-  ctx.tools.register(defineTool({
-    name: 'skill_catalog',
-    description: 'List available reference topics and when to read them.',
-    parameters: { domain: { type: 'string', required: false } },
-    output: { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] },
-    async execute({ domain }) {
-      return domain ? catalog[domain] : Object.values(catalog).join('\n')
-    },
-  }))
-
-  ctx.tools.register(defineTool({
-    name: 'read_reference',
-    description: 'Read a reference doc on demand; apply your own judgment.',
-    parameters: { path: { type: 'string', required: true } },
-    output: { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] },
-    async execute({ path }) {
-      const abs = resolve(refRoot, path)
-      if (!abs.startsWith(refRoot)) throw new Error('path out of scope')
-      return await readFile(abs, 'utf8')
-    },
-  }))
+  // ...
 }
 ```
 
-### 3.3 L2 领域技能层
+### 4.3 L3 工具层
 
-领域 bundle 只注册自己的领域工具；规则与工作流进 `references/`，不注入：
+`router` 注册路由工具，领域 bundle 注册领域工具；规则与工作流进 `references/`，不注入：
 
 ```ts
-export const name = 'skill-android'
-export const inject = ['tools']
+// router：按需路由
+ctx.tools.register(defineTool({ name: 'skill_catalog', /* ... */ }))
+ctx.tools.register(defineTool({ name: 'read_reference', /* 读 router/references */ }))
 
-export function apply(ctx: Context) {
-  ctx.tools.register(defineTool({
-    name: 'apk_fingerprint',
-    description: 'Detect APK framework / HTTP stack / obfuscation.',
-    parameters: { apk: { type: 'string', required: true } },
-    output: { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] },
-    async execute({ apk }) { return runScript('scripts/fingerprint.sh', apk) },
-  }))
-}
+// 领域 bundle：只注册自己的工具，且各带一个 <domain>_reference 读自己的 references/
+ctx.tools.register(defineTool({ name: 'native_reference', /* 读 skill-native/references */ }))
+// 领域 bundle：只注册自己的工具
+ctx.tools.register(defineTool({
+  name: 'apk_fingerprint',
+  description: 'Detect APK framework / HTTP stack / obfuscation. Read references/fingerprint.md for interpretation.',
+  parameters: { apk: { type: 'string', required: true } },
+  /* execute -> runScript('scripts/fingerprint.sh', apk) */
+}))
 ```
 
-### 3.4 L3 知识库层
+### 4.4 L4 知识库层
 
 | 原仓库内容 | 落点 |
 |---|---|
@@ -176,11 +151,12 @@ export function apply(ctx: Context) {
 | r0crawl 196 个 leaf SKILL.md | 按领域归并成 `references/<topic>.md` |
 | r0crawl `references/tool-matrix.md` | `router/references/tool-matrix.md` |
 
-### 3.5 L4 组合层
+### 4.5 L5 组合层
 
 ```yaml
 # presets/standard/agent.cordis.yml
 - name: '@deepseek-ai/dsh-base'
+- name: '@dsh-security/bootstrap'
 - name: '@dsh-security/router'
 - name: '@dsh-security/skill-android'
 - name: '@dsh-security/skill-web'
@@ -188,13 +164,13 @@ export function apply(ctx: Context) {
 - name: '@dsh-security/skill-evidence'
 ```
 
-装到 `~/.agent-presets/`，会话选择器里选 preset。`minimal` 只挂 router + evidence，`full-reverse` 挂全部。
+`minimal` = bootstrap + router + evidence；`full-reverse` 挂全部。bootstrap 置于 `dsh-base` 之后、`router` 之前，保证任何 preset 都会先注入 persona 再组装系统提示。
 
-### 3.6 L5 证据层
+### 4.6 L6 证据层
 
 `skill-evidence` 注册证据契约（作为 reference）+ case 工具；`examples/` 转测试 fixtures。
 
-## 4. 层顺序
+## 5. 层顺序
 
 生效配置逐层叠加，后应用者胜：
 
@@ -203,10 +179,16 @@ export function apply(ctx: Context) {
 3. `$DSH_HOME/cordis.patch.yml`
 4. 每个 `--patch` overlay
 
-## 5. 落地清单
+## 6. 落地清单
 
-1. 建 pnpm workspace + 7 个 bundle 骨架（先做 router + skill-android 验证）。
-2. 修已知缺陷：r0crawl `index_skills.py` 描述列为空（regex 只抓单行）；secplan description 超 lint。
-3. 把 196 个 leaf 按领域归并进 `references/`，不 1:1 建 196 个包。
-4. 写 3 个 preset 到 `~/.agent-presets/`。
-5. 用 `dsh --profile <name> --dump-config` 验证层顺序，再启动。
+- ✅ pnpm workspace + bundle 骨架（bootstrap / router / skill-android 已落地）
+- ✅ bootstrap 首条注入 + 三 preset 挂载
+- ✅ 6 个领域 bundle 填充（skill-web / native / protocol / malware / ai-security / evidence）：references（secplan 按域 + reverse-flow + r0crawl 顶层）+ scripts（secplan / r0crawl / reverse-flow）+ 领域工具（`<domain>_reference` 按需读 + CLI 工具）
+- ✅ 196 个 r0crawl leaf SKILL.md 按领域归并进 `references/r0crawl-<domain>.md`（7 域，不 1:1 建包）
+- ✅ 每个 bundle 生成 `references/index.md` 可发现索引
+- ⬜ 修 r0crawl `index_skills.py` 描述列为空（regex 只抓单行）；secplan description 超 lint
+- ⬜ 写 3 个 preset 到 `~/.agent-presets/`
+- ⬜ 用 `dsh --profile <name> --dump-config` 验证层顺序，再启动
+
+
+

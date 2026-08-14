@@ -1,3 +1,4 @@
 - name: '@deepseek-ai/dsh-base'
+- name: '@dsh-security/bootstrap'
 - name: '@dsh-security/router'
 - name: '@dsh-security/skill-evidence'

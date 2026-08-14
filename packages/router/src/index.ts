@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { readFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -18,17 +19,17 @@ const catalog: Record<string, string> = {
 }
 
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../references')
+// 系统提示词随 bundle 分发，加载时读入一次（prompt.md）
+const promptText = readFileSync(
+  resolve(fileURLToPath(new URL('.', import.meta.url)), '../prompt.md'),
+  'utf8',
+)
 
 export function apply(ctx: Context): void {
-  // prompt 只保留可发现性元数据 + 授权边界，不塞规则/结论
   ctx.systemPrompt.section({
-    name: 'security-discovery',
+    name: 'security-system-prompt',
     order: 110,
-    text: [
-      'Security references are available on demand.',
-      'When a task needs a technique, rule, or workflow, call skill_catalog or read_reference instead of assuming.',
-      'Authorized scope: only targets the user is authorized to test.',
-    ].join('\n'),
+    text: promptText,
   })
 
   ctx.tools.register(defineTool({

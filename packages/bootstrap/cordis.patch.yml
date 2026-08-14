@@ -1,0 +1,3 @@
+- insert:
+    - id: helm-x-bootstrap
+      name: '@dsh-security/bootstrap'
