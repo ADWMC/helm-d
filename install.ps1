@@ -88,6 +88,15 @@ if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
             Write-Host "  (stale-dep strip skipped: $($_.Exception.Message))"
         }
     }
+    $profileNodeModules = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules")
+    $profileLock = Join-Path $DSH_HOME ("profiles\" + $Profile + "\pnpm-lock.yaml")
+    if (Test-Path -LiteralPath $profileNodeModules -PathType Container) {
+        Write-Host "  clearing stale profile node_modules (rebuilt by pnpm; config preserved)"
+        Remove-Item -LiteralPath $profileNodeModules -Recurse -Force
+    }
+    if (Test-Path -LiteralPath $profileLock -PathType Leaf) {
+        Remove-Item -LiteralPath $profileLock -Force
+    }
     $tgzFiles = @(Get-ChildItem -LiteralPath $cacheDir -Filter "*.tgz" | ForEach-Object { $_.FullName })
     if (Get-Command dsh -ErrorAction SilentlyContinue) {
         & dsh plugin --profile $Profile add @tgzFiles

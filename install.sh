@@ -62,6 +62,13 @@ if(pkg.dsh&&pkg.dsh.profile&&Array.isArray(pkg.dsh.profile.bundles)){const befor
 if(changed)fs.writeFileSync(p,JSON.stringify(pkg,null,2)+"\n");
 ' "$PROFILE_PKG"
 fi
+PROFILE_NM="$DSH_HOME/profiles/$PROFILE/node_modules"
+PROFILE_LOCK="$DSH_HOME/profiles/$PROFILE/pnpm-lock.yaml"
+if [ -d "$PROFILE_NM" ]; then
+  echo "  clearing stale profile node_modules (rebuilt by pnpm; config preserved)"
+  rm -rf "$PROFILE_NM"
+fi
+[ -f "$PROFILE_LOCK" ] && rm -f "$PROFILE_LOCK"
 if command -v dsh >/dev/null 2>&1; then
   dsh plugin --profile "$PROFILE" add "$CACHE_DIR"/*.tgz
 else
