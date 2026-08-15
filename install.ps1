@@ -97,6 +97,17 @@ if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
     if (Test-Path -LiteralPath $profileLock -PathType Leaf) {
         Remove-Item -LiteralPath $profileLock -Force
     }
+    $homePatch = Join-Path $DSH_HOME "cordis.patch.yml"
+    if ((Test-Path -LiteralPath $homePatch -PathType Leaf) -and ((Get-Content -LiteralPath $homePatch -Raw) -match '@linxin666')) {
+        Write-Host "  backing up stale home-layer skin patch to cordis.patch.yml.bak"
+        Move-Item -LiteralPath $homePatch -Destination ($homePatch + ".bak") -Force
+        Set-Content -LiteralPath $homePatch -Value '[]' -NoNewline -Encoding UTF8
+    }
+    $profilePatch = Join-Path $DSH_HOME ("profiles\" + $Profile + "\cordis.patch.yml")
+    if ((Test-Path -LiteralPath $profilePatch -PathType Leaf) -and ((Get-Content -LiteralPath $profilePatch -Raw) -match '@linxin666')) {
+        Write-Host "  resetting stale profile patch layer (cordis.patch.yml)"
+        Set-Content -LiteralPath $profilePatch -Value '[]' -NoNewline -Encoding UTF8
+    }
     $tgzFiles = @(Get-ChildItem -LiteralPath $cacheDir -Filter "*.tgz" | ForEach-Object { $_.FullName })
     if (Get-Command dsh -ErrorAction SilentlyContinue) {
         & dsh plugin --profile $Profile add @tgzFiles

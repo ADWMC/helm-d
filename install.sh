@@ -69,6 +69,17 @@ if [ -d "$PROFILE_NM" ]; then
   rm -rf "$PROFILE_NM"
 fi
 [ -f "$PROFILE_LOCK" ] && rm -f "$PROFILE_LOCK"
+HOME_PATCH="$DSH_HOME/cordis.patch.yml"
+if [ -f "$HOME_PATCH" ] && grep -q '@linxin666' "$HOME_PATCH"; then
+  echo "  backing up stale home-layer skin patch to cordis.patch.yml.bak"
+  mv -f "$HOME_PATCH" "$HOME_PATCH.bak"
+  printf '[]' > "$HOME_PATCH"
+fi
+PROFILE_PATCH="$DSH_HOME/profiles/$PROFILE/cordis.patch.yml"
+if [ -f "$PROFILE_PATCH" ] && grep -q '@linxin666' "$PROFILE_PATCH"; then
+  echo "  resetting stale profile patch layer (cordis.patch.yml)"
+  printf '[]' > "$PROFILE_PATCH"
+fi
 if command -v dsh >/dev/null 2>&1; then
   dsh plugin --profile "$PROFILE" add "$CACHE_DIR"/*.tgz
 else
