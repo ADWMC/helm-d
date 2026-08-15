@@ -119,7 +119,7 @@ One-command install (recommended):
 ./install.sh      # macOS / Linux
 ```
 
-Windows PowerShell:
+Windows (double-click `install.bat`, or run via PowerShell):
 
 ```powershell
 .\install.ps1

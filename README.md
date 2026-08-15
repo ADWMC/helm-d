@@ -119,7 +119,7 @@ pnpm -r build
 ./install.sh      # macOS / Linux
 ```
 
-Windows PowerShell：
+Windows（双击 `install.bat`，或 PowerShell 运行）：
 
 ```powershell
 .\install.ps1
