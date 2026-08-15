@@ -113,6 +113,20 @@ Versions are pinned via `pnpm.overrides` in the root `package.json`.
 
 ## Deployment
 
+One-command install (recommended):
+
+```bash
+./install.sh      # macOS / Linux
+```
+
+Windows PowerShell:
+
+```powershell
+.\install.ps1
+```
+
+The script installs the bundles, mounts the preset, and sets the default in one shot; the manual steps are below.
+
 Mounting helmd into a local DSH takes three steps: install the packages, mount the preset, then set the default.
 
 Prerequisites: a working `dsh` CLI and pnpm; the 9 `@dsh-security/*` packages published to npm (see Publishing above).

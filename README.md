@@ -113,6 +113,20 @@ pnpm -r build
 
 ## 部署
 
+一键安装（推荐）：
+
+```bash
+./install.sh      # macOS / Linux
+```
+
+Windows PowerShell：
+
+```powershell
+.\install.ps1
+```
+
+脚本会装包、挂 preset、设默认一步到位；手动分步见下。
+
 把 helmd 挂载到本地 DSH 分三步：装包 → 挂 preset → 设默认。
 
 前置：已安装 `dsh` CLI 与 pnpm；9 个 `@dsh-security/*` 包已发布到 npm（见上「发布」）。
