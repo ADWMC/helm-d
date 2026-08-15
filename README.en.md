@@ -111,6 +111,67 @@ Versions are pinned via `pnpm.overrides` in the root `package.json`.
 - Each sub-package's `prepare` script runs `tsc` automatically before publishing.
 - Current version: `0.1.0`.
 
+## Deployment
+
+Mounting helmd into a local DSH takes three steps: install the packages, mount the preset, then set the default.
+
+Prerequisites: a working `dsh` CLI and pnpm; the 9 `@dsh-security/*` packages published to npm (see Publishing above).
+
+### 1. Install the bundles into a profile
+
+```bash
+dsh plugin --profile web add \
+  @dsh-security/bootstrap \
+  @dsh-security/router \
+  @dsh-security/skill-android \
+  @dsh-security/skill-web \
+  @dsh-security/skill-native \
+  @dsh-security/skill-protocol \
+  @dsh-security/skill-malware \
+  @dsh-security/skill-ai-security \
+  @dsh-security/skill-evidence
+```
+
+`dsh plugin` forwards to pnpm inside the profile directory; the packages land in `$DSH_HOME/profiles/node_modules/`.
+
+### 2. Mount the preset
+
+Copy `presets/full-reverse/` into the DSH user preset root `$DSH_HOME/.agent-presets/helmd/`:
+
+macOS / Linux:
+
+```bash
+mkdir -p ~/.dsh/.agent-presets/helmd
+cp presets/full-reverse/agent.cordis.yml ~/.dsh/.agent-presets/helmd/
+cp presets/full-reverse/preset.yml ~/.dsh/.agent-presets/helmd/
+```
+
+Windows (PowerShell):
+
+```powershell
+$p = Join-Path $env:USERPROFILE '.dsh\.agent-presets\helmd'
+New-Item -ItemType Directory -Force $p | Out-Null
+Copy-Item presets\full-reverse\agent.cordis.yml $p
+Copy-Item presets\full-reverse\preset.yml $p
+```
+
+### 3. Set it as the default preset
+
+Pick `helmd` in the UI preset picker, or edit `$DSH_HOME/settings.yaml`:
+
+```yaml
+agent-presets:
+  default: helmd
+```
+
+### 4. Boot and activate
+
+```bash
+dsh web
+```
+
+Send `helmd` in a session to activate. `DSH_HOME` defaults to `~/.dsh`; substitute the path if you customized it.
+
 ## Acknowledgements
 
 - [ADWMC/helm-x](https://github.com/ADWMC/helm-x) — prompt injection and scoring design

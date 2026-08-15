@@ -111,6 +111,67 @@ pnpm -r build
 - 每个子包的 `prepare` 脚本会在发布前自动执行 `tsc`。
 - 当前版本 `0.1.0`。
 
+## 部署
+
+把 helmd 挂载到本地 DSH 分三步：装包 → 挂 preset → 设默认。
+
+前置：已安装 `dsh` CLI 与 pnpm；9 个 `@dsh-security/*` 包已发布到 npm（见上「发布」）。
+
+### 1. 安装 bundle 到 profile
+
+```bash
+dsh plugin --profile web add \
+  @dsh-security/bootstrap \
+  @dsh-security/router \
+  @dsh-security/skill-android \
+  @dsh-security/skill-web \
+  @dsh-security/skill-native \
+  @dsh-security/skill-protocol \
+  @dsh-security/skill-malware \
+  @dsh-security/skill-ai-security \
+  @dsh-security/skill-evidence
+```
+
+`dsh plugin` 会把参数转发给 profile 目录里的 pnpm，包落到 `$DSH_HOME/profiles/node_modules/`。
+
+### 2. 挂载 preset
+
+把 `presets/full-reverse/` 复制到 DSH 用户 preset 根目录 `$DSH_HOME/.agent-presets/helmd/`：
+
+macOS / Linux：
+
+```bash
+mkdir -p ~/.dsh/.agent-presets/helmd
+cp presets/full-reverse/agent.cordis.yml ~/.dsh/.agent-presets/helmd/
+cp presets/full-reverse/preset.yml ~/.dsh/.agent-presets/helmd/
+```
+
+Windows（PowerShell）：
+
+```powershell
+$p = Join-Path $env:USERPROFILE '.dsh\.agent-presets\helmd'
+New-Item -ItemType Directory -Force $p | Out-Null
+Copy-Item presets\full-reverse\agent.cordis.yml $p
+Copy-Item presets\full-reverse\preset.yml $p
+```
+
+### 3. 设为默认 preset
+
+在 UI 的 preset 选择器里选 `helmd`，或改 `$DSH_HOME/settings.yaml`：
+
+```yaml
+agent-presets:
+  default: helmd
+```
+
+### 4. 启动并激活
+
+```bash
+dsh web
+```
+
+会话里发送 `helmd` 即激活。`DSH_HOME` 默认是 `~/.dsh`，自定义过就替换对应路径。
+
 ## 参考项目
 
 - [ADWMC/helm-x](https://github.com/ADWMC/helm-x) — 提示词注入与计分制设计
