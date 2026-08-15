@@ -5,35 +5,37 @@ $ErrorActionPreference = "Stop"
 
 $DSH_HOME = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE ".dsh" }
 $Preset = "helmd"
-$Here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Repo = "ADWMC/helm-d"
 
-$pkgs = @(
-    "@dsh-security/bootstrap",
-    "@dsh-security/router",
-    "@dsh-security/skill-android",
-    "@dsh-security/skill-web",
-    "@dsh-security/skill-native",
-    "@dsh-security/skill-protocol",
-    "@dsh-security/skill-malware",
-    "@dsh-security/skill-ai-security",
-    "@dsh-security/skill-evidence"
-)
+Write-Host "[1/4] downloading latest release tarballs from $Repo ..."
+$tmp = Join-Path ([IO.Path]::GetTempPath()) ("helmd-" + [Guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Force $tmp | Out-Null
+try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $api = "https://api.github.com/repos/$Repo/releases/latest"
+    $release = Invoke-RestMethod -Uri $api -Headers @{ "User-Agent" = "helmd-installer" }
+    $tgzAssets = @($release.assets | Where-Object { $_.name -like "*.tgz" })
+    foreach ($a in $tgzAssets) {
+        Write-Host "  fetching $($a.name)"
+        Invoke-WebRequest -Uri $a.browser_download_url -OutFile (Join-Path $tmp $a.name)
+    }
 
-Write-Host "[1/3] installing @dsh-security/* into profile '$Profile' ..."
-dsh plugin --profile $Profile add @pkgs
+    Write-Host "[2/4] installing bundles from local tarballs ..."
+    $tgzFiles = @(Get-ChildItem -LiteralPath $tmp -Filter "*.tgz" | ForEach-Object { $_.FullName })
+    dsh plugin --profile $Profile add @tgzFiles
 
-Write-Host "[2/3] writing preset ..."
-$presetRoot = Join-Path $DSH_HOME ".agent-presets"
-$presetDir = Join-Path $presetRoot $Preset
-New-Item -ItemType Directory -Force $presetDir | Out-Null
+    Write-Host "[3/4] writing preset ..."
+    $presetRoot = Join-Path $DSH_HOME ".agent-presets"
+    $presetDir = Join-Path $presetRoot $Preset
+    New-Item -ItemType Directory -Force $presetDir | Out-Null
 
-$presetContent = @'
+    $presetContent = @'
 name: helmd
 description: "helmd: anchored bootstrap plus all helmd security domain bundles."
 order: 10
 
 '@
-$agentContent = @'
+    $agentContent = @'
 # The `anchored-standard` experimental preset: Standard capabilities with the
 # Minimal mode system-prompt condition used by the V4 trajectory evaluation.
 #
@@ -382,47 +384,51 @@ $agentContent = @'
 
 '@
 
-Set-Content -LiteralPath (Join-Path $presetDir "preset.yml") -Value $presetContent -NoNewline -Encoding UTF8
-Set-Content -LiteralPath (Join-Path $presetDir "agent.cordis.yml") -Value $agentContent -NoNewline -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $presetDir "preset.yml") -Value $presetContent -NoNewline -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $presetDir "agent.cordis.yml") -Value $agentContent -NoNewline -Encoding UTF8
 
-Write-Host "[3/3] setting default preset ..."
-$settings = Join-Path $DSH_HOME "settings.yaml"
-New-Item -ItemType Directory -Force $DSH_HOME | Out-Null
-if (-not (Test-Path -LiteralPath $settings)) {
-    Set-Content -LiteralPath $settings -Value "agent-presets:`n  default: $Preset`n" -NoNewline -Encoding UTF8
-} else {
-    $lines = Get-Content -LiteralPath $settings
-    $out = New-Object System.Collections.Generic.List[string]
-    $inAp = $false
-    $done = $false
-    $sawAp = $false
-    foreach ($line in $lines) {
-        if ($line -match '^agent-presets:') {
-            $inAp = $true
-            $sawAp = $true
+    Write-Host "[4/4] setting default preset ..."
+    $settings = Join-Path $DSH_HOME "settings.yaml"
+    New-Item -ItemType Directory -Force $DSH_HOME | Out-Null
+    if (-not (Test-Path -LiteralPath $settings)) {
+        Set-Content -LiteralPath $settings -Value "agent-presets:`n  default: $Preset`n" -NoNewline -Encoding UTF8
+    } else {
+        $lines = Get-Content -LiteralPath $settings
+        $out = New-Object System.Collections.Generic.List[string]
+        $inAp = $false
+        $done = $false
+        $sawAp = $false
+        foreach ($line in $lines) {
+            if ($line -match '^agent-presets:') {
+                $inAp = $true
+                $sawAp = $true
+                $out.Add($line)
+                continue
+            }
+            if ($inAp -and -not $done -and $line -match '^s*default:') {
+                $out.Add("  default: $Preset")
+                $done = $true
+                continue
+            }
+            if ($inAp -and -not $done -and $line -match '^s*[A-Za-z_][A-Za-z0-9_-]*:') {
+                $out.Add("  default: $Preset")
+                $done = $true
+                $out.Add($line)
+                continue
+            }
             $out.Add($line)
-            continue
         }
-        if ($inAp -and -not $done -and $line -match '^s*default:') {
+        if (-not $sawAp) {
+            $out.Add("agent-presets:")
             $out.Add("  default: $Preset")
-            $done = $true
-            continue
         }
-        if ($inAp -and -not $done -and $line -match '^s*[A-Za-z_][A-Za-z0-9_-]*:') {
-            $out.Add("  default: $Preset")
-            $done = $true
-            $out.Add($line)
-            continue
-        }
-        $out.Add($line)
+        Set-Content -LiteralPath $settings -Value $out -NoNewline -Encoding UTF8
     }
-    if (-not $sawAp) {
-        $out.Add("agent-presets:")
-        $out.Add("  default: $Preset")
-    }
-    Set-Content -LiteralPath $settings -Value $out -NoNewline -Encoding UTF8
+
+    Write-Host ""
+    Write-Host "done. run: dsh $Profile   (or: dsh web)"
+    Write-Host "then send the activation word: $Preset"
 }
-
-Write-Host ""
-Write-Host "done. run: dsh $Profile   (or: dsh web)"
-Write-Host "then send the activation word: $Preset"
+finally {
+    Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+}

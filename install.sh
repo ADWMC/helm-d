@@ -1,26 +1,31 @@
 #!/usr/bin/env bash
-# One-command deploy for helmd: install the 9 bundles, write the preset inline,
-# and set it as the default agent preset.
+# One-command deploy for helmd: download the latest release tarballs, write the
+# preset inline, and set it as the default agent preset.
 set -euo pipefail
 
 PROFILE="${1:-web}"
 DSH_HOME="${DSH_HOME:-$HOME/.dsh}"
 PRESET="helmd"
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="ADWMC/helm-d"
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
 
-echo "[1/3] installing @dsh-security/* into profile '$PROFILE' ..."
-dsh plugin --profile "$PROFILE" add \
-  @dsh-security/bootstrap \
-  @dsh-security/router \
-  @dsh-security/skill-android \
-  @dsh-security/skill-web \
-  @dsh-security/skill-native \
-  @dsh-security/skill-protocol \
-  @dsh-security/skill-malware \
-  @dsh-security/skill-ai-security \
-  @dsh-security/skill-evidence
+echo "[1/4] downloading latest release tarballs from $REPO ..."
+API_URL="https://api.github.com/repos/$REPO/releases/latest"
+curl -fsSL -H "Accept: application/vnd.github+json" "$API_URL" \
+  | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);for(const a of (j.assets||[])){if(a.name&&a.name.endsWith(".tgz"))console.log(a.browser_download_url)}})' \
+  > "$TMPDIR/assets.txt"
 
-echo "[2/3] writing preset ..."
+while IFS= read -r url; do
+  [ -z "$url" ] && continue
+  echo "  fetching $(basename "$url")"
+  curl -fsSL -o "$TMPDIR/$(basename "$url")" "$url"
+done < "$TMPDIR/assets.txt"
+
+echo "[2/4] installing bundles from local tarballs ..."
+dsh plugin --profile "$PROFILE" add "$TMPDIR"/*.tgz
+
+echo "[3/4] writing preset ..."
 mkdir -p "$DSH_HOME/.agent-presets/$PRESET"
 cat > "$DSH_HOME/.agent-presets/$PRESET/preset.yml" <<'PRESET_EOF'
 name: helmd
@@ -377,7 +382,7 @@ cat > "$DSH_HOME/.agent-presets/$PRESET/agent.cordis.yml" <<'AGENT_CORDIS_EOF'
 
 AGENT_CORDIS_EOF
 
-echo "[3/3] setting default preset ..."
+echo "[4/4] setting default preset ..."
 SETTINGS="$DSH_HOME/settings.yaml"
 mkdir -p "$DSH_HOME"
 [ -f "$SETTINGS" ] || : > "$SETTINGS"
