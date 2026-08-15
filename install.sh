@@ -23,7 +23,11 @@ while IFS= read -r url; do
 done < "$TMPDIR/assets.txt"
 
 echo "[2/4] installing bundles from local tarballs ..."
-dsh plugin --profile "$PROFILE" add "$TMPDIR"/*.tgz
+if command -v dsh >/dev/null 2>&1; then
+  dsh plugin --profile "$PROFILE" add "$TMPDIR"/*.tgz
+else
+  npx --yes @deepseek-ai/dsh plugin --profile "$PROFILE" add "$TMPDIR"/*.tgz
+fi
 
 echo "[3/4] writing preset ..."
 mkdir -p "$DSH_HOME/.agent-presets/$PRESET"
@@ -398,5 +402,5 @@ else
 fi
 
 echo
-echo "done. run: dsh $PROFILE   (or: dsh web)"
+echo "done. run: dsh $PROFILE   (or: npx --yes @deepseek-ai/dsh $PROFILE)"
 echo "then send the activation word: $PRESET"

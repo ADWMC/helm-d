@@ -22,6 +22,6 @@ if errorlevel 1 (
 )
 
 echo [helmd] launching install.ps1 ...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%PS1%" %*
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PS1%"
 
 exit /b %errorlevel%

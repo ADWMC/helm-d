@@ -22,7 +22,14 @@ try {
 
     Write-Host "[2/4] installing bundles from local tarballs ..."
     $tgzFiles = @(Get-ChildItem -LiteralPath $tmp -Filter "*.tgz" | ForEach-Object { $_.FullName })
-    dsh plugin --profile $Profile add @tgzFiles
+    if (Get-Command dsh -ErrorAction SilentlyContinue) {
+        & dsh plugin --profile $Profile add @tgzFiles
+    } elseif (Get-Command npx -ErrorAction SilentlyContinue) {
+        & npx --yes @deepseek-ai/dsh plugin --profile $Profile add @tgzFiles
+    } else {
+        throw "Neither `dsh` nor `npx` was found on PATH. Install Node.js (npx) or run `npm i -g @deepseek-ai/dsh`."
+    }
+    if ($LASTEXITCODE -ne 0) { throw "plugin add failed (exit $LASTEXITCODE)" }
 
     Write-Host "[3/4] writing preset ..."
     $presetRoot = Join-Path $DSH_HOME ".agent-presets"
@@ -426,7 +433,7 @@ order: 10
     }
 
     Write-Host ""
-    Write-Host "done. run: dsh $Profile   (or: dsh web)"
+    Write-Host "done. run: dsh $Profile   (or: npx --yes @deepseek-ai/dsh $Profile)"
     Write-Host "then send the activation word: $Preset"
 }
 finally {
