@@ -45,7 +45,19 @@ while IFS= read -r url; do
 done < "$TMPDIR/assets.txt"
 
 echo "[2/4] installing bundles from local tarballs ..."
-rm -rf "$DSH_HOME/profiles/$PROFILE"
+PROFILE_PKG="$DSH_HOME/profiles/$PROFILE/package.json"
+if [ -f "$PROFILE_PKG" ]; then
+  echo "  stripping stale helm-x UI deps from existing profile (config preserved)"
+  node -e '
+const fs=require("fs");
+const p=process.argv[1];
+const pkg=JSON.parse(fs.readFileSync(p,"utf8"));
+const stale=new Set(["@linxin666/dsh-client-ui-skin-qq98","@linxin666/dsh-web-ui-all","dsh-find-plugin","@deepseek-ai/dsh-plugin-console"]);
+let changed=false;
+for(const f of ["dependencies","devDependencies","optionalDependencies"]){if(pkg[f]&&typeof pkg[f]==="object"){for(const k of Object.keys(pkg[f])){if(stale.has(k)||k.startsWith("@linxin666/")){delete pkg[f][k];changed=true;}}}}
+if(changed)fs.writeFileSync(p,JSON.stringify(pkg,null,2)+"\n");
+' "$PROFILE_PKG"
+fi
 if command -v dsh >/dev/null 2>&1; then
   dsh plugin --profile "$PROFILE" add "$TMPDIR"/*.tgz
 else

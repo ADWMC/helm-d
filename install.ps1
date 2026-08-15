@@ -50,10 +50,35 @@ try {
     }
 
     Write-Host "[2/4] installing bundles from local tarballs ..."
-    $profileDir = Join-Path $DSH_HOME ("profiles\" + $Profile)
-    if (Test-Path -LiteralPath $profileDir -PathType Container) {
-        Write-Host "  removing stale profile: $profileDir"
-        Remove-Item -LiteralPath $profileDir -Recurse -Force
+    $profilePkg = Join-Path $DSH_HOME ("profiles\" + $Profile + "\package.json")
+    if (Test-Path -LiteralPath $profilePkg) {
+        Write-Host "  stripping stale helm-x UI deps from existing profile (config preserved)"
+        $stripScript = @'
+const fs = require("fs");
+const p = process.argv[2];
+const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
+const stale = new Set(["@linxin666/dsh-client-ui-skin-qq98", "@linxin666/dsh-web-ui-all", "dsh-find-plugin", "@deepseek-ai/dsh-plugin-console"]);
+let changed = false;
+for (const f of ["dependencies", "devDependencies", "optionalDependencies"]) {
+  if (pkg[f] && typeof pkg[f] === "object") {
+    for (const k of Object.keys(pkg[f])) {
+      if (stale.has(k) || k.startsWith("@linxin666/")) { delete pkg[f][k]; changed = true; }
+    }
+  }
+}
+if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
+'@
+        $stripFile = Join-Path $tmp "strip-stale.cjs"
+        Set-Content -LiteralPath $stripFile -Value $stripScript -Encoding UTF8
+        try {
+            if (Get-Command node -ErrorAction SilentlyContinue) {
+                & node $stripFile $profilePkg
+            } else {
+                Write-Host "  (node not found; skipped stale-dep strip)"
+            }
+        } catch {
+            Write-Host "  (stale-dep strip skipped: $($_.Exception.Message))"
+        }
     }
     $tgzFiles = @(Get-ChildItem -LiteralPath $tmp -Filter "*.tgz" | ForEach-Object { $_.FullName })
     if (Get-Command dsh -ErrorAction SilentlyContinue) {
