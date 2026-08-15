@@ -45,6 +45,7 @@ while IFS= read -r url; do
 done < "$TMPDIR/assets.txt"
 
 echo "[2/4] installing bundles from local tarballs ..."
+rm -rf "$DSH_HOME/profiles/$PROFILE"
 if command -v dsh >/dev/null 2>&1; then
   dsh plugin --profile "$PROFILE" add "$TMPDIR"/*.tgz
 else

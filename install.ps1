@@ -50,6 +50,11 @@ try {
     }
 
     Write-Host "[2/4] installing bundles from local tarballs ..."
+    $profileDir = Join-Path $DSH_HOME ("profiles\" + $Profile)
+    if (Test-Path -LiteralPath $profileDir -PathType Container) {
+        Write-Host "  removing stale profile: $profileDir"
+        Remove-Item -LiteralPath $profileDir -Recurse -Force
+    }
     $tgzFiles = @(Get-ChildItem -LiteralPath $tmp -Filter "*.tgz" | ForEach-Object { $_.FullName })
     if (Get-Command dsh -ErrorAction SilentlyContinue) {
         & dsh plugin --profile $Profile add @tgzFiles
@@ -445,7 +450,7 @@ order: 10
     }
     $out.Add("agent-presets:")
     $out.Add("  default: $Preset")
-    Set-Content -LiteralPath $settings -Value $out -NoNewline -Encoding UTF8
+    Set-Content -LiteralPath $settings -Value ($out -join "`n") -NoNewline -Encoding UTF8
 
     Write-Host ""
     Write-Host "done. run: dsh $Profile   (or: npx --yes @deepseek-ai/dsh $Profile)"
