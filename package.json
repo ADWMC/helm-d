@@ -3,16 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r exec tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3"
   },
-  "pnpm": {
-    "overrides": {
-      "@deepseek-ai/cordis": "4.0.1",
-      "@deepseek-ai/dsh-tools": "0.1.0-rc.6"
-    }
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22.19.0"
   }
 }

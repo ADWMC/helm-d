@@ -1,16 +1,14 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-
-const execFileAsync = promisify(execFile)
+import { runSeam } from './seam.js'
 
 export const name = 'skill-android'
 export const inject = ['tools']
 
 const scriptRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../scripts')
+const packageRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
 
 export function apply(ctx: Context): void {
   ctx.tools.register(defineTool({
@@ -21,8 +19,7 @@ export function apply(ctx: Context): void {
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: { apk: string }) {
-      const { stdout } = await execFileAsync('bash', [resolve(scriptRoot, 'fingerprint.sh'), args.apk])
-      return stdout
+      return await runSeam(ctx, ['bash', resolve(scriptRoot, 'fingerprint.sh'), args.apk], packageRoot)
     },
   }))
 }

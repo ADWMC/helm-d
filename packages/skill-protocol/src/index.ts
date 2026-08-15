@@ -1,21 +1,17 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { readFile } from 'node:fs/promises'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-
-const execFileAsync = promisify(execFile)
+import { readTextSeam, runSeam } from './seam.js'
 
 export const name = 'skill-protocol'
 export const inject = ['tools']
 
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../references')
 const scriptRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../scripts')
+const packageRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
 
 export function apply(ctx: Context): void {
-
   ctx.tools.register(defineTool({
     name: 'protocol_reference',
     description: 'Read a protocol reference doc on demand; apply your own judgment. Start with index.md.',
@@ -24,7 +20,7 @@ export function apply(ctx: Context): void {
     async execute(args: { path: string }) {
       const abs = resolve(refRoot, args.path)
       if (abs !== refRoot && !abs.startsWith(refRoot + sep)) throw new Error('path out of scope')
-      return await readFile(abs, 'utf8')
+      return await readTextSeam(ctx, abs)
     },
   }))
   ctx.tools.register(defineTool({
@@ -35,8 +31,7 @@ export function apply(ctx: Context): void {
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
-      const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'protocol/pcap_minimal.py'), args.file])
-      return stdout
+      return await runSeam(ctx, ['python', resolve(scriptRoot, 'protocol/pcap_minimal.py'), args.file], packageRoot)
     },
   }))
   ctx.tools.register(defineTool({
@@ -48,8 +43,7 @@ export function apply(ctx: Context): void {
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
-      const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'protocol/protocol_state_machine.py'), args.messages, ...(args.out != null ? [args.out] : [])])
-      return stdout
+      return await runSeam(ctx, ['python', resolve(scriptRoot, 'protocol/protocol_state_machine.py'), args.messages, ...(args.out != null ? [args.out] : [])], packageRoot)
     },
   }))
   ctx.tools.register(defineTool({
@@ -60,8 +54,7 @@ export function apply(ctx: Context): void {
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
-      const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'parse_har_fields.py'), args.har])
-      return stdout
+      return await runSeam(ctx, ['python', resolve(scriptRoot, 'parse_har_fields.py'), args.har], packageRoot)
     },
   }))
 }

@@ -1,8 +1,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { readFile } from 'node:fs/promises'
 import { resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { readTextSeam } from './seam.js'
 
 export const name = 'security-router'
 export const inject = ['tools']
@@ -43,7 +43,7 @@ export function apply(ctx: Context): void {
     async execute(args: { path: string }) {
       const abs = resolve(refRoot, args.path)
       if (abs !== refRoot && !abs.startsWith(refRoot + sep)) throw new Error('path out of scope')
-      return await readFile(abs, 'utf8')
+      return await readTextSeam(ctx, abs)
     },
   }))
 }
