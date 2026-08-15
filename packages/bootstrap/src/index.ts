@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 
-export const name = 'helm-x-tool-bootstrap'
+export const name = 'helmd-tool-bootstrap'
 
 /** Prompt assembly must exist before this request filter can register. */
 export const inject = ['systemPrompt']

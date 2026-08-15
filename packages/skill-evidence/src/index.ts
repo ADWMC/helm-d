@@ -26,40 +26,43 @@ export function apply(ctx: Context): void {
       if (abs !== refRoot && !abs.startsWith(refRoot + sep)) throw new Error('path out of scope')
       return await readFile(abs, 'utf8')
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'create_case',
     description: 'Create a structured reverse case workspace (case.json, dirs, hypotheses table).',
-    parameters: {     case_name: { type: 'string', required: true },
-    out: { type: 'string', required: true },
- },
+    parameters: {
+      case_name: { type: 'string', required: true },
+      out: { type: 'string', required: true },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'create_case.py'), '--case-name', args.case_name, '--out', args.out])
       return stdout
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'triage_artifact',
     description: 'Collect safe offline triage facts for an artifact (magic, entropy, strings).',
-    parameters: {     artifact: { type: 'string', required: true },
-    out: { type: 'string', required: true },
- },
+    parameters: {
+      artifact: { type: 'string', required: true },
+      out: { type: 'string', required: true },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'triage_artifact.py'), args.artifact, '--out', args.out])
       return stdout
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'hash_artifact',
     description: 'Print SHA-256 and size of an artifact.',
-    parameters: {     path: { type: 'string', required: true },
- },
+    parameters: {
+      path: { type: 'string', required: true },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'hash_artifact.py'), args.path])
       return stdout
     },
-  })
+  }))
 }

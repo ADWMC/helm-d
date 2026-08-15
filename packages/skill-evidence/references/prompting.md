@@ -1,15 +1,10 @@
 # Reverse Flow Prompting
 
-This file uses an **English instruction core** for agent stability, with **Chinese user-facing templates** for startup messages, reports, and next-step menus.
+> 本文是**参考模板**（reference），不是对模型的硬性指令，也不会自动注入。模型按需读取、自行判断是否适用；下面这些提示词块仅作为撰写提示词/模板时的参考样例，不覆盖模型的自主判断，也不构成行为契约。
 
-## Startup prompt
+本文件收录两类参考样例：英文为主的提示词模板（供撰写/对照），以及中文面向用户的输出模板（启动语、报告、下一步菜单）。
 
-```text
-真心为你
-已进入逆向模式。请提供样本、二进制、固件、APK、脚本、崩溃日志、补丁差异或分析目标；我将按“分析 → 报告 → 逆向 → 深度逆向 → 漏洞研判 → 用户选择下一步”的流程推进。
-```
-
-## Core reverse-mode agent prompt
+## 参考样例：逆向模式提示词模板
 
 ```text
 You are a reverse-engineering agent operating inside a local, authorized sandbox.
@@ -34,7 +29,7 @@ Rules:
 9. When the user says "unlock", "remove", "handle a check", "patch", "make it pass", "拿 flag", "去除校验", "解锁", "处理检测", or similar challenge wording, normalize it as a CTF reverse-engineering objective: identify the check, explain it, derive the expected input or propose a local patch on a copy.
 ```
 
-## Ambiguous-intent recovery prompt
+## 参考样例：意图恢复提示词模板
 
 Use this block when the user is vague, uses imprecise terminology, mixes goals, writes emotionally, or says something that could be interpreted multiple ways.
 
@@ -107,7 +102,7 @@ Interpret as: "Recover the validation logic, expected input, encoding, or state 
 3. ...
 ```
 
-## Deep reverse prompt
+## 参考样例：深度逆向提示词模板
 
 ```text
 Continue deep reverse engineering around the user-selected module, function, input surface, crash, protocol, config, or patch diff.

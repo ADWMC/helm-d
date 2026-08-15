@@ -24,7 +24,7 @@ export function apply(ctx: Context): void {
     name: 'skill_catalog',
     description: 'List available reference topics and when to read them.',
     parameters: {
-      domain: { type: 'string', required: false, description: 'Optional domain filter.' },
+      domain: { type: 'string', description: 'Optional domain filter.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: { domain?: string }) {

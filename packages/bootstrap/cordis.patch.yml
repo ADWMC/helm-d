@@ -1,3 +1,7 @@
 - insert:
-    - id: helm-x-tool-bootstrap
+    - id: helmd-tool-bootstrap
       name: '@dsh-security/bootstrap'
+      config:
+        shellTools: [bash, pwsh]
+        commonTools: [read]
+        promoteOn: either

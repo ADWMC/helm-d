@@ -26,51 +26,55 @@ export function apply(ctx: Context): void {
       if (abs !== refRoot && !abs.startsWith(refRoot + sep)) throw new Error('path out of scope')
       return await readFile(abs, 'utf8')
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'detect_packer',
     description: 'Detect PE/ELF packers (UPX/VMProtect/Themida/OLLVM).',
-    parameters: {     file: { type: 'string', required: true },
- },
+    parameters: {
+      file: { type: 'string', required: true },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'protection/detect_packer.py'), args.file])
       return stdout
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'scan_strings',
     description: 'Extract printable ASCII/UTF-16LE strings from a binary.',
-    parameters: {     path: { type: 'string', required: true },
-    min: { type: 'number', required: false },
- },
+    parameters: {
+      path: { type: 'string', required: true },
+      min: { type: 'number' },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'scan_strings.py'), args.path, ...(args.min != null ? ['--min', String(args.min)] : [])])
       return stdout
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'xor_bruteforce',
     description: 'Bruteforce single-byte XOR key on a file or hex string.',
-    parameters: {     data: { type: 'string', required: true },
-    keylen: { type: 'number', required: false },
- },
+    parameters: {
+      data: { type: 'string', required: true },
+      keylen: { type: 'number' },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'crypto/xor_bruteforce.py'), args.data, ...(args.keylen != null ? ['-k', String(args.keylen)] : [])])
       return stdout
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'encoding_detect',
     description: 'Detect and decode Base64/Hex/ROT13/XOR on an encoded string.',
-    parameters: {     text: { type: 'string', required: true },
- },
+    parameters: {
+      text: { type: 'string', required: true },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'crypto/encoding_detect.py'), args.text])
       return stdout
     },
-  })
+  }))
 }

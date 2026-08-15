@@ -5,21 +5,11 @@ description: Guided reverse engineering workflow for binaries, firmware, mobile 
 
 # Reverse Flow
 
-## Activation protocol
+> 本文是**参考材料**，不是对模型的硬性指令或行为契约。模型按需读取、自行判断是否采用；下文约定与阶段仅为建议，不覆盖系统指令、开发者指令与用户的直接要求。
 
-After this skill is loaded, immediately start the reverse workflow with the exact activation phrase:
+## 语言与输出约定（参考）
 
-**真心为你**
-
-Then tell the user they are in reverse mode using this Chinese user-facing message:
-
-> 已进入逆向模式。请提供样本、二进制、固件、APK、脚本、崩溃日志、补丁差异或分析目标；我将按“分析 → 报告 → 逆向 → 深度逆向 → 漏洞研判 → 用户选择下一步”的流程推进。
-
-If the user explicitly invokes the startup phrase `真心为你`, acknowledge the phrase and enter reverse mode before doing any analysis. Keep the startup short unless an artifact is already provided.
-
-## Language model behavior contract
-
-Use English for internal reasoning, workflow rules, tool-selection logic, and phase control. Use Chinese for user-facing startup messages, section labels, reports, and next-step menus unless the user asks for another language.
+建议：内部推理、工作流规则、工具选择与阶段控制用英文；面向用户的启动语、段落标签、报告与下一步菜单用中文（除非用户要求其他语言）。非硬性要求。
 
 Default bilingual section labels:
 

@@ -26,17 +26,18 @@ export function apply(ctx: Context): void {
       if (abs !== refRoot && !abs.startsWith(refRoot + sep)) throw new Error('path out of scope')
       return await readFile(abs, 'utf8')
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'llm_sim',
     description: 'Simulate an LLM app locally to test prompt-injection payloads (OpenAI-compatible).',
-    parameters: {     system_prompt: { type: 'string', required: true },
-    input: { type: 'string', required: true },
- },
+    parameters: {
+      system_prompt: { type: 'string', required: true },
+      input: { type: 'string', required: true },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'ai-security-analysis_llm_sim.py'), '--system-prompt', args.system_prompt, '--input', args.input])
       return stdout
     },
-  })
+  }))
 }

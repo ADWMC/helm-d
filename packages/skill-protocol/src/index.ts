@@ -26,39 +26,42 @@ export function apply(ctx: Context): void {
       if (abs !== refRoot && !abs.startsWith(refRoot + sep)) throw new Error('path out of scope')
       return await readFile(abs, 'utf8')
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'pcap_parse',
     description: 'Parse a PCAP and extract TCP/UDP streams.',
-    parameters: {     file: { type: 'string', required: true },
- },
+    parameters: {
+      file: { type: 'string', required: true },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'protocol/pcap_minimal.py'), args.file])
       return stdout
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'state_machine',
     description: 'Infer a protocol state machine (DOT) from a message log.',
-    parameters: {     messages: { type: 'string', required: true },
-    out: { type: 'string', required: false },
- },
+    parameters: {
+      messages: { type: 'string', required: true },
+      out: { type: 'string' },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'protocol/protocol_state_machine.py'), args.messages, ...(args.out != null ? [args.out] : [])])
       return stdout
     },
-  })
+  }))
   ctx.tools.register(defineTool({
     name: 'parse_har',
     description: 'Parse HAR request/response fields for protocol reversing.',
-    parameters: {     har: { type: 'string', required: true },
- },
+    parameters: {
+      har: { type: 'string', required: true },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       const { stdout } = await execFileAsync('python', [resolve(scriptRoot, 'parse_har_fields.py'), args.har])
       return stdout
     },
-  })
+  }))
 }

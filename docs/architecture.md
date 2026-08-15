@@ -9,7 +9,7 @@
 - 领域知识 = 每个领域 bundle 的 `references/`，通过 `read_reference` 按需读，不注入 prompt。
 - 工程纪律 = `@deepseek-ai/dsh-persona` 的 `complete` 文本（`packages/router/prompt.md` 的规范化内容）。
 - 首轮工具锚定 = `@dsh-security/bootstrap`，首个顶层请求只暴露 `pwsh/read` 或 `bash/read`。
-- 后续轮次 = 完整 Standard 工具目录 + helm-d 路由/领域工具。
+- 后续轮次 = 完整 Standard 工具目录 + helmd 路由/领域工具。
 
 ## 1. AI 遇到一个问题的调用链
 
@@ -55,7 +55,7 @@ flowchart TD
 ## 3. 目录结构
 
 ```text
-helm-d/
+helmd/
 ├── packages/
 │   ├── bootstrap/               # 首轮工具锚定（不再做首条消息注入）
 │   │   ├── src/index.ts         # system-prompt/assemble 过滤器
@@ -142,9 +142,9 @@ preset 中：
 
 ## 5. 与参考仓库的差异
 
-| 项 | dsh-anchored-standard | helm-d |
+| 项 | dsh-anchored-standard | helmd |
 |---|---|---|
-| persona text | 固定英文一句 | helm-d 工程代理工作规范（中文） |
+| persona text | 固定英文一句 | helmd 工程代理工作规范（中文） |
 | bootstrap 插件 | `./tool-bootstrap.mjs` | `@dsh-security/bootstrap`（TS，逻辑对齐） |
 | 领域能力 | 无 | router + 7 个领域 bundle |
 | preset 数量 | 2（anchored / zero） | 3（minimal / standard / full-reverse） |

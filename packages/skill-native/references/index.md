@@ -2,6 +2,8 @@
 
 知识按需读，模型自主判断，不作为硬性规则。共 68 个文件。
 
+**职责边界**：仅 native/二进制层——PE/ELF/Mach-O、反调试、壳、驱动、shellcode、Frida 通用 API 与 Interceptor。Android APK / Java Bridge 归 `skill-android`；本目录中的 `android-*` 文件聚焦 native 层（.so / shellcode），移动端整体流程见 `skill-android`。
+
 - android-arm64-shellcode-analysis.md
 - android-shellcode-analysis.md
 - anti-debug-methodology.md

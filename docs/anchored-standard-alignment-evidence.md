@@ -1,11 +1,11 @@
 # dsh-anchored-standard 对齐证据
 
-> 本文记录 helm-d 与 [xiaobright/dsh-anchored-standard](https://github.com/xiaobright/dsh-anchored-standard) 的对齐事实。
+> 本文记录 helmd 与 [xiaobright/dsh-anchored-standard](https://github.com/xiaobright/dsh-anchored-standard) 的对齐事实。
 > 每条结论附置信度；未做端到端启动验证的项单独标注。
 
 ## 1. 已对齐的事实
 
-| # | 事实 | helm-d 落点 | 证据 | 置信度 |
+| # | 事实 | helmd 落点 | 证据 | 置信度 |
 |---|---|---|---|---|
 | 1 | persona 用 `@deepseek-ai/dsh-persona`，`complete: true` | `presets/*/agent.cordis.yml` identity 段 | 文件内 `- id: persona` / `complete: true` / `includeRuntimeContext: false` | 高 |
 | 2 | 首轮工具目录经 `system-prompt/assemble` 过滤 | `packages/bootstrap/src/index.ts` | `ctx.on('system-prompt/assemble', ...)`；`inject = ['systemPrompt']` | 高 |
@@ -25,7 +25,7 @@
 
 ## 3. 与参考仓库的有意差异
 
-- persona 文本从英文固定句改为 helm-d 中文工程规范（`packages/router/prompt.md` 内容），保留 `complete: true`。
+- persona 文本从英文固定句改为 helmd 中文工程规范（`packages/router/prompt.md` 内容），保留 `complete: true`。
 - bootstrap 插件从 `./tool-bootstrap.mjs` 改为 `@dsh-security/bootstrap` TS 包，逻辑对齐。
 - 末尾追加 `@dsh-security/router` 与领域 bundle 行。
 - 暂未实现 `zero-anchored-standard` 的 `anchor-turn` / 零工具锚定模式。
