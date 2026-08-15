@@ -188,6 +188,8 @@ dsh web
 
 ## 参考项目
 
+本项目融合了多个优秀开源项目的设计理念与实现思路，借鉴了社区中许多先行者的经验。如有雷同，那就是对优秀设计的借鉴与致敬。
+
 - [ADWMC/helm-x](https://github.com/ADWMC/helm-x) — 提示词注入与计分制设计
 - [yynxxxxx/Codex-X](https://github.com/yynxxxxx/Codex-X) — 提示词模板与可视化管理
 

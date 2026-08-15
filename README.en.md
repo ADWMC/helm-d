@@ -188,6 +188,8 @@ Send `helmd` in a session to activate. `DSH_HOME` defaults to `~/.dsh`; substitu
 
 ## Acknowledgements
 
+This project integrates design ideas and implementation patterns from many excellent open-source projects, drawing on the experience of many community pioneers. Any resemblance is a tribute to great design.
+
 - [ADWMC/helm-x](https://github.com/ADWMC/helm-x) — prompt injection and scoring design
 - [yynxxxxx/Codex-X](https://github.com/yynxxxxx/Codex-X) — prompt templates and visual management
 
