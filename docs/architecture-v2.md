@@ -3,7 +3,7 @@
 ## 0. 结论
 
 - 第一注入 = 每个 preset 的 persona：`# 安全分析工程代理工作规范`，`complete: true`、`includeRuntimeContext: false`。
-- 领域 skill 只存在于 `references/`，通过 `read_reference` 按需读取；skill 内不保留激活词、强制开场白或隐藏启动协议。
+- 领域知识主要存在于 `references/`，通过 `read_reference` 按需读取；需要进入 dsh skill catalog 的内置 skill 放在 bundle 的 `skills/`，由隔离的 bundled provider 注册；skill 内不保留激活词、强制开场白或隐藏启动协议。
 - 工具目录由 `@dsh-security/bootstrap` 首轮收窄，晋升后放开。
 - 每个结论必须带置信度，并注明依据。
 
@@ -70,6 +70,7 @@ flowchart TD
 | router | preset 行，`inject=['tools']` | 否 | 注册 `skill_catalog` / `read_reference` |
 | 领域 bundle | preset 行，`inject=['tools']` | 否 | 注册领域工具，描述指向 `references/` |
 | references | 工具读取 | 否，按需读取 | 领域规则、工作流、脚本说明 |
+| bundled skills | `dsh-skill-filesystem` 的隔离 provider | 否，按需加载 | 需要进入 skill catalog 的内置 skill |
 
 ## 5. 目录结构
 

@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import { apply as applySkillFilesystem } from '@deepseek-ai/dsh-skill-filesystem'
 import { readFile } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -9,12 +10,19 @@ import { fileURLToPath } from 'node:url'
 const execFileAsync = promisify(execFile)
 
 export const name = 'skill-native'
-export const inject = ['tools']
+export const inject = ['tools', 'skills']
 
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../references')
 const scriptRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../scripts')
+const bundledSkillRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../skills')
 
 export function apply(ctx: Context): void {
+
+  applySkillFilesystem(ctx, {
+    providerName: 'helmd-skill-native-bundled',
+    includeDefaultRoots: false,
+    bundledSkillDir: bundledSkillRoot,
+  })
 
   ctx.tools.register(defineTool({
     name: 'native_reference',

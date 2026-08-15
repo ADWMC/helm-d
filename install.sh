@@ -24,18 +24,18 @@ if curl -fsSL -H "Accept: application/vnd.github+json" "${AUTH[@]}" "$API_URL" -
   node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);for(const a of (j.assets||[])){if(a.name&&a.name.endsWith(".tgz"))console.log(a.browser_download_url)}})' \
     < "$TMPDIR/release.json" > "$TMPDIR/assets.txt"
 else
-  echo "  (release API unavailable, falling back to pinned release v0.1.0)"
-  TAG="v0.1.0"
+  echo "  (release API unavailable, falling back to pinned release v0.1.1)"
+  TAG="v0.1.1"
   for n in \
-    dsh-security-bootstrap-0.1.0.tgz \
-    dsh-security-router-0.1.0.tgz \
-    dsh-security-skill-ai-security-0.1.0.tgz \
-    dsh-security-skill-android-0.1.0.tgz \
-    dsh-security-skill-evidence-0.1.0.tgz \
-    dsh-security-skill-malware-0.1.0.tgz \
-    dsh-security-skill-native-0.1.0.tgz \
-    dsh-security-skill-protocol-0.1.0.tgz \
-    dsh-security-skill-web-0.1.0.tgz; do
+    dsh-security-bootstrap-0.1.1.tgz \
+    dsh-security-router-0.1.1.tgz \
+    dsh-security-skill-ai-security-0.1.1.tgz \
+    dsh-security-skill-android-0.1.1.tgz \
+    dsh-security-skill-evidence-0.1.1.tgz \
+    dsh-security-skill-malware-0.1.1.tgz \
+    dsh-security-skill-native-0.1.1.tgz \
+    dsh-security-skill-protocol-0.1.1.tgz \
+    dsh-security-skill-web-0.1.1.tgz; do
     printf 'https://github.com/%s/releases/download/%s/%s\n' "$REPO" "$TAG" "$n"
   done > "$TMPDIR/assets.txt"
 fi

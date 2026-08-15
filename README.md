@@ -107,9 +107,9 @@ pnpm -r build
 ## 发布
 
 - 根包 `private: true`，不发布；发布对象是 9 个 `@dsh-security/*` 子包。
-- 各子包 `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
+- 各子包 `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`；`skill-native` 另包含包内 `skills/`。
 - 每个子包的 `prepare` 脚本会在发布前自动执行 `tsc`。
-- 当前版本 `0.1.0`。
+- 当前版本 `0.1.1`。
 
 ## 部署
 
