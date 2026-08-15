@@ -2,6 +2,8 @@
 
 [English](README.en.md) | 中文
 
+[![Telegram](https://img.shields.io/badge/Telegram-@helm_xD-26A5E4?style=flat&logo=telegram)](https://t.me/helm_xD)
+
 DeepSeek Harness (DSH) 安全分析插件集。9 个 `@dsh-security/*` bundle 组成的 pnpm monorepo，提供多领域安全分析工具与按需参考知识，附带 1 个可直接挂载的 agent preset。
 
 > 仅供学习交流。使用者须遵守所在地法律法规，对使用本项目产生的后果自负。

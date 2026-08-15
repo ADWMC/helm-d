@@ -2,6 +2,8 @@
 
 English | [中文](README.md)
 
+[![Telegram](https://img.shields.io/badge/Telegram-@helm_xD-26A5E4?style=flat&logo=telegram)](https://t.me/helm_xD)
+
 A DeepSeek Harness (DSH) security-analysis plugin suite. A pnpm monorepo of 9 `@dsh-security/*` bundles that provide multi-domain security-analysis tools and on-demand reference knowledge, plus 1 mountable agent preset.
 
 > For learning and research only. You must comply with local laws and regulations; you are responsible for the consequences of using this project.
