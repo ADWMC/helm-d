@@ -426,40 +426,26 @@ order: 10
     Write-Host "[4/4] setting default preset ..."
     $settings = Join-Path $DSH_HOME "settings.yaml"
     New-Item -ItemType Directory -Force $DSH_HOME | Out-Null
-    if (-not (Test-Path -LiteralPath $settings)) {
-        Set-Content -LiteralPath $settings -Value "agent-presets:`n  default: $Preset`n" -NoNewline -Encoding UTF8
-    } else {
-        $lines = Get-Content -LiteralPath $settings
-        $out = New-Object System.Collections.Generic.List[string]
-        $inAp = $false
-        $done = $false
-        $sawAp = $false
-        foreach ($line in $lines) {
-            if ($line -match '^agent-presets:') {
-                $inAp = $true
-                $sawAp = $true
+
+    $out = New-Object System.Collections.Generic.List[string]
+    if (Test-Path -LiteralPath $settings) {
+        $raw = Get-Content -LiteralPath $settings -Raw
+        # 单行损坏的 settings.yaml 无法解析，直接丢弃重建；多行则保留除 agent-presets 段外的内容
+        if ($raw -match "`n") {
+            $skip = $false
+            foreach ($line in ($raw -split "`r?`n")) {
+                if ($line -match '^\s*agent-presets:') { $skip = $true; continue }
+                if ($skip) {
+                    if ($line -match '^\s') { continue }
+                    $skip = $false
+                }
                 $out.Add($line)
-                continue
             }
-            if ($inAp -and -not $done -and $line -match '^s*default:') {
-                $out.Add("  default: $Preset")
-                $done = $true
-                continue
-            }
-            if ($inAp -and -not $done -and $line -match '^s*[A-Za-z_][A-Za-z0-9_-]*:') {
-                $out.Add("  default: $Preset")
-                $done = $true
-                $out.Add($line)
-                continue
-            }
-            $out.Add($line)
         }
-        if (-not $sawAp) {
-            $out.Add("agent-presets:")
-            $out.Add("  default: $Preset")
-        }
-        Set-Content -LiteralPath $settings -Value $out -NoNewline -Encoding UTF8
     }
+    $out.Add("agent-presets:")
+    $out.Add("  default: $Preset")
+    Set-Content -LiteralPath $settings -Value $out -NoNewline -Encoding UTF8
 
     Write-Host ""
     Write-Host "done. run: dsh $Profile   (or: npx --yes @deepseek-ai/dsh $Profile)"
