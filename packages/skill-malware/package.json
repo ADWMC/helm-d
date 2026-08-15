@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/index.js",
   "files": ["dist", "references", "scripts", "cordis.patch.yml"],
-  "scripts": { "build": "tsc -p tsconfig.json" },
+  "scripts": { "build": "tsc -p tsconfig.json", "prepare": "tsc -p tsconfig.json" },
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
   "dependencies": {
     "@deepseek-ai/cordis": "*",

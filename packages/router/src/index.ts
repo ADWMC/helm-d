@@ -1,12 +1,11 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { readFile } from 'node:fs/promises'
-import { readFileSync } from 'node:fs'
 import { resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const name = 'security-router'
-export const inject = ['systemPrompt', 'tools']
+export const inject = ['tools']
 
 // 目录：领域 -> 触发信号与去向（可发现性元数据，不下结论）
 const catalog: Record<string, string> = {
@@ -19,19 +18,8 @@ const catalog: Record<string, string> = {
 }
 
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../references')
-// 系统提示词随 bundle 分发，加载时读入一次（prompt.md）
-const promptText = readFileSync(
-  resolve(fileURLToPath(new URL('.', import.meta.url)), '../prompt.md'),
-  'utf8',
-)
 
 export function apply(ctx: Context): void {
-  ctx.systemPrompt.section({
-    name: 'security-system-prompt',
-    order: 110,
-    text: promptText,
-  })
-
   ctx.tools.register(defineTool({
     name: 'skill_catalog',
     description: 'List available reference topics and when to read them.',

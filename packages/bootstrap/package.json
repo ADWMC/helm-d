@@ -3,12 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
-  "files": ["dist", "prompt.md", "cordis.patch.yml"],
-  "scripts": { "build": "tsc -p tsconfig.json" },
+  "files": ["dist", "cordis.patch.yml"],
+  "scripts": { "build": "tsc -p tsconfig.json", "prepare": "tsc -p tsconfig.json" },
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
   "dependencies": {
-    "@deepseek-ai/cordis": "*",
-    "@deepseek-ai/dsh-agent": "*",
-    "@deepseek-ai/dsh-llm": "*"
+    "@deepseek-ai/cordis": "*"
   }
 }

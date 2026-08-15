@@ -1,0 +1,3 @@
+name: helm-d minimal
+description: "helm-d minimal: anchored shell/read bootstrap, router and evidence bundles."
+order: 10
