@@ -120,6 +120,14 @@ if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
 
     Write-Host "[3/4] writing preset ..."
     $presetRoot = Join-Path $DSH_HOME ".agent-presets"
+    New-Item -ItemType Directory -Force $presetRoot | Out-Null
+    foreach ($stale in @('standard','minimal','helm-standard','helm-minimal','full-reverse')) {
+        $staleDir = Join-Path $presetRoot $stale
+        if (($stale -ne $Preset) -and (Test-Path -LiteralPath $staleDir -PathType Container)) {
+            Write-Host "  removing stale helm-x preset: $stale"
+            Remove-Item -LiteralPath $staleDir -Recurse -Force
+        }
+    }
     $presetDir = Join-Path $presetRoot $Preset
     New-Item -ItemType Directory -Force $presetDir | Out-Null
 
@@ -502,7 +510,7 @@ order: 10
         }
     }
     $out.Add("agent-presets:")
-    $out.Add("  default: $Preset")
+    $out.Add("  default: standard")
     Set-Content -LiteralPath $settings -Value ($out -join "`n") -NoNewline -Encoding UTF8
 
     Write-Host ""
