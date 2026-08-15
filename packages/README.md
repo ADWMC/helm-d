@@ -7,7 +7,6 @@
 - `src/index.ts` — 插件入口（`apply(ctx)`）
 - `references/` — 参考文档（按需读，不注入 prompt）
 - `scripts/` — 工具脚本
-- `skills/` — 由 bundle 自己注册的内置 skill（仅 `skill-native` 当前使用）
 
 ## 依赖解析
 
@@ -16,8 +15,6 @@
 ## 本地打包与安装
 
 这里的每个子包都是 **bundle**，不是 profile。bundle 通过 `dsh.bundle.patch` 声明自己贡献的 patch；profile 由 dsh 在 `$DSH_HOME/profiles/<name>` 下维护，记录 bundle 的顺序和用户自己的 `cordis.patch.yml`。
-
-`skill-native` 还在自身插件入口挂载一个隔离的 `dsh-skill-filesystem` provider（`helmd-skill-native-bundled`），其 `bundledSkillDir` 指向包内 `skills/`；因此内置 skill 不依赖项目或用户的 filesystem skill 根。
 
 本地交付使用已构建的 tarball：
 

@@ -109,7 +109,7 @@ Versions are pinned via `pnpm.overrides` in the root `package.json`.
 - The root package is `private: true` and is not published; the 9 `@dsh-security/*` sub-packages are.
 - Each sub-package's `files` whitelist is limited to `dist`, `references`, `scripts`, `cordis.patch.yml`.
 - Each sub-package's `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.1.1`.
+- Current version: `0.1.2`.
 
 ## Deployment
 
