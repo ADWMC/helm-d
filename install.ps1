@@ -12,12 +12,41 @@ $tmp = Join-Path ([IO.Path]::GetTempPath()) ("helmd-" + [Guid]::NewGuid().ToStri
 New-Item -ItemType Directory -Force $tmp | Out-Null
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $api = "https://api.github.com/repos/$Repo/releases/latest"
-    $release = Invoke-RestMethod -Uri $api -Headers @{ "User-Agent" = "helmd-installer" }
-    $tgzAssets = @($release.assets | Where-Object { $_.name -like "*.tgz" })
-    foreach ($a in $tgzAssets) {
-        Write-Host "  fetching $($a.name)"
-        Invoke-WebRequest -Uri $a.browser_download_url -OutFile (Join-Path $tmp $a.name)
+
+    $headers = @{ "User-Agent" = "helmd-installer" }
+    $ghToken = if ($env:GH_TOKEN) { $env:GH_TOKEN } elseif ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN }
+    if ($ghToken) { $headers["Authorization"] = "Bearer $ghToken" }
+
+    $Tag = $null
+    $tgzNames = $null
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $headers
+        $Tag = $release.tag_name
+        $tgzNames = @($release.assets | Where-Object { $_.name -like "*.tgz" } | ForEach-Object { $_.name })
+    } catch {
+        Write-Host "  (release API unavailable: $($_.Exception.Message))"
+    }
+
+    if (-not $Tag -or -not $tgzNames) {
+        $Tag = "v0.1.0"
+        $tgzNames = @(
+            "dsh-security-bootstrap-0.1.0.tgz",
+            "dsh-security-router-0.1.0.tgz",
+            "dsh-security-skill-ai-security-0.1.0.tgz",
+            "dsh-security-skill-android-0.1.0.tgz",
+            "dsh-security-skill-evidence-0.1.0.tgz",
+            "dsh-security-skill-malware-0.1.0.tgz",
+            "dsh-security-skill-native-0.1.0.tgz",
+            "dsh-security-skill-protocol-0.1.0.tgz",
+            "dsh-security-skill-web-0.1.0.tgz"
+        )
+        Write-Host "  falling back to pinned release $Tag"
+    }
+
+    foreach ($name in $tgzNames) {
+        $url = "https://github.com/$Repo/releases/download/$Tag/$name"
+        Write-Host "  fetching $name"
+        Invoke-WebRequest -Uri $url -OutFile (Join-Path $tmp $name) -UseBasicParsing
     }
 
     Write-Host "[2/4] installing bundles from local tarballs ..."

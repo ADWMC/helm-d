@@ -12,9 +12,31 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 echo "[1/4] downloading latest release tarballs from $REPO ..."
 API_URL="https://api.github.com/repos/$REPO/releases/latest"
-curl -fsSL -H "Accept: application/vnd.github+json" "$API_URL" \
-  | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);for(const a of (j.assets||[])){if(a.name&&a.name.endsWith(".tgz"))console.log(a.browser_download_url)}})' \
-  > "$TMPDIR/assets.txt"
+AUTH=()
+[ -n "${GH_TOKEN:-}" ] && AUTH=(-H "Authorization: Bearer $GH_TOKEN")
+if [ -z "${GH_TOKEN:-}" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
+  AUTH=(-H "Authorization: Bearer $GITHUB_TOKEN")
+fi
+
+if curl -fsSL -H "Accept: application/vnd.github+json" "${AUTH[@]}" "$API_URL" -o "$TMPDIR/release.json"; then
+  node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);for(const a of (j.assets||[])){if(a.name&&a.name.endsWith(".tgz"))console.log(a.browser_download_url)}})' \
+    < "$TMPDIR/release.json" > "$TMPDIR/assets.txt"
+else
+  echo "  (release API unavailable, falling back to pinned release v0.1.0)"
+  TAG="v0.1.0"
+  for n in \
+    dsh-security-bootstrap-0.1.0.tgz \
+    dsh-security-router-0.1.0.tgz \
+    dsh-security-skill-ai-security-0.1.0.tgz \
+    dsh-security-skill-android-0.1.0.tgz \
+    dsh-security-skill-evidence-0.1.0.tgz \
+    dsh-security-skill-malware-0.1.0.tgz \
+    dsh-security-skill-native-0.1.0.tgz \
+    dsh-security-skill-protocol-0.1.0.tgz \
+    dsh-security-skill-web-0.1.0.tgz; do
+    printf 'https://github.com/%s/releases/download/%s/%s\n' "$REPO" "$TAG" "$n"
+  done > "$TMPDIR/assets.txt"
+fi
 
 while IFS= read -r url; do
   [ -z "$url" ] && continue
