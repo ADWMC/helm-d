@@ -3,11 +3,27 @@
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
-  "files": ["dist", "references", "scripts", "cordis.patch.yml"],
-  "scripts": { "build": "tsc -p tsconfig.json", "prepare": "tsc -p tsconfig.json" },
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
-  "dependencies": {
-    "@deepseek-ai/cordis": "*",
-    "@deepseek-ai/dsh-tools": "*"
+  "files": [
+    "dist",
+    "references",
+    "scripts",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
   }
 }

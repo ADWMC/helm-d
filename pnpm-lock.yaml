@@ -20,13 +20,13 @@ importers:
         version: 5.9.3
 
   packages/bootstrap:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.1
         version: 4.0.1
 
   packages/router:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.1
         version: 4.0.1
@@ -35,7 +35,7 @@ importers:
         version: 0.1.0-rc.6(f8724372086ccc1457fc84e7becee2e0)
 
   packages/skill-ai-security:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.1
         version: 4.0.1
@@ -44,7 +44,7 @@ importers:
         version: 0.1.0-rc.6(f8724372086ccc1457fc84e7becee2e0)
 
   packages/skill-android:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.1
         version: 4.0.1
@@ -53,7 +53,7 @@ importers:
         version: 0.1.0-rc.6(f8724372086ccc1457fc84e7becee2e0)
 
   packages/skill-evidence:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.1
         version: 4.0.1
@@ -62,7 +62,7 @@ importers:
         version: 0.1.0-rc.6(f8724372086ccc1457fc84e7becee2e0)
 
   packages/skill-malware:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.1
         version: 4.0.1
@@ -71,7 +71,7 @@ importers:
         version: 0.1.0-rc.6(f8724372086ccc1457fc84e7becee2e0)
 
   packages/skill-native:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.1
         version: 4.0.1
@@ -80,7 +80,7 @@ importers:
         version: 0.1.0-rc.6(f8724372086ccc1457fc84e7becee2e0)
 
   packages/skill-protocol:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.1
         version: 4.0.1
@@ -89,7 +89,7 @@ importers:
         version: 0.1.0-rc.6(f8724372086ccc1457fc84e7becee2e0)
 
   packages/skill-web:
-    dependencies:
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.1
         version: 4.0.1
