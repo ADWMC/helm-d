@@ -21,7 +21,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [helmd] launching install.ps1 ...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%PS1%"
+set "PS_EXE=powershell"
+where pwsh >nul 2>&1
+if not errorlevel 1 set "PS_EXE=pwsh"
+
+echo [helmd] launching install.ps1 via %PS_EXE% ...
+%PS_EXE% -NoProfile -ExecutionPolicy Bypass -File "%PS1%"
 
 exit /b %errorlevel%
