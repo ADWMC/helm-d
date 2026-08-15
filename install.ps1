@@ -9,7 +9,9 @@ $Repo = "ADWMC/helm-d"
 
 Write-Host "[1/4] downloading latest release tarballs from $Repo ..."
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("helmd-" + [Guid]::NewGuid().ToString("N"))
+$cacheDir = Join-Path $DSH_HOME ".tgz-cache"
 New-Item -ItemType Directory -Force $tmp | Out-Null
+New-Item -ItemType Directory -Force $cacheDir | Out-Null
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -46,7 +48,7 @@ try {
     foreach ($name in $tgzNames) {
         $url = "https://github.com/$Repo/releases/download/$Tag/$name"
         Write-Host "  fetching $name"
-        Invoke-WebRequest -Uri $url -OutFile (Join-Path $tmp $name) -UseBasicParsing
+        Invoke-WebRequest -Uri $url -OutFile (Join-Path $cacheDir $name) -UseBasicParsing
     }
 
     Write-Host "[2/4] installing bundles from local tarballs ..."
@@ -57,8 +59,8 @@ try {
 const fs = require("fs");
 const p = process.argv[2];
 const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
-const stale = new Set(["@linxin666/dsh-client-ui-skin-qq98", "@linxin666/dsh-web-ui-all", "dsh-find-plugin", "@deepseek-ai/dsh-plugin-console"]);
-const isStale = (name) => stale.has(name) || name.startsWith("@linxin666/");
+const stale = new Set(["dsh-find-plugin", "@deepseek-ai/dsh-plugin-console"]);
+const isStale = (name) => stale.has(name) || name.startsWith("@linxin666/") || name.startsWith("@dsh-security/");
 let changed = false;
 for (const f of ["dependencies", "devDependencies", "optionalDependencies"]) {
   if (pkg[f] && typeof pkg[f] === "object") {
@@ -86,7 +88,7 @@ if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
             Write-Host "  (stale-dep strip skipped: $($_.Exception.Message))"
         }
     }
-    $tgzFiles = @(Get-ChildItem -LiteralPath $tmp -Filter "*.tgz" | ForEach-Object { $_.FullName })
+    $tgzFiles = @(Get-ChildItem -LiteralPath $cacheDir -Filter "*.tgz" | ForEach-Object { $_.FullName })
     if (Get-Command dsh -ErrorAction SilentlyContinue) {
         & dsh plugin --profile $Profile add @tgzFiles
     } elseif (Get-Command npx -ErrorAction SilentlyContinue) {
