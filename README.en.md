@@ -279,7 +279,7 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 - The root package is `private: true` and is not published; the 10 `@dsh-security/*` sub-packages are.
 - Each sub-package's `files` whitelist is limited to `dist`, `references`, `scripts`, `cordis.patch.yml`.
 - Each sub-package's `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.1.1`.
+- Current version: `0.2.0`.
 
 ## Risks & mitigations
 
@@ -287,7 +287,7 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 |------|------------|
 | DSH host upgrade breaks compat | peer deps on cordis / dsh-tools, pinned via `overrides` |
 | Missing `python` on the host | seam auto-probes python / py / python3, falls back to the `py` launcher |
-| Bundle/preset version drift | version 0.1.1, tarball and release published together |
+| Bundle/preset version drift | version 0.2.0, tarball and release published together |
 | Reference knowledge goes stale | read on demand, model's own judgment, non-binding |
 
 ## Acknowledgements

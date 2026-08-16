@@ -279,7 +279,7 @@ pnpm -r build
 - 根包 `private: true`，不发布；发布对象是 10 个 `@dsh-security/*` 子包。
 - 各子包 `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
 - 每个子包的 `prepare` 脚本会在发布前自动执行 `tsc`。
-- 当前版本 `0.1.1`。
+- 当前版本 `0.2.0`。
 
 ## 风险与缓解
 
@@ -287,7 +287,7 @@ pnpm -r build
 |------|------|
 | DSH 宿主版本升级不兼容 | peer 依赖 cordis / dsh-tools，`overrides` 固定版本 |
 | 本机缺 `python` | seam 自动探测 python / py / python3，缺失回退 `py` launcher |
-| bundle 与 preset 版本错位 | 版本 0.1.1，tarball 与 release 同步发布 |
+| bundle 与 preset 版本错位 | 版本 0.2.0，tarball 与 release 同步发布 |
 | 参考知识过时 | 按需读、模型自主判断，非硬性规则 |
 
 ## 参考项目
