@@ -3,60 +3,94 @@
 [English](README.en.md) | 中文
 
 [![Telegram](https://img.shields.io/badge/Telegram-@helm_xD-26A5E4?style=flat&logo=telegram)](https://t.me/helm_xD)
-
-**DeepSeek Harness 破甲一体化安全分析插件**：以 Cordis 插件体系聚合 Android · Web · Native · Protocol · Malware · AI-Security 六大安全领域，9 个 `@dsh-security/*` bundle 独立发布、按需加载，配证据链与首轮工具锚定，附 1 个可直接挂载的 agent preset。
-
-## About
-
-**helmd** 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的**破甲**一体化安全分析插件：一个 `dsh-plugin` 套件，聚合 **Android · Web · Native · Protocol · Malware · AI-Security** 六大领域，外加证据链（evidence）与首轮工具锚定（bootstrap），9 个 bundle 独立发布、按需加载，1 个 preset 即挂即用。
-
 [![topic: dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-2ea44f)](https://github.com/topics/dsh-plugin)
 [![topic: deepseek-harness](https://img.shields.io/badge/topic-deepseek--harness-2ea44f)](https://github.com/topics/deepseek-harness)
-[![topic: dsh](https://img.shields.io/badge/topic-dsh-2ea44f)](https://github.com/topics/dsh)
 [![Node >=22.19](https://img.shields.io/badge/Node-%3E%3D22.19.0-green)](https://nodejs.org)
 [![pnpm 11.7.0](https://img.shields.io/badge/pnpm-11.7.0-orange)](https://pnpm.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-- **平台**：DeepSeek Harness（Cordis 插件体系，`dsh.bundle.patch` 分发）
-- **领域**：Android · Web · Native · Protocol · Malware · AI-Security 六大领域一体化
-- **分发**：9 个 `@dsh-security/*` bundle tarball + 1 个 agent preset
-- **话题**：`dsh-plugin` · `deepseek-harness` · `dsh` · `security` · `reverse-engineering` · `cordis` · `frida`
+**DeepSeek Harness 破甲一体化安全分析插件。** 一个 preset 挂载，Android · Web · Native · Protocol · Malware · AI-Security 六大领域即开即用。
 
 > 仅供学习交流。使用者须遵守所在地法律法规，对使用本项目产生的后果自负。
 
-## 这是什么
+## 为什么做这个
 
-helmd 是 DeepSeek Harness (DSH) 的**破甲**一体化安全分析插件：把 Android / Web / Native / Protocol / Malware / AI-Security 六大领域的能力拆成 9 个可独立发布、按需加载的 bundle，通过 cordis preset 一次挂载到 DSH agent，即获得完整安全分析链。
+DSH 的安全分析能力分散在多个领域 bundle：装 Android 要 add，装 Web 要 add，装 Native 还要 add，preset 和 router 也得自己拼。
 
-核心能力：
+helmd 把六个领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）打包成一个 preset：
 
-- **提示词注入**：persona（`complete: true`）作为唯一系统提示，发送激活词 `helmd` 进入执行模式
-- **领域路由**：`router` 提供 `skill_catalog` / `read_reference`，把问题路由到对应领域
-- **七大领域 + 锚定**：Android / Web / Native / 协议 / 恶意样本 / AI 安全 / 证据，外加首轮工具锚定 bootstrap
-- **按需参考**：领域知识、规则、工作流、案例全部放 `references/`，工具按需读取，不写进 system prompt 替模型做决定
-- **首轮工具锚定**：首个顶层请求只暴露 shell + `read`，晋升后放开完整目录
+`一个 preset` &ensp; `九个 bundle` &ensp; `零手动拼装`
 
-## 激活
-
-在 DSH 会话中发送：
-
-```
-helmd
-```
-
-即可激活。
+装一次，会话里发 `helmd`，全领域工具就绪。领域知识、规则、工作流、案例全部放在 `references/` 里按需读取——不塞进 system prompt 替模型做决定，控 token，也保判断。
 
 ## 架构
 
-```text
-用户问题
-  → system-prompt/assemble
-  → bootstrap 首轮收窄（shell + read）
-  → 会话晋升
-  → router + 领域 bundle 工具
-  → read_reference 按需读 references/
-  → 模型自主判断 + 置信度结论
+```mermaid
+flowchart LR
+    Q["🧭 用户问题"] --> SP["system-prompt/assemble"]
+    SP --> BS["bootstrap 首轮收窄<br/>shell + read"]
+    BS --> P{"会话晋升"}
+    P -->|首轮| BS
+    P -->|晋升后| ROUTER["router 领域路由"]
+    ROUTER --> ANDROID["📱 Android"]
+    ROUTER --> WEB["🌐 Web"]
+    ROUTER --> NATIVE["⚙️ Native"]
+    ROUTER --> PROTO["📡 Protocol"]
+    ROUTER --> MAL["☠️ Malware"]
+    ROUTER --> AI["🧠 AI-Security"]
+    ROUTER --> EVID["🧾 Evidence"]
+    ANDROID & WEB & NATIVE & PROTO & MAL & AI & EVID --> REF["read_reference 按需读 references/"]
+    REF --> OUT["模型自主判断 + 置信度结论"]
+
+    style BS fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e40af
+    style ROUTER fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#15803d
+    style REF fill:#fffbeb,stroke:#f59e0b,stroke-width:2px,color:#92400e
+    style OUT fill:#15803d,color:#fff,stroke:#166534,stroke-width:2px
 ```
+
+- **首轮收窄**：首个顶层请求只暴露 shell + `read`，晋升后放开完整工具目录
+- **领域路由**：`router` 用 `skill_catalog` / `read_reference` 把问题路由到对应领域
+- **按需参考**：`references/` 是知识库，不是注入物；模型读完后自主判断
+
+## 快速上手
+
+**前提**：已安装 [`dsh`](https://github.com/deepseek-ai/deepseek-harness) CLI 与 pnpm。
+
+Windows（双击 `install.bat`，或 PowerShell 运行）：
+
+```powershell
+.\install.ps1
+```
+
+macOS / Linux：
+
+```bash
+./install.sh
+```
+
+安装器会装 9 个 bundle、挂 `helmd` preset、设默认一步到位。然后启动：
+
+```bash
+dsh web
+```
+
+会话里发送 `helmd` 即激活。
+
+## 验证
+
+```bash
+dsh --profile web --dump-config   # 应看到 9 个 @dsh-security bundle 行
+```
+
+会话里发送 `helmd` 后：
+
+```text
+skill_catalog        → 返回六领域路由
+native_reference     → 读取 Native 领域参考
+detect_packer <file> → 判定 PE/ELF 保护器
+```
+
+上面任一正常返回即安装成功。
 
 ## 包清单
 
@@ -74,78 +108,33 @@ helmd
 
 每个 `*_reference` 工具按需读取对应 `references/`，入口是各自的 `index.md`。
 
-## 使用
+## 方案选型
 
-唯一 preset 位于 `presets/full-reverse/`，挂载全部 7 个领域 bundle：
+| 方案 | 不选的原因 |
+|------|-----------|
+| 逐领域手装 bundle | 9 次 add + 手动拼 preset + router，重复且易错 |
+| 只挂原生 shell 工具 | 无领域知识，模型靠猜，结论不可复现 |
+| 知识塞进 system prompt | token 爆炸，且替模型做决定，违背按需原则 |
+| helmd | 一个 preset 全聚合，知识按需读，模型自主判断 |
 
-- `preset.yml` — 元数据（`name: helmd`）
-- `agent.cordis.yml` — agent composition（persona + bootstrap + router + 7 个领域 bundle）
-
-在 DSH profile 中引用该 preset 即可获得完整能力。
-
-## 目录结构
-
-```text
-helmd/
-├── packages/
-│   ├── bootstrap/            首轮工具收窄过滤器
-│   ├── router/               领域路由与目录
-│   ├── skill-ai-security/    AI / LLM 安全
-│   ├── skill-android/        Android 逆向
-│   ├── skill-web/            Web 安全
-│   ├── skill-native/         Native / 二进制逆向
-│   ├── skill-protocol/       协议 / 流量
-│   ├── skill-malware/        恶意样本
-│   └── skill-evidence/       证据 / 报告 / case
-├── presets/
-│   └── full-reverse/
-└── docs/
-```
-
-## 构建
-
-需要 pnpm；构建产物目标 ES2022 / NodeNext。
+## 常用命令
 
 ```bash
-pnpm install
-pnpm -r build
+pnpm install                # 安装依赖（prepare 自动 tsc）
+pnpm build                  # 构建全部 9 个 bundle
+pnpm typecheck              # 干净树 tsc --noEmit 类型门禁
 ```
 
-根 `pnpm build` 等价于 `pnpm -r build`，逐包执行 `tsc`；`pnpm typecheck` 在干净树上执行 `tsc --noEmit` 类型门禁。
+本地打包交付：
 
-## 依赖
-
-- `@deepseek-ai/cordis` `4.0.1`
-- `@deepseek-ai/dsh-tools` `0.1.0-rc.6`
-
-版本通过 `pnpm-workspace.yaml` 的 `overrides` 固定。
-
-## 发布
-
-- 根包 `private: true`，不发布；发布对象是 9 个 `@dsh-security/*` 子包。
-- 各子包 `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
-- 每个子包的 `prepare` 脚本会在发布前自动执行 `tsc`。
-- 当前版本 `0.1.1`。
+```powershell
+.\scripts\repack.ps1                            # 生成 dist-tgz\*.tgz
+dsh plugin --profile web add .\dist-tgz\*.tgz   # 装进 web profile
+```
 
 ## 部署
 
-一键安装（推荐）：
-
-```bash
-./install.sh      # macOS / Linux
-```
-
-Windows（双击 `install.bat`，或 PowerShell 运行）：
-
-```powershell
-.\install.ps1
-```
-
-脚本会装包、挂 preset、设默认一步到位；手动分步见下。
-
-把 helmd 挂载到本地 DSH 分三步：装包 → 挂 preset → 设默认。
-
-前置：已安装 `dsh` CLI 与 pnpm；9 个 `@dsh-security/*` 包已发布到 npm（见上「发布」）。
+一键安装见上「快速上手」；手动分步如下。前置：9 个 `@dsh-security/*` 包已发布到 npm（见「发布」）。
 
 ### 1. 安装 bundle 到 profile
 
@@ -202,6 +191,59 @@ dsh web
 
 会话里发送 `helmd` 即激活。`DSH_HOME` 默认是 `~/.dsh`，自定义过就替换对应路径。
 
+## 目录结构
+
+```text
+helmd/
+├── packages/
+│   ├── bootstrap/            首轮工具收窄过滤器
+│   ├── router/               领域路由与目录
+│   ├── skill-ai-security/    AI / LLM 安全
+│   ├── skill-android/        Android 逆向
+│   ├── skill-web/            Web 安全
+│   ├── skill-native/         Native / 二进制逆向
+│   ├── skill-protocol/       协议 / 流量
+│   ├── skill-malware/        恶意样本
+│   └── skill-evidence/       证据 / 报告 / case
+├── presets/
+│   └── full-reverse/
+└── docs/
+```
+
+## 构建
+
+需要 pnpm；构建产物目标 ES2022 / NodeNext。
+
+```bash
+pnpm install
+pnpm -r build
+```
+
+根 `pnpm build` 等价于 `pnpm -r build`，逐包执行 `tsc`；`pnpm typecheck` 在干净树上执行 `tsc --noEmit` 类型门禁。
+
+## 依赖
+
+- `@deepseek-ai/cordis` `4.0.1`
+- `@deepseek-ai/dsh-tools` `0.1.0-rc.6`
+
+版本通过 `pnpm-workspace.yaml` 的 `overrides` 固定。
+
+## 发布
+
+- 根包 `private: true`，不发布；发布对象是 9 个 `@dsh-security/*` 子包。
+- 各子包 `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
+- 每个子包的 `prepare` 脚本会在发布前自动执行 `tsc`。
+- 当前版本 `0.1.1`。
+
+## 风险与缓解
+
+| 风险 | 缓解 |
+|------|------|
+| DSH 宿主版本升级不兼容 | peer 依赖 cordis / dsh-tools，`overrides` 固定版本 |
+| 本机缺 `python` | seam 自动探测 python / py / python3，缺失回退 `py` launcher |
+| bundle 与 preset 版本错位 | 版本 0.1.1，tarball 与 release 同步发布 |
+| 参考知识过时 | 按需读、模型自主判断，非硬性规则 |
+
 ## 参考项目
 
 本项目融合了多个优秀开源项目的设计理念与实现思路，借鉴了社区中许多先行者的经验。如有雷同，那就是对优秀设计的借鉴与致敬。
@@ -214,17 +256,6 @@ dsh web
 - [docs/principles.md](docs/principles.md) — 设计原则
 - [docs/architecture.md](docs/architecture.md) — 架构
 - [docs/architecture-v2.md](docs/architecture-v2.md) — 架构 v2（persona + 工具锚定 + 按需知识）
-
-## 快速开始
-
-```bash
-git clone https://github.com/ADWMC/helm-d.git
-cd helm-d
-pnpm install
-pnpm -r build
-```
-
-在 DSH profile 中引用 `presets/full-reverse/` 后，于会话中发送 `helmd` 激活。详见上方「使用」。
 
 ## Contributing
 

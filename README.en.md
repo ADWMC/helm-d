@@ -3,60 +3,94 @@
 English | [中文](README.md)
 
 [![Telegram](https://img.shields.io/badge/Telegram-@helm_xD-26A5E4?style=flat&logo=telegram)](https://t.me/helm_xD)
-
-An **armor-piercing all-in-one security-analysis plugin** for DeepSeek Harness: aggregates Android · Web · Native · Protocol · Malware · AI-Security under one Cordis plugin system, ships 9 independently publishable, on-demand-loadable `@dsh-security/*` bundles, plus evidence tooling, first-turn bootstrap, and 1 mountable agent preset.
-
-## About
-
-**helmd** is an armor-piercing all-in-one security-analysis [`dsh-plugin`](https://github.com/topics/dsh-plugin) suite for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), aggregating **Android · Web · Native · Protocol · Malware · AI-Security**, plus evidence tooling and first-turn bootstrap, into 9 independently publishable, on-demand-loadable bundles and 1 mountable agent preset.
-
 [![topic: dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-2ea44f)](https://github.com/topics/dsh-plugin)
 [![topic: deepseek-harness](https://img.shields.io/badge/topic-deepseek--harness-2ea44f)](https://github.com/topics/deepseek-harness)
-[![topic: dsh](https://img.shields.io/badge/topic-dsh-2ea44f)](https://github.com/topics/dsh)
 [![Node >=22.19](https://img.shields.io/badge/Node-%3E%3D22.19.0-green)](https://nodejs.org)
 [![pnpm 11.7.0](https://img.shields.io/badge/pnpm-11.7.0-orange)](https://pnpm.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-- **Platform**: DeepSeek Harness (Cordis plugin system, distributed via `dsh.bundle.patch`)
-- **Domains**: Android · Web · Native · Protocol · Malware · AI-Security — all-in-one
-- **Distribution**: 9 `@dsh-security/*` bundle tarballs + 1 agent preset
-- **Topics**: `dsh-plugin` · `deepseek-harness` · `dsh` · `security` · `reverse-engineering` · `cordis` · `frida`
+**Armor-piercing all-in-one security-analysis plugin for DeepSeek Harness.** Mount one preset, and Android · Web · Native · Protocol · Malware · AI-Security are ready on day one.
 
 > For learning and research only. You must comply with local laws and regulations; you are responsible for the consequences of using this project.
 
-## What is this
+## Why
 
-helmd is an armor-piercing all-in-one security-analysis plugin for DeepSeek Harness (DSH). It splits Android / Web / Native / Protocol / Malware / AI-Security capability into 9 independently publishable, on-demand-loadable bundles, mounted onto a DSH agent through a cordis preset.
+DSH security-analysis capability is scattered across domain bundles: `add` Android, `add` Web, `add` Native — and you still have to wire up the preset and router yourself.
 
-Core capabilities:
+helmd packs six domains + evidence tooling + first-turn bootstrap into one preset:
 
-- **Prompt injection**: a persona (`complete: true`) as the single system prompt; send the activation word `helmd` to enter execution mode
-- **Domain routing**: `router` exposes `skill_catalog` / `read_reference` to route problems to the right domain
-- **Seven domains + bootstrap**: Android / Web / Native / Protocol / Malware / AI security / Evidence, plus first-turn tool bootstrap
-- **Reference, not interference**: domain knowledge, rules, workflows and cases all live in `references/` and are read on demand — never injected into the system prompt to make decisions for the model
-- **First-turn tool anchoring**: the first top-level request only exposes a shell + `read`; the full catalog opens after promotion
+`one preset` &ensp; `nine bundles` &ensp; `zero manual wiring`
 
-## Activation
-
-In a DSH session, send:
-
-```
-helmd
-```
-
-to activate.
+Install once, send `helmd` in a session, and every domain's tools are ready. Domain knowledge, rules, workflows and cases all live in `references/` and are read on demand — never injected into the system prompt to make decisions for the model, keeping tokens lean and judgment intact.
 
 ## Architecture
 
-```text
-User question
-  -> system-prompt/assemble
-  -> bootstrap first-turn narrowing (shell + read)
-  -> session promotion
-  -> router + domain bundle tools
-  -> read_reference reads references/ on demand
-  -> model's own judgment + confidence-scored conclusion
+```mermaid
+flowchart LR
+    Q["🧭 Question"] --> SP["system-prompt/assemble"]
+    SP --> BS["bootstrap first-turn narrowing<br/>shell + read"]
+    BS --> P{"promoted?"}
+    P -->|no| BS
+    P -->|yes| ROUTER["router domain routing"]
+    ROUTER --> ANDROID["📱 Android"]
+    ROUTER --> WEB["🌐 Web"]
+    ROUTER --> NATIVE["⚙️ Native"]
+    ROUTER --> PROTO["📡 Protocol"]
+    ROUTER --> MAL["☠️ Malware"]
+    ROUTER --> AI["🧠 AI-Security"]
+    ROUTER --> EVID["🧾 Evidence"]
+    ANDROID & WEB & NATIVE & PROTO & MAL & AI & EVID --> REF["read_reference reads references/ on demand"]
+    REF --> OUT["model's own judgment + confidence-scored conclusion"]
+
+    style BS fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e40af
+    style ROUTER fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#15803d
+    style REF fill:#fffbeb,stroke:#f59e0b,stroke-width:2px,color:#92400e
+    style OUT fill:#15803d,color:#fff,stroke:#166534,stroke-width:2px
 ```
+
+- **First-turn narrowing**: the first top-level request only exposes shell + `read`; the full catalog opens after promotion
+- **Domain routing**: `router` routes problems via `skill_catalog` / `read_reference`
+- **On-demand references**: `references/` is a knowledge base, not an injection; the model reads and decides
+
+## Quick start
+
+**Prerequisites**: a working [`dsh`](https://github.com/deepseek-ai/deepseek-harness) CLI and pnpm.
+
+Windows (double-click `install.bat`, or run via PowerShell):
+
+```powershell
+.\install.ps1
+```
+
+macOS / Linux:
+
+```bash
+./install.sh
+```
+
+The installer adds the 9 bundles, mounts the `helmd` preset, and sets the default in one shot. Then boot:
+
+```bash
+dsh web
+```
+
+Send `helmd` in a session to activate.
+
+## Verification
+
+```bash
+dsh --profile web --dump-config   # you should see the 9 @dsh-security bundle rows
+```
+
+After sending `helmd` in a session:
+
+```text
+skill_catalog        → returns the six-domain route map
+native_reference     → reads the Native reference
+detect_packer <file> → identifies the PE/ELF protector
+```
+
+Any of the above returning normally means the install succeeded.
 
 ## Packages
 
@@ -74,78 +108,33 @@ User question
 
 Each `*_reference` tool reads its own `references/` on demand; the entry point is its `index.md`.
 
-## Usage
+## Alternatives
 
-The single preset lives in `presets/full-reverse/` and mounts all 7 domain bundles:
+| Approach | Why not |
+|----------|---------|
+| Install domain bundles by hand | 9 adds + manual preset + router wiring; repetitive and error-prone |
+| Raw shell tools only | no domain knowledge; the model guesses; unreproducible conclusions |
+| Stuff knowledge into the system prompt | token blow-up and it overrides the model's judgment |
+| helmd | one preset aggregates everything; knowledge read on demand |
 
-- `preset.yml` — metadata (`name: helmd`)
-- `agent.cordis.yml` — agent composition (persona + bootstrap + router + 7 domain bundles)
-
-Reference this preset in a DSH profile to get the full capability.
-
-## Directory layout
-
-```text
-helmd/
-├── packages/
-│   ├── bootstrap/            first-turn tool-narrowing filter
-│   ├── router/               domain routing and catalog
-│   ├── skill-ai-security/    AI / LLM security
-│   ├── skill-android/        Android reversing
-│   ├── skill-web/            Web security
-│   ├── skill-native/         Native / binary reversing
-│   ├── skill-protocol/       Protocol / traffic
-│   ├── skill-malware/        Malware samples
-│   └── skill-evidence/       Evidence / reporting / case
-├── presets/
-│   └── full-reverse/
-└── docs/
-```
-
-## Build
-
-Requires pnpm; build targets ES2022 / NodeNext.
+## Common commands
 
 ```bash
-pnpm install
-pnpm -r build
+pnpm install                # install deps (prepare auto-runs tsc)
+pnpm build                  # build all 9 bundles
+pnpm typecheck              # tsc --noEmit type gate on a clean tree
 ```
 
-The root `pnpm build` is equivalent to `pnpm -r build`, running `tsc` per package; `pnpm typecheck` runs the `tsc --noEmit` type gate on a clean tree.
+Local tarball delivery:
 
-## Dependencies
-
-- `@deepseek-ai/cordis` `4.0.1`
-- `@deepseek-ai/dsh-tools` `0.1.0-rc.6`
-
-Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
-
-## Publishing
-
-- The root package is `private: true` and is not published; the 9 `@dsh-security/*` sub-packages are.
-- Each sub-package's `files` whitelist is limited to `dist`, `references`, `scripts`, `cordis.patch.yml`.
-- Each sub-package's `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.1.1`.
+```powershell
+.\scripts\repack.ps1                            # emit dist-tgz\*.tgz
+dsh plugin --profile web add .\dist-tgz\*.tgz   # install into the web profile
+```
 
 ## Deployment
 
-One-command install (recommended):
-
-```bash
-./install.sh      # macOS / Linux
-```
-
-Windows (double-click `install.bat`, or run via PowerShell):
-
-```powershell
-.\install.ps1
-```
-
-The script installs the bundles, mounts the preset, and sets the default in one shot; the manual steps are below.
-
-Mounting helmd into a local DSH takes three steps: install the packages, mount the preset, then set the default.
-
-Prerequisites: a working `dsh` CLI and pnpm; the 9 `@dsh-security/*` packages published to npm (see Publishing above).
+One-command install is above under Quick start; the manual steps are below. Prerequisites: the 9 `@dsh-security/*` packages published to npm (see Publishing).
 
 ### 1. Install the bundles into a profile
 
@@ -202,6 +191,59 @@ dsh web
 
 Send `helmd` in a session to activate. `DSH_HOME` defaults to `~/.dsh`; substitute the path if you customized it.
 
+## Directory layout
+
+```text
+helmd/
+├── packages/
+│   ├── bootstrap/            first-turn tool-narrowing filter
+│   ├── router/               domain routing and catalog
+│   ├── skill-ai-security/    AI / LLM security
+│   ├── skill-android/        Android reversing
+│   ├── skill-web/            Web security
+│   ├── skill-native/         Native / binary reversing
+│   ├── skill-protocol/       Protocol / traffic
+│   ├── skill-malware/        Malware samples
+│   └── skill-evidence/       Evidence / reporting / case
+├── presets/
+│   └── full-reverse/
+└── docs/
+```
+
+## Build
+
+Requires pnpm; build targets ES2022 / NodeNext.
+
+```bash
+pnpm install
+pnpm -r build
+```
+
+The root `pnpm build` is equivalent to `pnpm -r build`, running `tsc` per package; `pnpm typecheck` runs the `tsc --noEmit` type gate on a clean tree.
+
+## Dependencies
+
+- `@deepseek-ai/cordis` `4.0.1`
+- `@deepseek-ai/dsh-tools` `0.1.0-rc.6`
+
+Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
+
+## Publishing
+
+- The root package is `private: true` and is not published; the 9 `@dsh-security/*` sub-packages are.
+- Each sub-package's `files` whitelist is limited to `dist`, `references`, `scripts`, `cordis.patch.yml`.
+- Each sub-package's `prepare` script runs `tsc` automatically before publishing.
+- Current version: `0.1.1`.
+
+## Risks & mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| DSH host upgrade breaks compat | peer deps on cordis / dsh-tools, pinned via `overrides` |
+| Missing `python` on the host | seam auto-probes python / py / python3, falls back to the `py` launcher |
+| Bundle/preset version drift | version 0.1.1, tarball and release published together |
+| Reference knowledge goes stale | read on demand, model's own judgment, non-binding |
+
 ## Acknowledgements
 
 This project integrates design ideas and implementation patterns from many excellent open-source projects, drawing on the experience of many community pioneers. Any resemblance is a tribute to great design.
@@ -214,17 +256,6 @@ This project integrates design ideas and implementation patterns from many excel
 - [docs/principles.md](docs/principles.md) — design principles
 - [docs/architecture.md](docs/architecture.md) — architecture
 - [docs/architecture-v2.md](docs/architecture-v2.md) — architecture v2 (persona + tool anchoring + on-demand knowledge)
-
-## Quick start
-
-```bash
-git clone https://github.com/ADWMC/helm-d.git
-cd helm-d
-pnpm install
-pnpm -r build
-```
-
-Reference `presets/full-reverse/` in a DSH profile, then send `helmd` in a session to activate. See Usage above.
 
 ## Contributing
 
