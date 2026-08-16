@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$Profile = "web"
 )
 $ErrorActionPreference = "Stop"
@@ -40,7 +40,8 @@ try {
             "dsh-security-skill-malware-0.1.1.tgz",
             "dsh-security-skill-native-0.1.1.tgz",
             "dsh-security-skill-protocol-0.1.1.tgz",
-            "dsh-security-skill-web-0.1.1.tgz"
+            "dsh-security-skill-web-0.1.1.tgz",
+            "dsh-security-toolbox-0.1.1.tgz"
         )
         Write-Host "  falling back to pinned release $Tag"
     }
@@ -483,6 +484,8 @@ order: 10
   name: '@dsh-security/skill-ai-security'
 - id: skill-evidence
   name: '@dsh-security/skill-evidence'
+- id: toolbox
+  name: '@dsh-security/toolbox'
 
 '@
 

@@ -32,9 +32,9 @@ Android · Web · Native · Protocol · Malware · AI-Security converge in a sin
 </td>
 <td width="50%">
 
-### Nine bundles · zero wiring
+### Ten bundles · zero wiring
 
-9 `@dsh-security/*` bundles, independently publishable and loaded on demand. `install.ps1` / `install.sh` install everything and mount the preset and router automatically.
+10 `@dsh-security/*` bundles, independently publishable and loaded on demand. `install.ps1` / `install.sh` install everything and mount the preset and router automatically.
 
 </td>
 </tr>
@@ -62,7 +62,7 @@ DSH security-analysis capability is scattered across domain bundles: `add` Andro
 
 helmd packs six domains + evidence tooling + first-turn bootstrap into one preset:
 
-`one preset` &ensp; `nine bundles` &ensp; `zero manual wiring`
+`one preset` &ensp; `ten bundles` &ensp; `zero manual wiring`
 
 Install once, send `helmd` in a session, and every domain's tools are ready.
 
@@ -148,6 +148,7 @@ Any of the above returning normally means the install succeeded.
 | `@dsh-security/skill-malware` | tools | Malware samples | `malware_reference`, `ioc_extract`, `yara_gen` |
 | `@dsh-security/skill-ai-security` | tools | AI / LLM security | `ai_reference`, `llm_sim` |
 | `@dsh-security/skill-evidence` | tools | Evidence / reporting / case | `evidence_reference`, `create_case`, `triage_artifact`, `hash_artifact` |
+| `@dsh-security/toolbox` | tools | Tool recommendation | `tool_recommend` |
 
 Each `*_reference` tool reads its own `references/` on demand; the entry point is its `index.md`.
 
@@ -177,7 +178,7 @@ dsh plugin --profile web add .\dist-tgz\*.tgz   # install into the web profile
 
 ## Deployment
 
-One-command install is above under Quick start; the manual steps are below. Prerequisites: the 9 `@dsh-security/*` packages published to npm (see Publishing).
+One-command install is above under Quick start; the manual steps are below. Prerequisites: the 10 `@dsh-security/*` packages published to npm (see Publishing).
 
 ### 1. Install the bundles into a profile
 
@@ -192,6 +193,7 @@ dsh plugin --profile web add \
   @dsh-security/skill-malware \
   @dsh-security/skill-ai-security \
   @dsh-security/skill-evidence
+  @dsh-security/toolbox
 ```
 
 `dsh plugin` forwards to pnpm inside the profile directory; the packages land in `$DSH_HOME/profiles/node_modules/`.
@@ -247,7 +249,8 @@ helmd/
 │   ├── skill-native/         Native / binary reversing
 │   ├── skill-protocol/       Protocol / traffic
 │   ├── skill-malware/        Malware samples
-│   └── skill-evidence/       Evidence / reporting / case
+│   ├── skill-evidence/       Evidence / reporting / case
+│   └── toolbox/              Tool recommendation
 ├── presets/
 │   └── full-reverse/
 └── docs/
@@ -273,7 +276,7 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 
 ## Publishing
 
-- The root package is `private: true` and is not published; the 9 `@dsh-security/*` sub-packages are.
+- The root package is `private: true` and is not published; the 10 `@dsh-security/*` sub-packages are.
 - Each sub-package's `files` whitelist is limited to `dist`, `references`, `scripts`, `cordis.patch.yml`.
 - Each sub-package's `prepare` script runs `tsc` automatically before publishing.
 - Current version: `0.1.1`.

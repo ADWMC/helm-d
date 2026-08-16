@@ -32,9 +32,9 @@ Android · Web · Native · Protocol · Malware · AI-Security 六大安全领�
 </td>
 <td width="50%">
 
-### 九个 bundle · 零拼装
+### 十个 bundle · 零拼装
 
-9 个 `@dsh-security/*` bundle 独立发布、按需加载。`install.ps1` / `install.sh` 一条命令装齐，preset 与 router 自动挂载。
+10 个 `@dsh-security/*` bundle 独立发布、按需加载。`install.ps1` / `install.sh` 一条命令装齐，preset 与 router 自动挂载。
 
 </td>
 </tr>
@@ -62,7 +62,7 @@ DSH 的安全分析能力分散在多个领域 bundle：装 Android 要 add，�
 
 helmd 把六个领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）打包成一个 preset：
 
-`一个 preset` &ensp; `九个 bundle` &ensp; `零手动拼装`
+`一个 preset` &ensp; `十个 bundle` &ensp; `零手动拼装`
 
 装一次，会话里发 `helmd`，全领域工具就绪。
 
@@ -111,7 +111,7 @@ macOS / Linux：
 ./install.sh
 ```
 
-安装器会装 9 个 bundle、挂 `helmd` preset、设默认一步到位。然后启动：
+安装器会装 10 个 bundle、挂 `helmd` preset、设默认一步到位。然后启动：
 
 ```bash
 dsh web
@@ -122,7 +122,7 @@ dsh web
 ## 验证
 
 ```bash
-dsh --profile web --dump-config   # 应看到 9 个 @dsh-security bundle 行
+dsh --profile web --dump-config   # 应看到 10 个 @dsh-security bundle 行
 ```
 
 会话里发送 `helmd` 后：
@@ -148,6 +148,7 @@ detect_packer <file> → 判定 PE/ELF 保护器
 | `@dsh-security/skill-malware` | tools | 恶意样本 | `malware_reference`、`ioc_extract`、`yara_gen` |
 | `@dsh-security/skill-ai-security` | tools | AI / LLM 安全 | `ai_reference`、`llm_sim` |
 | `@dsh-security/skill-evidence` | tools | 证据 / 报告 / case | `evidence_reference`、`create_case`、`triage_artifact`、`hash_artifact` |
+| `@dsh-security/toolbox` | tools | 工具库推荐 | `tool_recommend` |
 
 每个 `*_reference` 工具按需读取对应 `references/`，入口是各自的 `index.md`。
 
@@ -164,7 +165,7 @@ detect_packer <file> → 判定 PE/ELF 保护器
 
 ```bash
 pnpm install                # 安装依赖（prepare 自动 tsc）
-pnpm build                  # 构建全部 9 个 bundle
+pnpm build                  # 构建全部 10 个 bundle
 pnpm typecheck              # 干净树 tsc --noEmit 类型门禁
 ```
 
@@ -177,7 +178,7 @@ dsh plugin --profile web add .\dist-tgz\*.tgz   # 装进 web profile
 
 ## 部署
 
-一键安装见上「快速上手」；手动分步如下。前置：9 个 `@dsh-security/*` 包已发布到 npm（见「发布」）。
+一键安装见上「快速上手」；手动分步如下。前置：10 个 `@dsh-security/*` 包已发布到 npm（见「发布」）。
 
 ### 1. 安装 bundle 到 profile
 
@@ -192,6 +193,7 @@ dsh plugin --profile web add \
   @dsh-security/skill-malware \
   @dsh-security/skill-ai-security \
   @dsh-security/skill-evidence
+  @dsh-security/toolbox
 ```
 
 `dsh plugin` 会把参数转发给 profile 目录里的 pnpm，包落到 `$DSH_HOME/profiles/node_modules/`。
@@ -247,7 +249,8 @@ helmd/
 │   ├── skill-native/         Native / 二进制逆向
 │   ├── skill-protocol/       协议 / 流量
 │   ├── skill-malware/        恶意样本
-│   └── skill-evidence/       证据 / 报告 / case
+│   ├── skill-evidence/       证据 / 报告 / case
+│   └── toolbox/              工具库推荐
 ├── presets/
 │   └── full-reverse/
 └── docs/
@@ -273,7 +276,7 @@ pnpm -r build
 
 ## 发布
 
-- 根包 `private: true`，不发布；发布对象是 9 个 `@dsh-security/*` 子包。
+- 根包 `private: true`，不发布；发布对象是 10 个 `@dsh-security/*` 子包。
 - 各子包 `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
 - 每个子包的 `prepare` 脚本会在发布前自动执行 `tsc`。
 - 当前版本 `0.1.1`。

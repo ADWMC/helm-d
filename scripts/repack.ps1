@@ -4,7 +4,7 @@ $out = Join-Path $repo "dist-tgz"
 if (Test-Path $out) { Remove-Item -LiteralPath $out -Recurse -Force }
 New-Item -ItemType Directory -Force $out | Out-Null
 
-$pkgs = @("bootstrap", "router", "skill-ai-security", "skill-android", "skill-evidence", "skill-malware", "skill-native", "skill-protocol", "skill-web")
+$pkgs = @("bootstrap", "router", "skill-ai-security", "skill-android", "skill-evidence", "skill-malware", "skill-native", "skill-protocol", "skill-web", "toolbox")
 foreach ($p in $pkgs) {
     $dir = Join-Path $repo ("packages\" + $p)
     Push-Location $dir
