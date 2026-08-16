@@ -25,14 +25,14 @@ English | [中文](README.md)
 <tr>
 <td width="50%">
 
-### 🛡️ Armor-piercing, all-in-one
+### Armor-piercing, all-in-one
 
 Android · Web · Native · Protocol · Malware · AI-Security converge in a single preset. Install once and every domain's tools are ready — no per-domain wiring.
 
 </td>
 <td width="50%">
 
-### 🧩 Nine bundles · zero wiring
+### Nine bundles · zero wiring
 
 9 `@dsh-security/*` bundles, independently publishable and loaded on demand. `install.ps1` / `install.sh` install everything and mount the preset and router automatically.
 
@@ -41,14 +41,14 @@ Android · Web · Native · Protocol · Malware · AI-Security converge in a sin
 <tr>
 <td width="50%">
 
-### 📚 Knowledge on demand
+### Knowledge on demand
 
 Domain knowledge, rules, workflows and cases live in `references/` and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
 
 </td>
 <td width="50%">
 
-### ⚓ First-turn tool anchoring
+### First-turn tool anchoring
 
 The first top-level request only exposes shell + `read`; the full catalog opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
 
@@ -70,18 +70,18 @@ Install once, send `helmd` in a session, and every domain's tools are ready.
 
 ```mermaid
 flowchart LR
-    Q["🧭 Question"] --> SP["system-prompt/assemble"]
+    Q["Question"] --> SP["system-prompt/assemble"]
     SP --> BS["bootstrap first-turn narrowing<br/>shell + read"]
     BS --> P{"promoted?"}
     P -->|no| BS
     P -->|yes| ROUTER["router domain routing"]
-    ROUTER --> ANDROID["📱 Android"]
-    ROUTER --> WEB["🌐 Web"]
-    ROUTER --> NATIVE["⚙️ Native"]
-    ROUTER --> PROTO["📡 Protocol"]
-    ROUTER --> MAL["☠️ Malware"]
-    ROUTER --> AI["🧠 AI-Security"]
-    ROUTER --> EVID["🧾 Evidence"]
+    ROUTER --> ANDROID["Android"]
+    ROUTER --> WEB["Web"]
+    ROUTER --> NATIVE["Native"]
+    ROUTER --> PROTO["Protocol"]
+    ROUTER --> MAL["Malware"]
+    ROUTER --> AI["AI-Security"]
+    ROUTER --> EVID["Evidence"]
     ANDROID & WEB & NATIVE & PROTO & MAL & AI & EVID --> REF["read_reference reads references/ on demand"]
     REF --> OUT["model's own judgment + confidence-scored conclusion"]
 

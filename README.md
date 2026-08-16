@@ -25,14 +25,14 @@
 <tr>
 <td width="50%">
 
-### 🛡️ 破甲一体化
+### 破甲一体化
 
 Android · Web · Native · Protocol · Malware · AI-Security 六大安全领域聚合在一个 preset 里。装一次，全领域工具就绪，不再逐领域拼装。
 
 </td>
 <td width="50%">
 
-### 🧩 九个 bundle · 零拼装
+### 九个 bundle · 零拼装
 
 9 个 `@dsh-security/*` bundle 独立发布、按需加载。`install.ps1` / `install.sh` 一条命令装齐，preset 与 router 自动挂载。
 
@@ -41,14 +41,14 @@ Android · Web · Native · Protocol · Malware · AI-Security 六大安全领�
 <tr>
 <td width="50%">
 
-### 📚 知识按需读
+### 知识按需读
 
 领域知识、规则、工作流、案例全部放 `references/`，工具按需读取——不塞进 system prompt 替模型做决定，控 token，也保判断。
 
 </td>
 <td width="50%">
 
-### ⚓ 首轮工具锚定
+### 首轮工具锚定
 
 首个顶层请求只暴露 shell + `read`，晋升后放开完整目录。文本首答不会困在 bootstrap，第二轮一定见到全量工具。
 
@@ -70,18 +70,18 @@ helmd 把六个领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap�
 
 ```mermaid
 flowchart LR
-    Q["🧭 用户问题"] --> SP["system-prompt/assemble"]
+    Q["用户问题"] --> SP["system-prompt/assemble"]
     SP --> BS["bootstrap 首轮收窄<br/>shell + read"]
     BS --> P{"会话晋升"}
     P -->|首轮| BS
     P -->|晋升后| ROUTER["router 领域路由"]
-    ROUTER --> ANDROID["📱 Android"]
-    ROUTER --> WEB["🌐 Web"]
-    ROUTER --> NATIVE["⚙️ Native"]
-    ROUTER --> PROTO["📡 Protocol"]
-    ROUTER --> MAL["☠️ Malware"]
-    ROUTER --> AI["🧠 AI-Security"]
-    ROUTER --> EVID["🧾 Evidence"]
+    ROUTER --> ANDROID["Android"]
+    ROUTER --> WEB["Web"]
+    ROUTER --> NATIVE["Native"]
+    ROUTER --> PROTO["Protocol"]
+    ROUTER --> MAL["Malware"]
+    ROUTER --> AI["AI-Security"]
+    ROUTER --> EVID["Evidence"]
     ANDROID & WEB & NATIVE & PROTO & MAL & AI & EVID --> REF["read_reference 按需读 references/"]
     REF --> OUT["模型自主判断 + 置信度结论"]
 
