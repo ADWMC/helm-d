@@ -513,7 +513,7 @@ order: 10
         }
     }
     $out.Add("agent-presets:")
-    $out.Add("  default: standard")
+    $out.Add("  default: helmd")
     Set-Content -LiteralPath $settings -Value ($out -join "`n") -NoNewline -Encoding UTF8
 
     Write-Host ""

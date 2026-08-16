@@ -458,14 +458,14 @@ SETTINGS="$DSH_HOME/settings.yaml"
 mkdir -p "$DSH_HOME"
 [ -f "$SETTINGS" ] || : > "$SETTINGS"
 if grep -q '^agent-presets:' "$SETTINGS"; then
-  awk -v preset="standard" '
+  awk -v preset="$PRESET" '
     /^agent-presets:/ { print; inap=1; next }
     inap && /^[[:space:]]*default:/ { print "  default: " preset; inap=0; next }
     inap && /^[[:space:]]*[A-Za-z_][A-Za-z0-9_-]*:/ { print "  default: " preset; inap=0; print; next }
     { print }
   ' "$SETTINGS" > "$SETTINGS.tmp" && mv "$SETTINGS.tmp" "$SETTINGS"
 else
-  printf '\nagent-presets:\n  default: standard\n' >> "$SETTINGS"
+  printf '\nagent-presets:\n  default: %s\n' "$PRESET" >> "$SETTINGS"
 fi
 
 echo
