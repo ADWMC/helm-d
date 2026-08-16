@@ -1,4 +1,10 @@
+<div align="center">
+
 # helmd
+
+**DeepSeek Harness 破甲一体化安全分析插件**
+
+一个 preset 挂载 · Android · Web · Native · Protocol · Malware · AI-Security 六大领域即开即用
 
 [English](README.en.md) | 中文
 
@@ -9,9 +15,46 @@
 [![pnpm 11.7.0](https://img.shields.io/badge/pnpm-11.7.0-orange)](https://pnpm.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**DeepSeek Harness 破甲一体化安全分析插件。** 一个 preset 挂载，Android · Web · Native · Protocol · Malware · AI-Security 六大领域即开即用。
+</div>
 
 > 仅供学习交流。使用者须遵守所在地法律法规，对使用本项目产生的后果自负。
+
+## Why helmd
+
+<table>
+<tr>
+<td width="50%">
+
+### 🛡️ 破甲一体化
+
+Android · Web · Native · Protocol · Malware · AI-Security 六大安全领域聚合在一个 preset 里。装一次，全领域工具就绪，不再逐领域拼装。
+
+</td>
+<td width="50%">
+
+### 🧩 九个 bundle · 零拼装
+
+9 个 `@dsh-security/*` bundle 独立发布、按需加载。`install.ps1` / `install.sh` 一条命令装齐，preset 与 router 自动挂载。
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📚 知识按需读
+
+领域知识、规则、工作流、案例全部放 `references/`，工具按需读取——不塞进 system prompt 替模型做决定，控 token，也保判断。
+
+</td>
+<td width="50%">
+
+### ⚓ 首轮工具锚定
+
+首个顶层请求只暴露 shell + `read`，晋升后放开完整目录。文本首答不会困在 bootstrap，第二轮一定见到全量工具。
+
+</td>
+</tr>
+</table>
 
 ## 为什么做这个
 
@@ -21,7 +64,7 @@ helmd 把六个领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap�
 
 `一个 preset` &ensp; `九个 bundle` &ensp; `零手动拼装`
 
-装一次，会话里发 `helmd`，全领域工具就绪。领域知识、规则、工作流、案例全部放在 `references/` 里按需读取——不塞进 system prompt 替模型做决定，控 token，也保判断。
+装一次，会话里发 `helmd`，全领域工具就绪。
 
 ## 架构
 

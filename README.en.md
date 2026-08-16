@@ -1,4 +1,10 @@
+<div align="center">
+
 # helmd
+
+**Armor-piercing all-in-one security-analysis plugin for DeepSeek Harness**
+
+Mount one preset · Android · Web · Native · Protocol · Malware · AI-Security ready on day one
 
 English | [中文](README.md)
 
@@ -9,9 +15,46 @@ English | [中文](README.md)
 [![pnpm 11.7.0](https://img.shields.io/badge/pnpm-11.7.0-orange)](https://pnpm.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Armor-piercing all-in-one security-analysis plugin for DeepSeek Harness.** Mount one preset, and Android · Web · Native · Protocol · Malware · AI-Security are ready on day one.
+</div>
 
 > For learning and research only. You must comply with local laws and regulations; you are responsible for the consequences of using this project.
+
+## Why helmd
+
+<table>
+<tr>
+<td width="50%">
+
+### 🛡️ Armor-piercing, all-in-one
+
+Android · Web · Native · Protocol · Malware · AI-Security converge in a single preset. Install once and every domain's tools are ready — no per-domain wiring.
+
+</td>
+<td width="50%">
+
+### 🧩 Nine bundles · zero wiring
+
+9 `@dsh-security/*` bundles, independently publishable and loaded on demand. `install.ps1` / `install.sh` install everything and mount the preset and router automatically.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📚 Knowledge on demand
+
+Domain knowledge, rules, workflows and cases live in `references/` and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
+
+</td>
+<td width="50%">
+
+### ⚓ First-turn tool anchoring
+
+The first top-level request only exposes shell + `read`; the full catalog opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
+
+</td>
+</tr>
+</table>
 
 ## Why
 
@@ -21,7 +64,7 @@ helmd packs six domains + evidence tooling + first-turn bootstrap into one prese
 
 `one preset` &ensp; `nine bundles` &ensp; `zero manual wiring`
 
-Install once, send `helmd` in a session, and every domain's tools are ready. Domain knowledge, rules, workflows and cases all live in `references/` and are read on demand — never injected into the system prompt to make decisions for the model, keeping tokens lean and judgment intact.
+Install once, send `helmd` in a session, and every domain's tools are ready.
 
 ## Architecture
 
