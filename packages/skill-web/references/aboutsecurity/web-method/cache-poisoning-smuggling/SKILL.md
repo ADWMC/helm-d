@@ -1,0 +1,111 @@
+---
+name: cache-poisoning-smuggling
+description: "Web 缓存投毒和 HTTP 请求走私。当目标使用 CDN/反向代理/缓存层（Cloudflare/Varnish/Nginx）、或有前后端服务器架构差异时使用。通过操纵缓存键或利用 HTTP 解析差异来投毒缓存或绕过安全控制。高级 Web 攻击技术"
+metadata:
+  tags: "cache poisoning,request smuggling,http smuggling,缓存投毒,请求走私,cdn,desync,cl-te,te-cl,hop-by-hop"
+  category: "exploit"
+---
+
+# Web 缓存投毒 & HTTP 请求走私
+
+两种相关但不同的高级 Web 攻击技术，都利用了多层 Web 架构中的解析差异。
+
+---
+
+## Part A: Web 缓存投毒 (Cache Poisoning)
+
+核心思路：找到一个**影响响应内容但不包含在缓存键中的 HTTP 头**（unkeyed input），注入恶意内容到缓存。
+
+### A.1 识别缓存行为
+```
+# 发送两次相同请求，检查响应头
+http_request url="http://target/page" headers={"X-Test":"1"}
+```
+缓存指标：
+- `X-Cache: HIT/MISS`
+- `Age: 300`（缓存存活秒数）
+- `CF-Cache-Status: HIT`（Cloudflare）
+- `Via: 1.1 varnish`
+
+### A.2 发现 Unkeyed Input
+逐个测试 HTTP 头是否影响响应但不改变缓存键：
+
+```
+X-Forwarded-Host: evil.com     → 响应中出现 evil.com？
+X-Forwarded-Scheme: http       → 强制 HTTP 重定向？
+X-Original-URL: /admin         → 路径覆盖？
+X-Rewrite-URL: /admin
+X-Forwarded-For: 127.0.0.1    → 绕过 IP 限制？
+```
+
+### A.3 投毒
+如果 `X-Forwarded-Host` 影响响应中的资源链接：
+1. 发送带恶意 Header 的请求
+2. 响应被缓存（含恶意内容）
+3. 后续用户访问同一 URL → 获取到被投毒的缓存
+
+---
+
+## Part B: HTTP 请求走私 (Request Smuggling)
+
+核心思路：前端代理和后端服务器对**请求边界**的解析不一致，导致一个 HTTP 请求被解析为两个。
+
+### B.1 识别走私类型
+
+| 类型 | 前端判断长度 | 后端判断长度 |
+|------|-------------|-------------|
+| CL.TE | Content-Length | Transfer-Encoding |
+| TE.CL | Transfer-Encoding | Content-Length |
+| TE.TE | Transfer-Encoding | Transfer-Encoding（处理差异）|
+
+### B.2 CL.TE 检测
+
+前端用 Content-Length，后端用 Transfer-Encoding：
+```
+POST / HTTP/1.1
+Host: target.com
+Content-Length: 13
+Transfer-Encoding: chunked
+
+0
+
+SMUGGLED
+```
+如果后端处理了 `SMUGGLED` 作为新请求的开头 → 存在走私。
+
+**时间延迟检测法**（更可靠）：发送不完整的 chunked body，如果前端按 CL 转发完毕但后端等待剩余 chunk → 响应超时/时间延迟 → 存在 CL.TE 走私。响应差异（超时 vs 正常）是判断的关键依据。
+
+### B.3 TE.CL 检测
+```
+POST / HTTP/1.1
+Host: target.com
+Content-Length: 3
+Transfer-Encoding: chunked
+
+8
+SMUGGLED
+0
+
+
+```
+
+### B.4 利用走私
+
+**绕过前端安全控制**：
+走私一个访问 `/admin` 的请求，绕过前端代理的 ACL。
+
+**窃取其他用户请求**：
+走私一个不完整的 POST 请求，后端等待更多数据 → 下一个用户的请求被拼接上来 → 读取其 Cookie/Token。
+
+**缓存投毒**：
+走私一个到不同路径的请求，让缓存存储错误的响应内容。
+
+## 注意事项
+- HTTP 走私需要精确控制 HTTP 原始字节，用 curl `--data-binary` 发送
+- 缓存投毒影响范围取决于 TTL 和 key 设计
+- TE.TE 混淆绕过：`Transfer-Encoding: xchunked`、`Transfer-Encoding\n: chunked`（换行/折叠注入）、多个 TE 头利用解析差异
+- 缓存投毒后可注入 XSS，加载恶意 JS 影响所有访问者
+
+## 深入参考
+
+- 缓存投毒/走私高级技术（Web Cache Deception/HTTP/2 Downgrade/h2c/Response Desync） → [references/cache-smuggling-techniques.md](references/cache-smuggling-techniques.md)
