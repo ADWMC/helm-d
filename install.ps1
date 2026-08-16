@@ -492,30 +492,7 @@ order: 10
     Set-Content -LiteralPath (Join-Path $presetDir "preset.yml") -Value $presetContent -NoNewline -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $presetDir "agent.cordis.yml") -Value $agentContent -NoNewline -Encoding UTF8
 
-    Write-Host "[4/4] setting default preset ..."
-    $settings = Join-Path $DSH_HOME "settings.yaml"
-    New-Item -ItemType Directory -Force $DSH_HOME | Out-Null
-
-    $out = New-Object System.Collections.Generic.List[string]
-    if (Test-Path -LiteralPath $settings) {
-        $raw = Get-Content -LiteralPath $settings -Raw
-        # 单行损坏的 settings.yaml 无法解析，直接丢弃重建；多行则保留除 agent-presets 段外的内容
-        if ($raw -match "`n") {
-            $skip = $false
-            foreach ($line in ($raw -split "`r?`n")) {
-                if ($line -match '^\s*agent-presets:') { $skip = $true; continue }
-                if ($skip) {
-                    if ($line -match '^\s') { continue }
-                    $skip = $false
-                }
-                $out.Add($line)
-            }
-        }
-    }
-    $out.Add("agent-presets:")
-    $out.Add("  default: helmd")
-    Set-Content -LiteralPath $settings -Value ($out -join "`n") -NoNewline -Encoding UTF8
-
+    Write-Host "[4/4] preset written: $Preset (default NOT auto-set; pick 'helmd' in the UI preset picker)"
     Write-Host ""
     Write-Host "done. run: dsh $Profile   (or: npx --yes @deepseek-ai/dsh $Profile)"
     Write-Host "then send the activation word: $Preset"
