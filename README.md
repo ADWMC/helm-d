@@ -4,11 +4,11 @@
 
 [![Telegram](https://img.shields.io/badge/Telegram-@helm_xD-26A5E4?style=flat&logo=telegram)](https://t.me/helm_xD)
 
-DeepSeek Harness (DSH) 安全分析插件集。9 个 `@dsh-security/*` bundle 组成的 pnpm monorepo，提供多领域安全分析工具与按需参考知识，附带 1 个可直接挂载的 agent preset。
+**DeepSeek Harness 破甲一体化安全分析插件**：以 Cordis 插件体系聚合 Android · Web · Native · Protocol · Malware · AI-Security 六大安全领域，9 个 `@dsh-security/*` bundle 独立发布、按需加载，配证据链与首轮工具锚定，附 1 个可直接挂载的 agent preset。
 
 ## About
 
-**helmd** 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 `dsh-plugin` 插件集，基于 Cordis 插件体系，把安全分析能力拆成 9 个可独立发布、按需加载的 bundle，附带 1 个可直接挂载的 agent preset。
+**helmd** 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的**破甲**一体化安全分析插件：一个 `dsh-plugin` 套件，聚合 **Android · Web · Native · Protocol · Malware · AI-Security** 六大领域，外加证据链（evidence）与首轮工具锚定（bootstrap），9 个 bundle 独立发布、按需加载，1 个 preset 即挂即用。
 
 [![topic: dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-2ea44f)](https://github.com/topics/dsh-plugin)
 [![topic: deepseek-harness](https://img.shields.io/badge/topic-deepseek--harness-2ea44f)](https://github.com/topics/deepseek-harness)
@@ -18,6 +18,7 @@ DeepSeek Harness (DSH) 安全分析插件集。9 个 `@dsh-security/*` bundle �
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 - **平台**：DeepSeek Harness（Cordis 插件体系，`dsh.bundle.patch` 分发）
+- **领域**：Android · Web · Native · Protocol · Malware · AI-Security 六大领域一体化
 - **分发**：9 个 `@dsh-security/*` bundle tarball + 1 个 agent preset
 - **话题**：`dsh-plugin` · `deepseek-harness` · `dsh` · `security` · `reverse-engineering` · `cordis` · `frida`
 
@@ -25,7 +26,7 @@ DeepSeek Harness (DSH) 安全分析插件集。9 个 `@dsh-security/*` bundle �
 
 ## 这是什么
 
-helmd 是 DeepSeek Harness (DSH) 的安全分析插件集：把安全分析能力拆成 9 个可独立发布、按需加载的 bundle，通过 cordis preset 挂载到 DSH agent。
+helmd 是 DeepSeek Harness (DSH) 的**破甲**一体化安全分析插件：把 Android / Web / Native / Protocol / Malware / AI-Security 六大领域的能力拆成 9 个可独立发布、按需加载的 bundle，通过 cordis preset 一次挂载到 DSH agent，即获得完整安全分析链。
 
 核心能力：
 

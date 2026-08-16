@@ -4,11 +4,11 @@ English | [中文](README.md)
 
 [![Telegram](https://img.shields.io/badge/Telegram-@helm_xD-26A5E4?style=flat&logo=telegram)](https://t.me/helm_xD)
 
-A DeepSeek Harness (DSH) security-analysis plugin suite. A pnpm monorepo of 9 `@dsh-security/*` bundles that provide multi-domain security-analysis tools and on-demand reference knowledge, plus 1 mountable agent preset.
+An **armor-piercing all-in-one security-analysis plugin** for DeepSeek Harness: aggregates Android · Web · Native · Protocol · Malware · AI-Security under one Cordis plugin system, ships 9 independently publishable, on-demand-loadable `@dsh-security/*` bundles, plus evidence tooling, first-turn bootstrap, and 1 mountable agent preset.
 
 ## About
 
-**helmd** is a [`dsh-plugin`](https://github.com/topics/dsh-plugin) suite for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Built on the Cordis plugin system, it splits security-analysis capability into 9 independently publishable, on-demand-loadable bundles, plus 1 mountable agent preset.
+**helmd** is an armor-piercing all-in-one security-analysis [`dsh-plugin`](https://github.com/topics/dsh-plugin) suite for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), aggregating **Android · Web · Native · Protocol · Malware · AI-Security**, plus evidence tooling and first-turn bootstrap, into 9 independently publishable, on-demand-loadable bundles and 1 mountable agent preset.
 
 [![topic: dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-2ea44f)](https://github.com/topics/dsh-plugin)
 [![topic: deepseek-harness](https://img.shields.io/badge/topic-deepseek--harness-2ea44f)](https://github.com/topics/deepseek-harness)
@@ -18,6 +18,7 @@ A DeepSeek Harness (DSH) security-analysis plugin suite. A pnpm monorepo of 9 `@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 - **Platform**: DeepSeek Harness (Cordis plugin system, distributed via `dsh.bundle.patch`)
+- **Domains**: Android · Web · Native · Protocol · Malware · AI-Security — all-in-one
 - **Distribution**: 9 `@dsh-security/*` bundle tarballs + 1 agent preset
 - **Topics**: `dsh-plugin` · `deepseek-harness` · `dsh` · `security` · `reverse-engineering` · `cordis` · `frida`
 
@@ -25,7 +26,7 @@ A DeepSeek Harness (DSH) security-analysis plugin suite. A pnpm monorepo of 9 `@
 
 ## What is this
 
-helmd is a security-analysis plugin suite for DeepSeek Harness (DSH). It splits security-analysis capability into 9 independently publishable, on-demand-loadable bundles, mounted onto a DSH agent through a cordis preset.
+helmd is an armor-piercing all-in-one security-analysis plugin for DeepSeek Harness (DSH). It splits Android / Web / Native / Protocol / Malware / AI-Security capability into 9 independently publishable, on-demand-loadable bundles, mounted onto a DSH agent through a cordis preset.
 
 Core capabilities:
 
