@@ -6,6 +6,21 @@ English | [中文](README.md)
 
 A DeepSeek Harness (DSH) security-analysis plugin suite. A pnpm monorepo of 9 `@dsh-security/*` bundles that provide multi-domain security-analysis tools and on-demand reference knowledge, plus 1 mountable agent preset.
 
+## About
+
+**helmd** is a [`dsh-plugin`](https://github.com/topics/dsh-plugin) suite for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Built on the Cordis plugin system, it splits security-analysis capability into 9 independently publishable, on-demand-loadable bundles, plus 1 mountable agent preset.
+
+[![topic: dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-2ea44f)](https://github.com/topics/dsh-plugin)
+[![topic: deepseek-harness](https://img.shields.io/badge/topic-deepseek--harness-2ea44f)](https://github.com/topics/deepseek-harness)
+[![topic: dsh](https://img.shields.io/badge/topic-dsh-2ea44f)](https://github.com/topics/dsh)
+[![Node >=22.19](https://img.shields.io/badge/Node-%3E%3D22.19.0-green)](https://nodejs.org)
+[![pnpm 11.7.0](https://img.shields.io/badge/pnpm-11.7.0-orange)](https://pnpm.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+- **Platform**: DeepSeek Harness (Cordis plugin system, distributed via `dsh.bundle.patch`)
+- **Distribution**: 9 `@dsh-security/*` bundle tarballs + 1 agent preset
+- **Topics**: `dsh-plugin` · `deepseek-harness` · `dsh` · `security` · `reverse-engineering` · `cordis` · `frida`
+
 > For learning and research only. You must comply with local laws and regulations; you are responsible for the consequences of using this project.
 
 ## What is this
@@ -95,14 +110,14 @@ pnpm install
 pnpm -r build
 ```
 
-The root `pnpm build` is equivalent to `pnpm -r build`, running `tsc` per package.
+The root `pnpm build` is equivalent to `pnpm -r build`, running `tsc` per package; `pnpm typecheck` runs the `tsc --noEmit` type gate on a clean tree.
 
 ## Dependencies
 
 - `@deepseek-ai/cordis` `4.0.1`
 - `@deepseek-ai/dsh-tools` `0.1.0-rc.6`
 
-Versions are pinned via `pnpm.overrides` in the root `package.json`.
+Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 
 ## Publishing
 

@@ -6,6 +6,21 @@
 
 DeepSeek Harness (DSH) 安全分析插件集。9 个 `@dsh-security/*` bundle 组成的 pnpm monorepo，提供多领域安全分析工具与按需参考知识，附带 1 个可直接挂载的 agent preset。
 
+## About
+
+**helmd** 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 `dsh-plugin` 插件集，基于 Cordis 插件体系，把安全分析能力拆成 9 个可独立发布、按需加载的 bundle，附带 1 个可直接挂载的 agent preset。
+
+[![topic: dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-2ea44f)](https://github.com/topics/dsh-plugin)
+[![topic: deepseek-harness](https://img.shields.io/badge/topic-deepseek--harness-2ea44f)](https://github.com/topics/deepseek-harness)
+[![topic: dsh](https://img.shields.io/badge/topic-dsh-2ea44f)](https://github.com/topics/dsh)
+[![Node >=22.19](https://img.shields.io/badge/Node-%3E%3D22.19.0-green)](https://nodejs.org)
+[![pnpm 11.7.0](https://img.shields.io/badge/pnpm-11.7.0-orange)](https://pnpm.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+- **平台**：DeepSeek Harness（Cordis 插件体系，`dsh.bundle.patch` 分发）
+- **分发**：9 个 `@dsh-security/*` bundle tarball + 1 个 agent preset
+- **话题**：`dsh-plugin` · `deepseek-harness` · `dsh` · `security` · `reverse-engineering` · `cordis` · `frida`
+
 > 仅供学习交流。使用者须遵守所在地法律法规，对使用本项目产生的后果自负。
 
 ## 这是什么
@@ -95,14 +110,14 @@ pnpm install
 pnpm -r build
 ```
 
-根 `pnpm build` 等价于 `pnpm -r build`，逐包执行 `tsc`。
+根 `pnpm build` 等价于 `pnpm -r build`，逐包执行 `tsc`；`pnpm typecheck` 在干净树上执行 `tsc --noEmit` 类型门禁。
 
 ## 依赖
 
 - `@deepseek-ai/cordis` `4.0.1`
 - `@deepseek-ai/dsh-tools` `0.1.0-rc.6`
 
-版本通过根 `package.json` 的 `pnpm.overrides` 固定。
+版本通过 `pnpm-workspace.yaml` 的 `overrides` 固定。
 
 ## 发布
 
