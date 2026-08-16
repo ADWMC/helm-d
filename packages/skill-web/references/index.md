@@ -1,25 +1,16 @@
 # skill-web references index
 
-知识按需读，模型自主判断，不作为硬性规则。共 22 个文件 + aboutsecurity 融合库（46 skill）。
+知识按需读，模型自主判断，不作为硬性规则。共 68 个文件（22 自研 + 46 AboutSecurity 融合）。
 
 **职责边界**：仅 Web 应用层——前端 JS、API 黑盒、Web 漏洞、WAF / 缓存 / CSP。协议层归 `skill-protocol`，框架源码审计与移动端归各自 skill。
 
-**融合库 `aboutsecurity/`**（源自 wgpsec/AboutSecurity，1.6k star 渗透知识库）：
+**融合文件 `as-*`**（源自 [wgpsec/AboutSecurity](https://github.com/wgpsec/AboutSecurity)，1.6k star 渗透知识库，平铺保持原架构）：
 
-- `web-method/` — 32 个 Web 漏洞方法论（SQLi / XSS / SSRF / SSTI / XXE / 文件上传 / 反序列化 / 命令注入 / LFI / WAF 绕过 / WebSocket / GraphQL / NoSQL / LDAP / PHP bypass / 原型污染）
-- `auth/` — 8 个认证授权（401/403 bypass / JWT / OAuth / IDOR / CSRF / CORS / Cookie）
-- `recon/` — 6 个侦察（JS API 提取 / 被动侦察 / 子域名 / 目标画像）
+- `as-web-method-*` — 32 个 Web 漏洞方法论
+- `as-auth-*` — 8 个认证授权
+- `as-recon-*` — 6 个侦察
 
-读取路径示例：
-
-```text
-aboutsecurity/web-method/sql-injection-methodology/SKILL.md
-aboutsecurity/web-method/sql-injection-methodology/references/blind-injection.md
-aboutsecurity/auth/jwt-attack-methodology/SKILL.md
-aboutsecurity/recon/js-api-extract/references/js-extract-patterns.md
-```
-
-> 注：`web-method/waf-bypass-methodology/references/parameter-bypass.md` 因本机 Defender 隔离源文件未融合，需要时见 AboutSecurity 原仓库。
+## 自研文档
 
 - api-blackbox-testing.md
 - attack-orchestration.md
@@ -43,3 +34,60 @@ aboutsecurity/recon/js-api-extract/references/js-extract-patterns.md
 - web-platform-testing.md
 - web-principles.md
 - web-vulnerabilities.md
+
+## AboutSecurity 融合（Web 漏洞方法论）
+
+- as-web-method-api-fuzz.md
+- as-web-method-business-logic-attack.md
+- as-web-method-cache-poisoning-smuggling.md
+- as-web-method-command-injection-methodology.md
+- as-web-method-deserialization-methodology.md
+- as-web-method-expression-language-injection.md
+- as-web-method-file-upload-methodology.md
+- as-web-method-graphql-methodology.md
+- as-web-method-http-host-header-attacks.md
+- as-web-method-information-disclosure-methodology.md
+- as-web-method-java-deserialization-methodology.md
+- as-web-method-ldap-injection.md
+- as-web-method-lfi-rfi-methodology.md
+- as-web-method-nosql-injection.md
+- as-web-method-php-bypass.md
+- as-web-method-php-type-juggling.md
+- as-web-method-privilege-escalation-web.md
+- as-web-method-prototype-pollution-exploit.md
+- as-web-method-python-prototype-pollution.md
+- as-web-method-python-web-debug.md
+- as-web-method-sql-injection-methodology.md
+- as-web-method-ssrf-methodology.md
+- as-web-method-ssti-methodology.md
+- as-web-method-subdomain-takeover.md
+- as-web-method-waf-bypass-methodology.md
+- as-web-method-web-vuln-scan.md
+- as-web-method-webshell-deploy.md
+- as-web-method-webshell-management.md
+- as-web-method-websocket-attack.md
+- as-web-method-xslt-injection.md
+- as-web-method-xss-methodology.md
+- as-web-method-xxe-injection-methodology.md
+
+## AboutSecurity 融合（认证授权）
+
+- as-auth-401-403-bypass.md
+- as-auth-cookie-analysis.md
+- as-auth-cors-misconfiguration.md
+- as-auth-csrf-methodology.md
+- as-auth-idor-methodology.md
+- as-auth-jwt-attack-methodology.md
+- as-auth-mobile-backend.md
+- as-auth-oauth-sso-attack.md
+
+## AboutSecurity 融合（侦察）
+
+- as-recon-js-api-extract.md
+- as-recon-passive-recon.md
+- as-recon-recon-full.md
+- as-recon-social-engineering.md
+- as-recon-subdomain-deep.md
+- as-recon-target-profiling.md
+
+> 注：waf-bypass 的 `parameter-bypass.md` 与 webshell 的 `webshell-payloads.md` 部分内容因本机 Defender 实时扫描误报被拦，需要时见 AboutSecurity 原仓库。
