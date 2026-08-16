@@ -15,6 +15,17 @@ const catalog: Record<string, string> = {
   protocol: 'PCAP/TCP/UDP/gRPC/Protobuf -> @dsh-security/skill-protocol',
   malware: 'C2/persistence/IOC/sample -> @dsh-security/skill-malware',
   ai: 'prompt/model/injection -> @dsh-security/skill-ai-security',
+  evidence: 'case/report/hash/triage -> @dsh-security/skill-evidence',
+  // 信号级路由 (signal -> tool -> bundle)
+  apk: 'APK/AAB/DEX -> apk_fingerprint -> skill-android',
+  shell: 'packer/UPX/VMP/Themida/OLLVM -> detect_packer -> skill-native',
+  strings: 'signature/URL/error-string -> scan_strings -> skill-native',
+  crypto: 'XOR/Base64/Hex/AES -> xor_bruteforce/encoding_detect -> skill-native',
+  hook: 'Frida/Interceptor/hook -> skill-native dynamic-analysis-frida',
+  pcap: 'PCAP/TCP/UDP -> pcap_parse -> skill-protocol',
+  har: 'HAR/request -> parse_har -> skill-protocol',
+  ioc: 'IOC/hash/domain -> ioc_extract/yara_gen -> skill-malware',
+  llm: 'prompt/injection -> llm_sim -> skill-ai-security',
 }
 
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../references')
