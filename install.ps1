@@ -30,18 +30,18 @@ try {
     }
 
     if (-not $Tag -or -not $tgzNames) {
-        $Tag = "v0.2.0"
+        $Tag = "v0.1.2"
         $tgzNames = @(
-            "dsh-security-bootstrap-0.2.0.tgz",
-            "dsh-security-router-0.2.0.tgz",
-            "dsh-security-skill-ai-security-0.2.0.tgz",
-            "dsh-security-skill-android-0.2.0.tgz",
-            "dsh-security-skill-evidence-0.2.0.tgz",
-            "dsh-security-skill-malware-0.2.0.tgz",
-            "dsh-security-skill-native-0.2.0.tgz",
-            "dsh-security-skill-protocol-0.2.0.tgz",
-            "dsh-security-skill-web-0.2.0.tgz",
-            "dsh-security-toolbox-0.2.0.tgz"
+            "dsh-security-bootstrap-0.1.2.tgz",
+            "dsh-security-router-0.1.2.tgz",
+            "dsh-security-skill-ai-security-0.1.2.tgz",
+            "dsh-security-skill-android-0.1.2.tgz",
+            "dsh-security-skill-evidence-0.1.2.tgz",
+            "dsh-security-skill-malware-0.1.2.tgz",
+            "dsh-security-skill-native-0.1.2.tgz",
+            "dsh-security-skill-protocol-0.1.2.tgz",
+            "dsh-security-skill-web-0.1.2.tgz",
+            "dsh-security-toolbox-0.1.2.tgz"
         )
         Write-Host "  falling back to pinned release $Tag"
     }
