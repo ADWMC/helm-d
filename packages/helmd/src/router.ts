@@ -12,6 +12,7 @@ const catalog: Record<string, string> = {
   patterns: '模式速查 -> references/toolbox/patterns.md — 保护器签名、反分析技术、Patch 编码',
   report: '报告模板 -> references/evidence/reporting.md — 标准化输出模板',
   install: '工具安装 -> references/toolbox/tool-install.md — 下载、安装、验证',
+  jvm: 'JVM/Java mod 常量加密 -> references/native/jvm-mod-deobf-workflow.md — Forge mod、jar 混淆、DES 解密器模板、oracle 重放；脚本 scripts/native/jvm/',
   // 领域路由
   android: 'APK/AAB/DEX/smali -> apk_fingerprint + references/android/',
   web: 'JS/fetch/XHR/WebSocket/sign -> web_reference + references/web/',
@@ -30,6 +31,7 @@ const catalog: Record<string, string> = {
   har: 'HAR/request -> parse_har -> protocol',
   ioc: 'IOC/hash/domain -> ioc_extract/yara_gen -> malware',
   llm: 'prompt/injection -> llm_sim -> ai',
+  jar: 'jar/class/Forge/mod/mixin 常量加密 -> scripts/native/jvm/ + references/native/jvm-mod-deobf-workflow.md',
 }
 
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../references')

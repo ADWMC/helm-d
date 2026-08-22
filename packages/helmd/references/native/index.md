@@ -1,6 +1,6 @@
 # skill-native references index
 
-知识按需读，模型自主判断，不作为硬性规则。共 69 个文件。
+知识按需读，模型自主判断，不作为硬性规则。共 70 个文件。
 
 **职责边界**：仅 native/二进制层——PE/ELF/Mach-O、反调试、壳、驱动、shellcode、Frida 通用 API 与 Interceptor。Android APK / Java Bridge 归 `skill-android`；本目录中的 `android-*` 文件聚焦 native 层（.so / shellcode），移动端整体流程见 `skill-android`。
 
@@ -44,6 +44,7 @@
 - heap-exploitation-methodology.md
 - idapython-conventions.md
 - idapython-reference.md
+- jvm-mod-deobf-workflow.md
 - kernel-driver-analysis.md
 - license-bypass-workflow.md
 - memory-patchcode-bypass.md
