@@ -4,7 +4,10 @@ $out = Join-Path $repo "dist-tgz"
 if (Test-Path $out) { Remove-Item -LiteralPath $out -Recurse -Force }
 New-Item -ItemType Directory -Force $out | Out-Null
 
-$pkgs = @("bootstrap", "router", "skill-ai-security", "skill-android", "skill-evidence", "skill-malware", "skill-native", "skill-protocol", "skill-web", "toolbox")
+# Single unified bundle. The unversioned copy keeps the stable download URL
+# https://github.com/ADWMC/helm-d/releases/latest/download/helmd.tgz working
+# across releases (used by installers and the awesome-dsh-plugin listing).
+$pkgs = @("helmd")
 foreach ($p in $pkgs) {
     $dir = Join-Path $repo ("packages\" + $p)
     Push-Location $dir
@@ -15,6 +18,12 @@ foreach ($p in $pkgs) {
     finally {
         Pop-Location
     }
+}
+
+# Stable-name alias for the latest release asset.
+$versioned = Get-ChildItem -LiteralPath $out -Filter "dsh-security-helmd-*.tgz" | Select-Object -First 1
+if ($versioned) {
+    Copy-Item -LiteralPath $versioned.FullName (Join-Path $out "helmd.tgz") -Force
 }
 
 Write-Output "--- packed ---"
