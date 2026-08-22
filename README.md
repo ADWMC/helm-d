@@ -32,9 +32,9 @@ Android · Web · Native · Protocol · Malware · AI-Security 六大安全领�
 </td>
 <td width="50%">
 
-### 十个 bundle · 零拼装
+### 单包聚合 · 一条命令
 
-10 个 `@dsh-security/*` bundle 独立发布、按需加载。`install.ps1` / `install.sh` 一条命令装齐，preset 与 router 自动挂载。
+全部能力收敛进一个 `@dsh-security/helmd` bundle：bootstrap、router、七大领域工具、toolbox 全在里面。`install.ps1` / `install.sh` 下载 Release 预构建 tarball 一条命令装齐，preset 自动写入。
 
 </td>
 </tr>
@@ -58,11 +58,11 @@ Android · Web · Native · Protocol · Malware · AI-Security 六大安全领�
 
 ## 为什么做这个
 
-DSH 的安全分析能力分散在多个领域 bundle：装 Android 要 add，装 Web 要 add，装 Native 还要 add，preset 和 router 也得自己拼。
+DSH 的安全分析能力原本分散在多个领域 bundle：装 Android 要 add，装 Web 要 add，装 Native 还要 add，preset 和 router 也得自己拼。
 
-helmd 把六个领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）打包成一个 preset：
+helmd 把七大领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）+ 工具箱（toolbox）打包成一个 bundle：
 
-`一个 preset` &ensp; `十个 bundle` &ensp; `零手动拼装`
+`一个 preset` &ensp; `一个 bundle` &ensp; `25 个工具` &ensp; `零手动拼装`
 
 装一次，会话里发 `helmd`，全领域工具就绪。
 
@@ -95,6 +95,43 @@ flowchart LR
 - **领域路由**：`router` 用 `skill_catalog` / `read_reference` 把问题路由到对应领域
 - **按需参考**：`references/` 是知识库，不是注入物；模型读完后自主判断
 
+## 运行规则
+
+helmd 会话遵循以下固定规则：
+
+### 激活与会话
+
+| 规则 | 行为 |
+|------|------|
+| 激活词 | preset 内置 persona 定义激活词（默认 `helmd`），精确匹配才回激活语，其余输入一律当任务执行 |
+| 首轮锚定 | 首个顶层请求仅暴露 shell + `read`；首次工具调用或助手消息后晋升，放开全部 25 个工具 |
+| 子代理豁免 | delegationDepth > 0 的会话始终可见完整目录 |
+
+### 知识与路由
+
+| 规则 | 行为 |
+|------|------|
+| 知识按需读 | 209 个参考文档全放 `references/`，经 `read_reference` 读取，绝不注入 system prompt |
+| 目录即元数据 | `skill_catalog` 只做领域/信号路由，不下结论：`tree` 分诊、`methodology` 方法论、`patterns` 模式、`install` 工具安装、`jvm` JVM 解密等 |
+| 参考非硬规则 | 文档供模型自主判断，不作为强制约束 |
+
+### 工具与脚本
+
+| 规则 | 行为 |
+|------|------|
+| 调用链 | 用户请求 → `defineTool.execute()` → `runSeam()` → 子进程（优先 ctx.subprocess，回退 execFile） |
+| Python 解析 | `resolveCommand()` 按 python → py → python3 顺序探测，Windows 兼容 py launcher |
+| 路径安全 | 所有文件读写经 `assertWithinRoot()` 校验，越界路径直接拒绝 |
+| 外部工具获取 | 先查本机（where / --version）→ 无则装到除 C 盘外最大盘的 `X:\Reverse\` → 下载走代理 → 记录版本；详见 `references/toolbox/tool-install.md` |
+| Releases 优先 | 有 GitHub Releases 的工具一律下预编译二进制，不源码编译 |
+
+### 存证
+
+| 规则 | 行为 |
+|------|------|
+| 报告模板 | 结论按 severity / confidence 分级，模板见 `references/evidence/reporting.md` |
+| case 工作区 | 正式分析用 `create_case` 建 case.json 结构化工作区，产物可追溯 |
+
 ## 快速上手
 
 **前提**：已安装 [`dsh`](https://github.com/deepseek-ai/deepseek-harness) CLI 与 pnpm。
@@ -111,7 +148,7 @@ macOS / Linux：
 ./install.sh
 ```
 
-安装器会装 10 个 bundle、挂 `helmd` preset、设默认一步到位。然后启动：
+安装器会下载最新 Release 的 `helmd.tgz`、装入 profile、写入 preset，一步到位。然后启动：
 
 ```bash
 dsh web
@@ -119,16 +156,28 @@ dsh web
 
 会话里发送 `helmd` 即激活。
 
+## 从插件商店安装
+
+helmd 已提交 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 收录（[PR #2708](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/2708)）。合并后可在 [dshmarket.com](https://dshmarket.com) 或 dshmarket 插件 UI 里一键安装；命令行等价于：
+
+```bash
+# 预构建 tarball（免构建审批）
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/latest/download/helmd.tgz
+
+# 或从源码
+dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
+```
+
 ## 验证
 
 ```bash
-dsh --profile web --dump-config   # 应看到 10 个 @dsh-security bundle 行
+dsh --profile web --dump-config   # 应看到 @dsh-security/helmd 一行
 ```
 
 会话里发送 `helmd` 后：
 
 ```text
-skill_catalog        → 返回六领域路由
+skill_catalog        → 返回领域/信号路由（含 jvm、install 等新路由）
 native_reference     → 读取 Native 领域参考
 detect_packer <file> → 判定 PE/ELF 保护器
 ```
@@ -185,15 +234,15 @@ detect_packer <file> → 判定 PE/ELF 保护器
 
 ```bash
 pnpm install                # 安装依赖（prepare 自动 tsc）
-pnpm build                  # 构建全部 10 个 bundle
+pnpm build                  # 构建 workspace 全部包（发布物仅 helmd）
 pnpm typecheck              # 干净树 tsc --noEmit 类型门禁
 ```
 
 本地打包交付：
 
 ```powershell
-.\scripts\repack.ps1                            # 生成 dist-tgz\*.tgz
-dsh plugin --profile web add .\dist-tgz\*.tgz   # 装进 web profile
+.\scripts\repack.ps1                                    # 生成 dist-tgz\helmd.tgz（含稳定命名别名）
+dsh plugin --profile web add .\dist-tgz\helmd.tgz       # 装进 web profile
 ```
 
 ## 部署
@@ -251,12 +300,21 @@ dsh web
 ```text
 helmd/
 ├── packages/
-│   ├── bootstrap/            首轮工具收窄过滤器
-│   └── helmd/                全领域安全分析一体化（bootstrap + router + 7 领域 + toolbox）
-├── presets/
-│   └── full-reverse/
-└── docs/
+│   └── helmd/                 发布包（单 bundle）
+│       ├── src/
+│       │   ├── bootstrap.ts   首轮工具收窄过滤器
+│       │   ├── router.ts      skill_catalog / read_reference 路由
+│       │   ├── seam.ts        共享 IO seam（fs / subprocess / 命令解析 / 路径校验）
+│       │   └── tools/         8 个工具模块（25 个工具）
+│       ├── references/        209 个参考文档，按需读取（8 大域 + toolbox）
+│       ├── scripts/           80 个分析脚本，经 runSeam 调用（含 native/jvm 管线）
+│       └── cordis.patch.yml   bundle 挂载清单
+├── presets/full-reverse/      preset 定义（persona + 全部工具行）
+├── install.ps1/.sh/.bat       一键安装器
+└── docs/                      设计文档
 ```
+
+> `packages/` 下其余目录为历史拆分包，已由 helmd 单包取代，仅作归档保留、不再发布。
 
 ## 构建
 
@@ -271,8 +329,8 @@ pnpm build
 
 ## 依赖
 
-- `@deepseek-ai/cordis` `4.0.1`
-- `@deepseek-ai/dsh-tools` `0.1.0-rc.6`
+- `@deepseek-ai/cordis` `^4.0.1`
+- `@deepseek-ai/dsh-tools` `>=0.1.0-rc.1 <0.1.0 || >=0.1.0-rc.1 <0.2.0-0`（显式预发布分支，避免静默排除 rc 构建）
 
 版本通过 `pnpm-workspace.yaml` 的 `overrides` 固定。
 
@@ -281,7 +339,8 @@ pnpm build
 - 根包 `private: true`，不发布；发布对象是 `@dsh-security/helmd` 单包。
 - `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
 - `prepare` 脚本会在发布前自动执行 `tsc`。
-- 当前版本 `0.1.2`。
+- 当前版本 `0.1.3`。
+- Release 资产：`dsh-security-helmd-<ver>.tgz` + 稳定别名 `helmd.tgz`（供商店 tarball 字段与安装器使用）。
 
 ## 风险与缓解
 
@@ -289,7 +348,7 @@ pnpm build
 |------|------|
 | DSH 宿主版本升级不兼容 | peer 依赖 cordis / dsh-tools，`overrides` 固定版本 |
 | 本机缺 `python` | seam 自动探测 python / py / python3，Windows 兼容 `py -3` |
-| 单包版本错位 | 版本 0.1.2，tarball 与 release 同步发布 |
+| 单包版本错位 | 版本 0.1.3，tarball 与 release 同步发布 |
 | 参考知识过时 | 按需读、模型自主判断，非硬性规则 |
 
 ## 参考项目

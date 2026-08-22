@@ -32,9 +32,9 @@ Android · Web · Native · Protocol · Malware · AI-Security converge in a sin
 </td>
 <td width="50%">
 
-### Ten bundles · zero wiring
+### One bundle · zero wiring
 
-10 `@dsh-security/*` bundles, independently publishable and loaded on demand. `install.ps1` / `install.sh` install everything and mount the preset and router automatically.
+Everything converges into a single `@dsh-security/helmd` bundle: bootstrap, router, seven domain tool modules and the toolbox. `install.ps1` / `install.sh` fetch a prebuilt tarball from Releases and wire everything in one command.
 
 </td>
 </tr>
@@ -43,14 +43,14 @@ Android · Web · Native · Protocol · Malware · AI-Security converge in a sin
 
 ### Knowledge on demand
 
-Domain knowledge, rules, workflows and cases live in `references/` and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
+Domain knowledge, rules, workflows and cases live in `references/` (209 docs) and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
 
 </td>
 <td width="50%">
 
 ### First-turn tool anchoring
 
-The first top-level request only exposes shell + `read`; the full catalog opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
+The first top-level request only exposes shell + `read`; the full catalog of 25 tools opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
 
 </td>
 </tr>
@@ -58,11 +58,11 @@ The first top-level request only exposes shell + `read`; the full catalog opens 
 
 ## Why
 
-DSH security-analysis capability is scattered across domain bundles: `add` Android, `add` Web, `add` Native — and you still have to wire up the preset and router yourself.
+DSH security-analysis capability used to be scattered across domain bundles: `add` Android, `add` Web, `add` Native — and you still had to wire up the preset and router yourself.
 
-helmd packs six domains + evidence tooling + first-turn bootstrap into one preset:
+helmd packs seven domains + evidence tooling + first-turn bootstrap + toolbox into one bundle:
 
-`one preset` &ensp; `ten bundles` &ensp; `zero manual wiring`
+`one preset` &ensp; `one bundle` &ensp; `25 tools` &ensp; `zero manual wiring`
 
 Install once, send `helmd` in a session, and every domain's tools are ready.
 
@@ -95,6 +95,43 @@ flowchart LR
 - **Domain routing**: `router` routes problems via `skill_catalog` / `read_reference`
 - **On-demand references**: `references/` is a knowledge base, not an injection; the model reads and decides
 
+## Runtime rules
+
+A helmd session follows these fixed rules:
+
+### Activation & session
+
+| Rule | Behavior |
+|------|----------|
+| Activation word | The bundled persona defines an activation word (default `helmd`); exact matches get the activation reply, everything else is a task |
+| First-turn anchoring | Only shell + `read` on the first top-level request; after the first tool call or assistant message the session promotes and all 25 tools open |
+| Subagent exemption | Sessions with delegationDepth > 0 always see the full catalog |
+
+### Knowledge & routing
+
+| Rule | Behavior |
+|------|----------|
+| Knowledge on demand | All 209 reference docs live in `references/`, read via `read_reference`, never injected into the system prompt |
+| Catalog = metadata | `skill_catalog` only routes domains/signals and draws no conclusions: `tree` triage, `methodology`, `patterns`, `install` tool setup, `jvm` JVM decryption, etc. |
+| References ≠ hard rules | Docs inform the model's judgment; they are never binding constraints |
+
+### Tools & scripts
+
+| Rule | Behavior |
+|------|----------|
+| Call chain | request → `defineTool.execute()` → `runSeam()` → subprocess (ctx.subprocess preferred, execFile fallback) |
+| Python resolution | `resolveCommand()` probes python → py → python3 in order; Windows-compatible via the py launcher |
+| Path safety | Every file read/write passes `assertWithinRoot()`; out-of-scope paths are rejected outright |
+| External tool acquisition | Probe locally first (`where` / `--version`) → otherwise install into the largest non-C drive at `X:\Reverse\` → download through a proxy → record versions; see `references/toolbox/tool-install.md` |
+| Releases first | Tools with GitHub Releases always get prebuilt binaries, never built from source |
+
+### Evidence
+
+| Rule | Behavior |
+|------|----------|
+| Report template | Conclusions carry severity / confidence grades; template in `references/evidence/reporting.md` |
+| Case workspaces | Formal analyses use `create_case` for a case.json structured workspace with traceable artifacts |
+
 ## Quick start
 
 **Prerequisites**: a working [`dsh`](https://github.com/deepseek-ai/deepseek-harness) CLI and pnpm.
@@ -111,7 +148,7 @@ macOS / Linux:
 ./install.sh
 ```
 
-The installer adds the 9 bundles, mounts the `helmd` preset, and sets the default in one shot. Then boot:
+The installer downloads the latest Release `helmd.tgz`, installs it into the profile, and writes the preset in one shot. Then boot:
 
 ```bash
 dsh web
@@ -119,84 +156,104 @@ dsh web
 
 Send `helmd` in a session to activate.
 
+## Install from the plugin store
+
+helmd has been submitted to [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) ([PR #2708](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/2708)). Once merged it is one click away on [dshmarket.com](https://dshmarket.com) or in the dshmarket plugin UI; the CLI equivalents are:
+
+```bash
+# Prebuilt tarball (skips build approval)
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/latest/download/helmd.tgz
+
+# Or from source
+dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
+```
+
 ## Verification
 
 ```bash
-dsh --profile web --dump-config   # you should see the 9 @dsh-security bundle rows
+dsh --profile web --dump-config   # you should see one @dsh-security/helmd row
 ```
 
 After sending `helmd` in a session:
 
 ```text
-skill_catalog        → returns the six-domain route map
+skill_catalog        → returns domain/signal routes (incl. jvm, install and newer routes)
 native_reference     → reads the Native reference
 detect_packer <file> → identifies the PE/ELF protector
 ```
 
 Any of the above returning normally means the install succeeded.
 
-## Packages
+## Package & tools
 
 | Package | Injects | Responsibility | Tools |
 | --- | --- | --- | --- |
-| `@dsh-security/bootstrap` | systemPrompt | First-turn tool-catalog narrowing, full catalog after promotion | none |
-| `@dsh-security/router` | tools | Domain routing and catalog | `skill_catalog`, `read_reference` |
-| `@dsh-security/skill-android` | tools | Android reversing | `apk_fingerprint` |
-| `@dsh-security/skill-web` | tools | Web security | `web_reference`, `bot_analyze` |
-| `@dsh-security/skill-native` | tools | Native / binary reversing | `native_reference`, `detect_packer`, `scan_strings`, `xor_bruteforce`, `encoding_detect` |
-| `@dsh-security/skill-protocol` | tools | Protocol / traffic | `protocol_reference`, `pcap_parse`, `state_machine`, `parse_har` |
-| `@dsh-security/skill-malware` | tools | Malware samples | `malware_reference`, `ioc_extract`, `yara_gen` |
-| `@dsh-security/skill-ai-security` | tools | AI / LLM security | `ai_reference`, `llm_sim` |
-| `@dsh-security/skill-evidence` | tools | Evidence / reporting / case | `evidence_reference`, `create_case`, `triage_artifact`, `hash_artifact` |
-| `@dsh-security/toolbox` | tools | Tool recommendation | `tool_recommend` |
+| `@dsh-security/helmd` | tools + systemPrompt | All-domain security analysis in one bundle | see below |
 
-Each `*_reference` tool reads its own `references/` on demand; the entry point is its `index.md`.
+| Domain | Tool | Purpose |
+| --- | --- | --- |
+| **Router** | `skill_catalog` | Domain routing catalog |
+| **Router** | `read_reference` | Read routed reference docs |
+| **Android** | `apk_fingerprint` | APK framework/HTTP/obfuscation detection |
+| **Web** | `web_reference` | Web security reference docs |
+| **Web** | `bot_analyze` | Puppeteer Bot analysis |
+| **Native** | `native_reference` | Native/binary reference docs |
+| **Native** | `detect_packer` | PE/ELF packer detection |
+| **Native** | `scan_strings` | ASCII/UTF-16LE string extraction |
+| **Native** | `xor_bruteforce` | Single-byte XOR brute force |
+| **Native** | `encoding_detect` | Base64/Hex/ROT13/XOR decode |
+| **Protocol** | `protocol_reference` | Protocol/traffic reference docs |
+| **Protocol** | `pcap_parse` | PCAP TCP/UDP stream extraction |
+| **Protocol** | `state_machine` | Protocol state-machine inference |
+| **Protocol** | `parse_har` | HAR request/response parsing |
+| **Malware** | `malware_reference` | Malware sample reference docs |
+| **Malware** | `ioc_extract` | IOC extraction |
+| **Malware** | `yara_gen` | YARA rule generation |
+| **AI-Security** | `ai_reference` | AI/LLM security reference docs |
+| **AI-Security** | `llm_sim` | LLM app simulation testing |
+| **Evidence** | `evidence_reference` | Evidence/reporting reference docs |
+| **Evidence** | `create_case` | Create a reverse-engineering case workspace |
+| **Evidence** | `triage_artifact` | Offline triage |
+| **Evidence** | `hash_artifact` | SHA-256 hashing |
+| **Toolbox** | `tool_recommend` | Tool library recommendations |
+
+Each `*_reference` tool reads its own `references/<domain>/` on demand; the entry point is its `index.md`.
 
 ## Alternatives
 
 | Approach | Why not |
 |----------|---------|
-| Install domain bundles by hand | 9 adds + manual preset + router wiring; repetitive and error-prone |
+| Ten standalone bundles | 10 adds + manual preset + router wiring; seam.ts copied 9 times |
 | Raw shell tools only | no domain knowledge; the model guesses; unreproducible conclusions |
 | Stuff knowledge into the system prompt | token blow-up and it overrides the model's judgment |
-| helmd | one preset aggregates everything; knowledge read on demand |
+| helmd single bundle | one install aggregates everything, shared seam, knowledge read on demand |
 
 ## Common commands
 
 ```bash
 pnpm install                # install deps (prepare auto-runs tsc)
-pnpm build                  # build all 9 bundles
+pnpm build                  # build every workspace package (only helmd ships)
 pnpm typecheck              # tsc --noEmit type gate on a clean tree
 ```
 
 Local tarball delivery:
 
 ```powershell
-.\scripts\repack.ps1                            # emit dist-tgz\*.tgz
-dsh plugin --profile web add .\dist-tgz\*.tgz   # install into the web profile
+.\scripts\repack.ps1                                    # emit dist-tgz\helmd.tgz (+ stable alias)
+dsh plugin --profile web add .\dist-tgz\helmd.tgz       # install into the web profile
 ```
 
 ## Deployment
 
-One-command install is above under Quick start; the manual steps are below. Prerequisites: the 10 `@dsh-security/*` packages published to npm (see Publishing).
+One-command install is above under Quick start; the manual steps are below. Prerequisites: the `@dsh-security/helmd` package published (see Publishing).
 
-### 1. Install the bundles into a profile
+### 1. Install the bundle into a profile
 
 ```bash
-dsh plugin --profile web add \
-  @dsh-security/bootstrap \
-  @dsh-security/router \
-  @dsh-security/skill-android \
-  @dsh-security/skill-web \
-  @dsh-security/skill-native \
-  @dsh-security/skill-protocol \
-  @dsh-security/skill-malware \
-  @dsh-security/skill-ai-security \
-  @dsh-security/skill-evidence
-  @dsh-security/toolbox
+dsh plugin --profile web add @dsh-security/helmd
 ```
 
-`dsh plugin` forwards to pnpm inside the profile directory; the packages land in `$DSH_HOME/profiles/node_modules/`.
+`dsh plugin` forwards to pnpm inside the profile directory; the package lands in `$DSH_HOME/profiles/node_modules/`.
 
 ### 2. Mount the preset
 
@@ -241,20 +298,21 @@ Send `helmd` in a session to activate. `DSH_HOME` defaults to `~/.dsh`; substitu
 ```text
 helmd/
 ├── packages/
-│   ├── bootstrap/            first-turn tool-narrowing filter
-│   ├── router/               domain routing and catalog
-│   ├── skill-ai-security/    AI / LLM security
-│   ├── skill-android/        Android reversing
-│   ├── skill-web/            Web security
-│   ├── skill-native/         Native / binary reversing
-│   ├── skill-protocol/       Protocol / traffic
-│   ├── skill-malware/        Malware samples
-│   ├── skill-evidence/       Evidence / reporting / case
-│   └── toolbox/              Tool recommendation
-├── presets/
-│   └── full-reverse/
-└── docs/
+│   └── helmd/                 the shipped package (single bundle)
+│       ├── src/
+│       │   ├── bootstrap.ts   first-turn tool-narrowing filter
+│       │   ├── router.ts      skill_catalog / read_reference routing
+│       │   ├── seam.ts        shared IO seam (fs / subprocess / cmd resolve / path guard)
+│       │   └── tools/         8 tool modules (25 tools)
+│       ├── references/        209 on-demand reference docs (8 domains + toolbox)
+│       ├── scripts/           80 analysis scripts invoked via runSeam (incl. native/jvm pipeline)
+│       └── cordis.patch.yml   bundle mount manifest
+├── presets/full-reverse/      preset definition (persona + every tool row)
+├── install.ps1/.sh/.bat       one-command installer
+└── docs/                      design docs
 ```
+
+> Other directories under `packages/` are legacy split bundles superseded by the helmd single bundle; kept for archival only, no longer published.
 
 ## Build
 
@@ -262,24 +320,25 @@ Requires pnpm; build targets ES2022 / NodeNext.
 
 ```bash
 pnpm install
-pnpm -r build
+pnpm build
 ```
 
-The root `pnpm build` is equivalent to `pnpm -r build`, running `tsc` per package; `pnpm typecheck` runs the `tsc --noEmit` type gate on a clean tree.
+The root `pnpm build` builds `@dsh-security/helmd`; `pnpm typecheck` runs the `tsc --noEmit` type gate on a clean tree.
 
 ## Dependencies
 
-- `@deepseek-ai/cordis` `4.0.1`
-- `@deepseek-ai/dsh-tools` `0.1.0-rc.6`
+- `@deepseek-ai/cordis` `^4.0.1`
+- `@deepseek-ai/dsh-tools` `>=0.1.0-rc.1 <0.1.0 || >=0.1.0-rc.1 <0.2.0-0` (explicit prerelease branch so rc builds are never silently excluded)
 
 Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 
 ## Publishing
 
-- The root package is `private: true` and is not published; the 10 `@dsh-security/*` sub-packages are.
-- Each sub-package's `files` whitelist is limited to `dist`, `references`, `scripts`, `cordis.patch.yml`.
-- Each sub-package's `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.1.2`.
+- The root package is `private: true` and is not published; `@dsh-security/helmd` is.
+- The `files` whitelist is limited to `dist`, `references`, `scripts`, `cordis.patch.yml`.
+- The `prepare` script runs `tsc` automatically before publishing.
+- Current version: `0.1.3`.
+- Release assets: `dsh-security-helmd-<ver>.tgz` plus the stable alias `helmd.tgz` (used by the store's tarball field and the installers).
 
 ## Risks & mitigations
 
@@ -287,7 +346,7 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 |------|------------|
 | DSH host upgrade breaks compat | peer deps on cordis / dsh-tools, pinned via `overrides` |
 | Missing `python` on the host | seam auto-probes python / py / python3, falls back to the `py` launcher |
-| Bundle/preset version drift | version 0.1.2, tarball and release published together |
+| Bundle/preset version drift | version 0.1.3, tarball and release published together |
 | Reference knowledge goes stale | read on demand, model's own judgment, non-binding |
 
 ## Acknowledgements
