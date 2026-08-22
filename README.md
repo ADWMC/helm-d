@@ -139,27 +139,47 @@ detect_packer <file> → 判定 PE/ELF 保护器
 
 | 包 | 注入 | 职责 | 暴露工具 |
 | --- | --- | --- | --- |
-| `@dsh-security/bootstrap` | systemPrompt | 首轮工具目录收窄，晋升后放开 | 无 |
-| `@dsh-security/router` | tools | 领域路由与目录 | `skill_catalog`、`read_reference` |
-| `@dsh-security/skill-android` | tools | Android 逆向 | `apk_fingerprint` |
-| `@dsh-security/skill-web` | tools | Web 安全 | `web_reference`、`bot_analyze` |
-| `@dsh-security/skill-native` | tools | Native / 二进制逆向 | `native_reference`、`detect_packer`、`scan_strings`、`xor_bruteforce`、`encoding_detect` |
-| `@dsh-security/skill-protocol` | tools | 协议 / 流量 | `protocol_reference`、`pcap_parse`、`state_machine`、`parse_har` |
-| `@dsh-security/skill-malware` | tools | 恶意样本 | `malware_reference`、`ioc_extract`、`yara_gen` |
-| `@dsh-security/skill-ai-security` | tools | AI / LLM 安全 | `ai_reference`、`llm_sim` |
-| `@dsh-security/skill-evidence` | tools | 证据 / 报告 / case | `evidence_reference`、`create_case`、`triage_artifact`、`hash_artifact` |
-| `@dsh-security/toolbox` | tools | 工具库推荐 | `tool_recommend` |
+| `@dsh-security/helmd` | tools + systemPrompt | 全领域安全分析一体化 | 见下表 |
 
-每个 `*_reference` 工具按需读取对应 `references/`，入口是各自的 `index.md`。
+### helmd 暴露的工具
+
+| 领域 | 工具 | 说明 |
+| --- | --- | --- |
+| **路由** | `skill_catalog` | 领域路由目录 |
+| **路由** | `read_reference` | 读取路由级参考文档 |
+| **Android** | `apk_fingerprint` | APK 框架/HTTP/混淆检测 |
+| **Web** | `web_reference` | Web 安全参考文档 |
+| **Web** | `bot_analyze` | Puppeteer Bot 分析 |
+| **Native** | `native_reference` | Native/二进制参考文档 |
+| **Native** | `detect_packer` | PE/ELF 加壳检测 |
+| **Native** | `scan_strings` | ASCII/UTF-16LE 字符串提取 |
+| **Native** | `xor_bruteforce` | 单字节 XOR 暴力破解 |
+| **Native** | `encoding_detect` | Base64/Hex/ROT13/XOR 解码 |
+| **Protocol** | `protocol_reference` | 协议/流量参考文档 |
+| **Protocol** | `pcap_parse` | PCAP TCP/UDP 流提取 |
+| **Protocol** | `state_machine` | 协议状态机推断 |
+| **Protocol** | `parse_har` | HAR 请求/响应解析 |
+| **Malware** | `malware_reference` | 恶意样本参考文档 |
+| **Malware** | `ioc_extract` | IOC 提取 |
+| **Malware** | `yara_gen` | YARA 规则生成 |
+| **AI-Security** | `ai_reference` | AI/LLM 安全参考文档 |
+| **AI-Security** | `llm_sim` | LLM 应用模拟测试 |
+| **Evidence** | `evidence_reference` | 证据/报告参考文档 |
+| **Evidence** | `create_case` | 创建逆向 case 工作区 |
+| **Evidence** | `triage_artifact` | 离线分诊 |
+| **Evidence** | `hash_artifact` | SHA-256 哈希 |
+| **Toolbox** | `tool_recommend` | 工具库推荐 |
+
+每个 `*_reference` 工具按需读取对应 `references/<domain>/`，入口是各自的 `index.md`。
 
 ## 方案选型
 
 | 方案 | 不选的原因 |
 |------|-----------|
-| 逐领域手装 bundle | 9 次 add + 手动拼 preset + router，重复且易错 |
+| 10 个独立 bundle | 10 次 add + 手动拼 preset + router，重复且易错；seam.ts 复制 9 遍 |
 | 只挂原生 shell 工具 | 无领域知识，模型靠猜，结论不可复现 |
 | 知识塞进 system prompt | token 爆炸，且替模型做决定，违背按需原则 |
-| helmd | 一个 preset 全聚合，知识按需读，模型自主判断 |
+| helmd 单包 | 一次安装全聚合，共享 seam，知识按需读，模型自主判断 |
 
 ## 常用命令
 
@@ -178,22 +198,12 @@ dsh plugin --profile web add .\dist-tgz\*.tgz   # 装进 web profile
 
 ## 部署
 
-一键安装见上「快速上手」；手动分步如下。前置：10 个 `@dsh-security/*` 包已发布到 npm（见「发布」）。
+一键安装见上「快速上手」；手动分步如下。前置：`@dsh-security/helmd` 包已发布到 npm（见「发布」）。
 
 ### 1. 安装 bundle 到 profile
 
 ```bash
-dsh plugin --profile web add \
-  @dsh-security/bootstrap \
-  @dsh-security/router \
-  @dsh-security/skill-android \
-  @dsh-security/skill-web \
-  @dsh-security/skill-native \
-  @dsh-security/skill-protocol \
-  @dsh-security/skill-malware \
-  @dsh-security/skill-ai-security \
-  @dsh-security/skill-evidence
-  @dsh-security/toolbox
+dsh plugin --profile web add @dsh-security/helmd
 ```
 
 `dsh plugin` 会把参数转发给 profile 目录里的 pnpm，包落到 `$DSH_HOME/profiles/node_modules/`。
@@ -242,15 +252,7 @@ dsh web
 helmd/
 ├── packages/
 │   ├── bootstrap/            首轮工具收窄过滤器
-│   ├── router/               领域路由与目录
-│   ├── skill-ai-security/    AI / LLM 安全
-│   ├── skill-android/        Android 逆向
-│   ├── skill-web/            Web 安全
-│   ├── skill-native/         Native / 二进制逆向
-│   ├── skill-protocol/       协议 / 流量
-│   ├── skill-malware/        恶意样本
-│   ├── skill-evidence/       证据 / 报告 / case
-│   └── toolbox/              工具库推荐
+│   └── helmd/                全领域安全分析一体化（bootstrap + router + 7 领域 + toolbox）
 ├── presets/
 │   └── full-reverse/
 └── docs/
@@ -262,10 +264,10 @@ helmd/
 
 ```bash
 pnpm install
-pnpm -r build
+pnpm build
 ```
 
-根 `pnpm build` 等价于 `pnpm -r build`，逐包执行 `tsc`；`pnpm typecheck` 在干净树上执行 `tsc --noEmit` 类型门禁。
+根 `pnpm build` 构建 `@dsh-security/helmd` 包；`pnpm typecheck` 在干净树上执行 `tsc --noEmit` 类型门禁。
 
 ## 依赖
 
@@ -276,9 +278,9 @@ pnpm -r build
 
 ## 发布
 
-- 根包 `private: true`，不发布；发布对象是 10 个 `@dsh-security/*` 子包。
-- 各子包 `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
-- 每个子包的 `prepare` 脚本会在发布前自动执行 `tsc`。
+- 根包 `private: true`，不发布；发布对象是 `@dsh-security/helmd` 单包。
+- `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
+- `prepare` 脚本会在发布前自动执行 `tsc`。
 - 当前版本 `0.1.2`。
 
 ## 风险与缓解
@@ -286,8 +288,8 @@ pnpm -r build
 | 风险 | 缓解 |
 |------|------|
 | DSH 宿主版本升级不兼容 | peer 依赖 cordis / dsh-tools，`overrides` 固定版本 |
-| 本机缺 `python` | seam 自动探测 python / py / python3，缺失回退 `py` launcher |
-| bundle 与 preset 版本错位 | 版本 0.1.2，tarball 与 release 同步发布 |
+| 本机缺 `python` | seam 自动探测 python / py / python3，Windows 兼容 `py -3` |
+| 单包版本错位 | 版本 0.1.2，tarball 与 release 同步发布 |
 | 参考知识过时 | 按需读、模型自主判断，非硬性规则 |
 
 ## 参考项目

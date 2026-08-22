@@ -93,19 +93,8 @@
   config:
     maxBytes: 65536
 
-# V4 Pro conditions strongly on the API tool catalog. Bootstrap its first model
-# request with one native shell plus `read`; after the session records its first
-# durable promotion signal (a tool call OR the first assistant message, default
-# `promoteOn: either`), later step assemblies expose every Standard tool
-# registered below. Request #1 always sees the bootstrap catalog; request #2
-# always sees the full catalog — a text-only first reply can no longer trap the
-# session in bootstrap. See @dsh-security/bootstrap for the other triggers.
-- id: tool-bootstrap
-  name: '@dsh-security/bootstrap'
-  config:
-    shellTools: [bash, pwsh]
-    commonTools: [read]
-    promoteOn: either
+# Bootstrap filter is now integrated into @dsh-security/helmd.
+# First request only exposes shell + read; promotion happens automatically.
 
 # ── shell ───────────────────────────────────────────────────────────────────
 
@@ -326,22 +315,6 @@
     searchTimeoutMs: 60000
 
 
-# ── helmd security bundles ──────────────────────────────────────────────
-- id: router
-  name: '@dsh-security/router'
-- id: skill-android
-  name: '@dsh-security/skill-android'
-- id: skill-web
-  name: '@dsh-security/skill-web'
-- id: skill-native
-  name: '@dsh-security/skill-native'
-- id: skill-protocol
-  name: '@dsh-security/skill-protocol'
-- id: skill-malware
-  name: '@dsh-security/skill-malware'
-- id: skill-ai-security
-  name: '@dsh-security/skill-ai-security'
-- id: skill-evidence
-  name: '@dsh-security/skill-evidence'
-- id: toolbox
-  name: '@dsh-security/toolbox'
+# ── helmd unified security bundle ──────────────────────────────────────
+- id: helmd
+  name: '@dsh-security/helmd'
