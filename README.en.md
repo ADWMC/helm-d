@@ -104,8 +104,10 @@ A helmd session follows these fixed rules:
 | Rule | Behavior |
 |------|----------|
 | Activation word | The bundled persona defines an activation word (default `helmd`); exact matches get the activation reply, everything else is a task |
-| First-turn anchoring | Only shell + `read` on the first top-level request; after the first tool call or assistant message the session promotes and all 25 tools open |
+| First-turn anchoring | Only shell + `read` on the first top-level request; after the first tool call or assistant message the session promotes and every tool opens |
 | Subagent exemption | Sessions with delegationDepth > 0 always see the full catalog |
+| Analysis ladder | Ponytail-style: `analysis_mode` sets lite (quick triage) / full (standard flow, default) / deep (full evidence chain); per-session persistence, pick the shallowest rung that answers the task |
+| Deterministic routing | `route_task(hint)` keyword-matches a PRIMARY route plus a one-line rationale (route before you act); falls back to the decision tree |
 
 ### Knowledge & routing
 
@@ -216,6 +218,8 @@ Any of the above returning normally means the install succeeded.
 | **Evidence** | `triage_artifact` | Offline triage |
 | **Evidence** | `hash_artifact` | SHA-256 hashing |
 | **Toolbox** | `tool_recommend` | Tool library recommendations |
+| **Router** | `route_task` | Deterministic routing: task hint → PRIMARY route + rationale |
+| **Session** | `analysis_mode` | Analysis intensity ladder lite/full/deep (Ponytail-style) |
 
 Each `*_reference` tool reads its own `references/<domain>/` on demand; the entry point is its `index.md`.
 
@@ -337,7 +341,7 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 - The root package is `private: true` and is not published; `@dsh-security/helmd` is.
 - The `files` whitelist is limited to `dist`, `references`, `scripts`, `cordis.patch.yml`.
 - The `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.1.3`.
+- Current version: `0.1.4`.
 - Release assets: `dsh-security-helmd-<ver>.tgz` plus the stable alias `helmd.tgz` (used by the store's tarball field and the installers).
 
 ## Risks & mitigations
@@ -346,7 +350,7 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 |------|------------|
 | DSH host upgrade breaks compat | peer deps on cordis / dsh-tools, pinned via `overrides` |
 | Missing `python` on the host | seam auto-probes python / py / python3, falls back to the `py` launcher |
-| Bundle/preset version drift | version 0.1.3, tarball and release published together |
+| Bundle/preset version drift | version 0.1.4, tarball and release published together |
 | Reference knowledge goes stale | read on demand, model's own judgment, non-binding |
 
 ## Acknowledgements

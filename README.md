@@ -104,8 +104,10 @@ helmd 会话遵循以下固定规则：
 | 规则 | 行为 |
 |------|------|
 | 激活词 | preset 内置 persona 定义激活词（默认 `helmd`），精确匹配才回激活语，其余输入一律当任务执行 |
-| 首轮锚定 | 首个顶层请求仅暴露 shell + `read`；首次工具调用或助手消息后晋升，放开全部 25 个工具 |
+| 首轮锚定 | 首个顶层请求仅暴露 shell + `read`；首次工具调用或助手消息后晋升，放开全部工具 |
 | 子代理豁免 | delegationDepth > 0 的会话始终可见完整目录 |
+| 分析档位 | Ponytail 式阶梯：`analysis_mode` 设 lite（快速分诊）/ full（标准流程，默认）/ deep（完整证据链），会话内持久，选能回答任务的最浅档 |
+| 确定性路由 | `route_task(hint)` 关键词匹配出 PRIMARY 路由 + 一句依据（先路由后动手），未命中回落决策树 |
 
 ### 知识与路由
 
@@ -218,6 +220,8 @@ detect_packer <file> → 判定 PE/ELF 保护器
 | **Evidence** | `triage_artifact` | 离线分诊 |
 | **Evidence** | `hash_artifact` | SHA-256 哈希 |
 | **Toolbox** | `tool_recommend` | 工具库推荐 |
+| **Router** | `route_task` | 确定性路由：任务提示 → PRIMARY 路由 + 依据 |
+| **Session** | `analysis_mode` | 分析档位阶梯 lite/full/deep（Ponytail 式） |
 
 每个 `*_reference` 工具按需读取对应 `references/<domain>/`，入口是各自的 `index.md`。
 
@@ -339,7 +343,7 @@ pnpm build
 - 根包 `private: true`，不发布；发布对象是 `@dsh-security/helmd` 单包。
 - `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
 - `prepare` 脚本会在发布前自动执行 `tsc`。
-- 当前版本 `0.1.3`。
+- 当前版本 `0.1.4`。
 - Release 资产：`dsh-security-helmd-<ver>.tgz` + 稳定别名 `helmd.tgz`（供商店 tarball 字段与安装器使用）。
 
 ## 风险与缓解
@@ -348,7 +352,7 @@ pnpm build
 |------|------|
 | DSH 宿主版本升级不兼容 | peer 依赖 cordis / dsh-tools，`overrides` 固定版本 |
 | 本机缺 `python` | seam 自动探测 python / py / python3，Windows 兼容 `py -3` |
-| 单包版本错位 | 版本 0.1.3，tarball 与 release 同步发布 |
+| 单包版本错位 | 版本 0.1.4，tarball 与 release 同步发布 |
 | 参考知识过时 | 按需读、模型自主判断，非硬性规则 |
 
 ## 参考项目
