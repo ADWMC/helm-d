@@ -247,6 +247,16 @@ Local tarball delivery:
 dsh plugin --profile web add .\dist-tgz\helmd.tgz       # install into the web profile
 ```
 
+Self-update (compares against the latest GitHub Release; downloads and reinstalls when newer, refuses to downgrade a local build):
+
+```powershell
+.\scripts\update.ps1                # check and update the web profile
+.\scripts\update.ps1 -CheckOnly     # versions only, change nothing
+.\scripts\update.ps1 -Force         # reinstall even when versions match
+
+./scripts/update.sh                 # macOS / Linux
+```
+
 ## Deployment
 
 One-command install is above under Quick start; the manual steps are below. Prerequisites: the `@dsh-security/helmd` package published (see Publishing).

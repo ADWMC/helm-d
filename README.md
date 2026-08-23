@@ -249,6 +249,16 @@ pnpm typecheck              # 干净树 tsc --noEmit 类型门禁
 dsh plugin --profile web add .\dist-tgz\helmd.tgz       # 装进 web profile
 ```
 
+自动更新（比对 GitHub 最新 Release，新则下载重装，拒绝降级本地新版）：
+
+```powershell
+.\scripts\update.ps1                # 检查并更新 web profile
+.\scripts\update.ps1 -CheckOnly     # 只看版本不动手
+.\scripts\update.ps1 -Force         # 版本相同也重装
+
+./scripts/update.sh                 # macOS / Linux
+```
+
 ## 部署
 
 一键安装见上「快速上手」；手动分步如下。前置：`@dsh-security/helmd` 包已发布到 npm（见「发布」）。
