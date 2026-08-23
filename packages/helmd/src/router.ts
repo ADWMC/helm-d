@@ -107,11 +107,11 @@ export function registerRouterTools(ctx: Context): void {
       domain: { type: 'string', description: 'Optional domain filter.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: { domain?: string }) {
+    async execute(args: { domain?: string }, exec?: { agent?: { id?: string } }) {
       const { domain } = args
       if (domain) return catalog[domain] ?? `unknown domain: ${domain}`
       const entries = Object.entries(catalog).map(([k, v]) => `${k}: ${v}`)
-      entries.unshift(renderContract(getLevel((ctx as any).session?.id)))
+      entries.unshift(renderContract(getLevel(exec?.agent?.id)))
       return entries.join('\n')
     },
   }))
@@ -155,9 +155,9 @@ export function registerRouterTools(ctx: Context): void {
       level: { type: 'string', description: 'lite | full | deep. Omit to read the current contract.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: { level?: string }) {
+    async execute(args: { level?: string }, exec?: { agent?: { id?: string } }) {
       const next = normalizeLevel(args.level)
-      const sessionId = (ctx as any).session?.id as string | undefined
+      const sessionId = exec?.agent?.id
       if (next) setLevel(next, sessionId)
       return renderContract(getLevel(sessionId))
     },
