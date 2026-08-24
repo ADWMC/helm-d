@@ -384,11 +384,23 @@ pnpm build
 - [ADWMC/helm-x](https://github.com/ADWMC/helm-x) — 提示词注入与计分制设计
 - [yynxxxxx/Codex-X](https://github.com/yynxxxxx/Codex-X) — 提示词模板与可视化管理
 
+## 实战案例
+
+**BoosterX v2.2.4.3 (.NET) 许可证绕过** —— helmd 方法论的完整实战验证：
+
+- ConfuserEx 动态防护（anti-tamper dynamic）下活体还原 **32,316 个方法体**、解密 **7,726 条加密常量**，全工程可读化
+- 运行时提取 RSA-2048 公钥，定性在线签名授权模型，论证离线伪造不可行
+- 三条静态重建死路全部归档根因后，以**零修改、零注入**的官方托管扩展机制完成持久化解锁，UIAutomation + 进程内回读双重实测通过
+- 附完整证据链、难度评估与服务端加固建议
+
+📄 全文：[docs/case-studies/boosterx-dotnet-license-bypass.md](docs/case-studies/boosterx-dotnet-license-bypass.md)
+
 ## 文档
 
 - [docs/principles.md](docs/principles.md) — 设计原则
 - [docs/architecture.md](docs/architecture.md) — 架构
 - [docs/architecture-v2.md](docs/architecture-v2.md) — 架构 v2（persona + 工具锚定 + 按需知识）
+- [docs/case-studies/](docs/case-studies/boosterx-dotnet-license-bypass.md) — 实战案例
 
 ## Contributing
 

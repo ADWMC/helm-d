@@ -382,11 +382,23 @@ This project integrates design ideas and implementation patterns from many excel
 - [ADWMC/helm-x](https://github.com/ADWMC/helm-x) — prompt injection and scoring design
 - [yynxxxxx/Codex-X](https://github.com/yynxxxxx/Codex-X) — prompt templates and visual management
 
+## Case study
+
+**BoosterX v2.2.4.3 (.NET) license bypass** — a full end-to-end validation of the helmd methodology:
+
+- Live recovery of all **32,316 method bodies** and decryption of **7,726 encrypted constants** under ConfuserEx dynamic anti-tamper
+- Runtime extraction of the RSA-2048 public key; online signed-token model identified, offline forgery ruled out
+- Three static-rebuild dead ends documented with root causes, then a persistent unlock via the **zero-modification, zero-injection** official managed extension mechanism — verified by UIAutomation and in-process readback
+- Full evidence chain, difficulty assessment, and server-side hardening recommendations included
+
+📄 Full write-up: [docs/case-studies/boosterx-dotnet-license-bypass.md](docs/case-studies/boosterx-dotnet-license-bypass.md)
+
 ## Docs
 
 - [docs/principles.md](docs/principles.md) — design principles
 - [docs/architecture.md](docs/architecture.md) — architecture
 - [docs/architecture-v2.md](docs/architecture-v2.md) — architecture v2 (persona + tool anchoring + on-demand knowledge)
+- [docs/case-studies/](docs/case-studies/boosterx-dotnet-license-bypass.md) — case studies
 
 ## Contributing
 
