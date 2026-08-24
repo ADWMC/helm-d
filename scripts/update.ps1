@@ -31,6 +31,44 @@ function Normalize([string]$v) {
     return ($v.TrimStart("v") -replace '\s', '')
 }
 
+# Uninstall everything @dsh-security/* except the unified helmd bundle:
+# strips stale dependency entries from the profile package.json AND deletes
+# their node_modules directories (incl. pnpm tmp leftovers). Safe to run often.
+function Remove-LegacyBundles {
+    $profDir = Join-Path $DSH_HOME ("profiles\" + $Profile)
+    $pkgPath = Join-Path $profDir "package.json"
+    if (Test-Path -LiteralPath $pkgPath -PathType Leaf) {
+        $strip = @'
+const fs = require("fs");
+const p = process.argv[1];
+if (!p || !fs.existsSync(p)) { console.log("bad-path"); process.exit(1); }
+const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
+let changed = false;
+for (const sec of ["dependencies", "devDependencies", "optionalDependencies"]) {
+  const m = pkg[sec];
+  if (!m || typeof m !== "object") continue;
+  for (const k of Object.keys(m)) {
+    if (k.startsWith("@dsh-security/") && k !== "@dsh-security/helmd") { delete m[k]; changed = true; }
+  }
+}
+if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
+console.log(changed ? "deps-stripped" : "deps-clean");
+'@
+        try {
+            $out = & node -e $strip $pkgPath
+            if ($LASTEXITCODE -ne 0) { $out = "node-exit-$LASTEXITCODE" }
+            Write-Host ("  [deps] " + $(if ($out) { $out } else { "skipped (no output)" }))
+        } catch { Write-Host "  [deps] skipped ($($_.Exception.Message))" }
+    }
+    $sec = Join-Path $profDir "node_modules\@dsh-security"
+    if (Test-Path $sec) {
+        Get-ChildItem $sec -Directory | Where-Object { $_.Name -ne "helmd" } | ForEach-Object {
+            Remove-Item $_.FullName -Recurse -Force
+            Write-Host ("  [removed] " + $_.Name)
+        }
+    }
+}
+
 $installed = Normalize (Get-InstalledVersion)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -49,6 +87,9 @@ $latest = Normalize $latestTag
 
 Write-Host ("installed : {0}" -f ($(if ($installed) { "$Bundle $installed" } else { "not installed" })))
 Write-Host ("latest    : {0} ({1})" -f $latest, $latestTag)
+
+# always sweep legacy bundles, even on the check/up-to-date paths
+Remove-LegacyBundles
 
 if ($CheckOnly) { exit 0 }
 
@@ -93,13 +134,7 @@ if (Get-Command dsh -ErrorAction SilentlyContinue) {
 }
 if ($LASTEXITCODE -ne 0) { throw "plugin add failed (exit $LASTEXITCODE)" }
 
-# drop legacy sibling bundles re-introduced by dependency resolution
-$sec = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\@dsh-security")
-if (Test-Path $sec) {
-    Get-ChildItem $sec -Directory | Where-Object { $_.Name -ne "helmd" } | ForEach-Object {
-        Remove-Item $_.FullName -Recurse -Force
-        Write-Host ("  [CLEAN] " + $_.Name)
-    }
-}
+# pnpm's atomic swap can leave tmp dirs behind; sweep once more post-install
+Remove-LegacyBundles
 
 Write-Host "[done] $Bundle -> $latest"

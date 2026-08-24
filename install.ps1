@@ -48,7 +48,8 @@ const fs = require("fs");
 const p = process.argv[2];
 const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
 const stale = new Set(["dsh-find-plugin", "@deepseek-ai/dsh-plugin-console"]);
-const isStale = (name) => stale.has(name) || name.startsWith("@linxin666/");
+const isStale = (name) => stale.has(name) || name.startsWith("@linxin666/") ||
+  (name.startsWith("@dsh-security/") && name !== "@dsh-security/helmd");
 let changed = false;
 for (const f of ["dependencies", "devDependencies", "optionalDependencies"]) {
   if (pkg[f] && typeof pkg[f] === "object") {
@@ -81,6 +82,15 @@ if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
         throw "Neither `dsh` nor `npx` was found on PATH. Install Node.js (npx) or run `npm i -g @deepseek-ai/dsh`."
     }
     if ($LASTEXITCODE -ne 0) { throw "plugin add failed (exit $LASTEXITCODE)" }
+
+    # uninstall legacy sibling bundles left in node_modules (incl. pnpm tmp dirs)
+    $secDir = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\@dsh-security")
+    if (Test-Path $secDir) {
+        Get-ChildItem $secDir -Directory | Where-Object { $_.Name -ne "helmd" } | ForEach-Object {
+            Remove-Item $_.FullName -Recurse -Force
+            Write-Host ("  uninstalled legacy bundle: " + $_.Name)
+        }
+    }
 
     Write-Host "[3/4] writing preset ..."
     $presetRoot = Join-Path $DSH_HOME ".agent-presets"

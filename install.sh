@@ -46,7 +46,7 @@ const fs=require("fs");
 const p=process.argv[1];
 const pkg=JSON.parse(fs.readFileSync(p,"utf8"));
 const stale=new Set(["dsh-find-plugin","@deepseek-ai/dsh-plugin-console"]);
-const isStale=(n)=>stale.has(n)||n.startsWith("@linxin666/");
+const isStale=(n)=>stale.has(n)||n.startsWith("@linxin666/")||(n.startsWith("@dsh-security/")&&n!=="@dsh-security/helmd");
 let changed=false;
 for(const f of ["dependencies","devDependencies","optionalDependencies"]){if(pkg[f]&&typeof pkg[f]==="object"){for(const k of Object.keys(pkg[f])){if(isStale(k)){delete pkg[f][k];changed=true;}}}}
 if(changed)fs.writeFileSync(p,JSON.stringify(pkg,null,2)+"\n");
@@ -58,6 +58,15 @@ if command -v dsh >/dev/null 2>&1; then
   dsh plugin --profile "$PROFILE" add "$TGZ_FILE"
 else
   npx --yes @deepseek-ai/dsh plugin --profile "$PROFILE" add "$TGZ_FILE"
+fi
+
+# uninstall legacy sibling bundles left in node_modules (incl. pnpm tmp dirs)
+SEC_DIR="$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security"
+if [ -d "$SEC_DIR" ]; then
+  for d in "$SEC_DIR"/*/; do
+    b=$(basename "$d")
+    if [ "$b" != "helmd" ]; then rm -rf "$d"; echo "  uninstalled legacy bundle: $b"; fi
+  done
 fi
 
 echo "[3/4] writing preset ..."

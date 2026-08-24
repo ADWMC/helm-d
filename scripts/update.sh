@@ -29,6 +29,32 @@ PKG="$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security/helmd/package.json"
 installed=""
 [ -f "$PKG" ] && installed=$(node -p "require('$PKG').version" 2>/dev/null || true)
 
+# Uninstall everything @dsh-security/* except the unified helmd bundle:
+# strips stale dependency entries AND deletes their node_modules dirs.
+remove_legacy_bundles() {
+  prof="$DSH_HOME/profiles/$PROFILE"
+  pkgf="$prof/package.json"
+  if [ -f "$pkgf" ] && command -v node >/dev/null 2>&1; then
+    out=$(node -e '
+const fs=require("fs");
+const p=process.argv[1];
+const pkg=JSON.parse(fs.readFileSync(p,"utf8"));
+let changed=false;
+for(const sec of ["dependencies","devDependencies","optionalDependencies"]){const m=pkg[sec];if(!m||typeof m!=="object")continue;for(const k of Object.keys(m)){if(k.startsWith("@dsh-security/")&&k!=="@dsh-security/helmd"){delete m[k];changed=true;}}}
+if(changed)fs.writeFileSync(p,JSON.stringify(pkg,null,2)+"\n");
+console.log(changed?"deps-stripped":"deps-clean");
+' "$pkgf" 2>/dev/null || true)
+    echo "  [deps] ${out:-skipped}"
+  fi
+  secdir="$prof/node_modules/@dsh-security"
+  if [ -d "$secdir" ]; then
+    for d in "$secdir"/*/; do
+      b=$(basename "$d")
+      if [ "$b" != "helmd" ]; then rm -rf "$d"; echo "  [removed] $b"; fi
+    done
+  fi
+}
+
 AUTH=()
 [ -n "${GH_TOKEN:-}" ] && AUTH=(-H "Authorization: Bearer $GH_TOKEN")
 latest_tag=$(curl -fsSL -H "User-Agent: helmd-updater" "${AUTH[@]:-}" \
@@ -38,6 +64,10 @@ latest="${latest_tag#v}"
 
 echo "installed : ${installed:-not installed}"
 echo "latest    : $latest ($latest_tag)"
+
+# always sweep legacy bundles, even on the check/up-to-date paths
+remove_legacy_bundles
+
 [ "$CHECK" = "1" ] && exit 0
 
 newer=false
@@ -85,5 +115,8 @@ if [ -d "$sec" ]; then
     if [ "$b" != "helmd" ]; then rm -rf "$d"; echo "  [CLEAN] $b"; fi
   done
 fi
+
+# pnpm's atomic swap can leave tmp dirs behind; sweep once more post-install
+remove_legacy_bundles
 
 echo "[done] @dsh-security/helmd -> $latest"
