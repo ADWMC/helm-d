@@ -170,6 +170,18 @@ dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/latest/dow
 dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 ```
 
+**商店安装只含 bundle（工具 + bootstrap + router）。完整版还需写入 agent preset（luna 人格、激活词、工具配置）—— 包内自带模板，装完跑一条命令补齐：**
+
+```bash
+# Windows (PowerShell)
+%USERPROFILE%\.dsh\profiles\web\node_modules\@dsh-security\helmd\scripts\setup-preset.ps1
+
+# macOS / Linux
+~/.dsh/profiles/web/node_modules/@dsh-security/helmd/scripts/setup-preset.sh
+```
+
+脚本会把 `preset.yml` + `agent.cordis.yml` 写到 `~/.dsh/.agent-presets/helmd/`（已有则留 .bak），会话启动时在 UI 里选 `helmd` preset 即可。
+
 ## 验证
 
 ```bash

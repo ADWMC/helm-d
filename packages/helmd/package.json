@@ -1,6 +1,6 @@
 {
   "name": "@dsh-security/helmd",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,8 @@
     "dist",
     "references",
     "scripts",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "presets"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

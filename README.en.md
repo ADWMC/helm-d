@@ -170,6 +170,18 @@ dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/latest/dow
 dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 ```
 
+**A store install delivers the bundle only (tools + bootstrap + router). The full experience also needs the agent preset (luna persona, activation word, tool configuration) — the template ships inside the package, so run one command after installing:**
+
+```bash
+# Windows (PowerShell)
+%USERPROFILE%\.dsh\profiles\web\node_modules\@dsh-security\helmd\scripts\setup-preset.ps1
+
+# macOS / Linux
+~/.dsh/profiles/web/node_modules/@dsh-security/helmd/scripts/setup-preset.sh
+```
+
+The script writes `preset.yml` + `agent.cordis.yml` into `~/.dsh/.agent-presets/helmd/` (existing files are kept as `.bak`); pick the `helmd` preset in the UI when starting a session.
+
 ## Verification
 
 ```bash
