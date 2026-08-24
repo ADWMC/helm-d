@@ -50,7 +50,7 @@ Domain knowledge, rules, workflows and cases live in `references/` (209 docs) an
 
 ### First-turn tool anchoring
 
-The first top-level request only exposes shell + `read`; the full catalog of 25 tools opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
+The first top-level request only exposes shell + `read`; the full catalog of 26 tools opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
 
 </td>
 </tr>
@@ -62,7 +62,7 @@ DSH security-analysis capability used to be scattered across domain bundles: `ad
 
 helmd packs seven domains + evidence tooling + first-turn bootstrap + toolbox into one bundle:
 
-`one preset` &ensp; `one bundle` &ensp; `25 tools` &ensp; `zero manual wiring`
+`one preset` &ensp; `one bundle` &ensp; `26 tools` &ensp; `zero manual wiring`
 
 Install once, send `helmd` in a session, and every domain's tools are ready.
 
@@ -317,7 +317,7 @@ helmd/
 │       │   ├── bootstrap.ts   first-turn tool-narrowing filter
 │       │   ├── router.ts      skill_catalog / read_reference routing
 │       │   ├── seam.ts        shared IO seam (fs / subprocess / cmd resolve / path guard)
-│       │   └── tools/         8 tool modules (25 tools)
+│       │   └── tools/         8 tool modules (26 tools)
 │       ├── references/        209 on-demand reference docs (8 domains + toolbox)
 │       ├── scripts/           80 analysis scripts invoked via runSeam (incl. native/jvm pipeline)
 │       └── cordis.patch.yml   bundle mount manifest

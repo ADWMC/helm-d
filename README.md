@@ -62,7 +62,7 @@ DSH 的安全分析能力原本分散在多个领域 bundle：装 Android 要 ad
 
 helmd 把七大领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）+ 工具箱（toolbox）打包成一个 bundle：
 
-`一个 preset` &ensp; `一个 bundle` &ensp; `25 个工具` &ensp; `零手动拼装`
+`一个 preset` &ensp; `一个 bundle` &ensp; `26 个工具` &ensp; `零手动拼装`
 
 装一次，会话里发 `helmd`，全领域工具就绪。
 
@@ -319,7 +319,7 @@ helmd/
 │       │   ├── bootstrap.ts   首轮工具收窄过滤器
 │       │   ├── router.ts      skill_catalog / read_reference 路由
 │       │   ├── seam.ts        共享 IO seam（fs / subprocess / 命令解析 / 路径校验）
-│       │   └── tools/         8 个工具模块（25 个工具）
+│       │   └── tools/         8 个工具模块（26 个工具）
 │       ├── references/        209 个参考文档，按需读取（8 大域 + toolbox）
 │       ├── scripts/           80 个分析脚本，经 runSeam 调用（含 native/jvm 管线）
 │       └── cordis.patch.yml   bundle 挂载清单
