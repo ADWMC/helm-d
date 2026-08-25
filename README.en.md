@@ -19,6 +19,8 @@ English | [中文](README.md)
 
 > For learning and research only. You must comply with local laws and regulations; you are responsible for the consequences of using this project.
 
+> Maintainer docs: release checklist, preset single-source sync, and the pitfalls table live in [MAINTENANCE.md](MAINTENANCE.md).
+
 ## Why helmd
 
 <table>

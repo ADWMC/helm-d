@@ -19,6 +19,8 @@
 
 > 仅供学习交流。使用者须遵守所在地法律法规，对使用本项目产生的后果自负。
 
+> 维护者文档：发布流程、preset 单源同步、坑位表见 [MAINTENANCE.md](MAINTENANCE.md)。
+
 ## Why helmd
 
 <table>

@@ -4,6 +4,19 @@ $out = Join-Path $repo "dist-tgz"
 if (Test-Path $out) { Remove-Item -LiteralPath $out -Recurse -Force }
 New-Item -ItemType Directory -Force $out | Out-Null
 
+# Preset single-source sync: presets/full-reverse/ is the ONLY place humans
+# edit persona/preset; repack mirrors it into the package so every consumer
+# (installer, setup-preset, store tarball) ships byte-identical files.
+$presetSrc = Join-Path $repo "presets\full-reverse"
+$presetDst = Join-Path $repo "packages\helmd\presets"
+foreach ($f in @("preset.yml", "agent.cordis.yml")) {
+    $s = Join-Path $presetSrc $f
+    if (-not (Test-Path $s)) { throw "missing preset source: $s" }
+    New-Item -ItemType Directory -Force $presetDst | Out-Null
+    Copy-Item $s (Join-Path $presetDst $f) -Force
+}
+Write-Output "presets synced: full-reverse -> packages/helmd/presets"
+
 # Single unified bundle. The unversioned copy keeps the stable download URL
 # https://github.com/ADWMC/helm-d/releases/latest/download/helmd.tgz working
 # across releases (used by installers and the awesome-dsh-plugin listing).
