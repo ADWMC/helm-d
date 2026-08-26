@@ -13,29 +13,17 @@ CACHE_DIR="$DSH_HOME/.tgz-cache"
 mkdir -p "$CACHE_DIR"
 
 echo "[1/4] downloading latest release tarball from $REPO ..."
-API_URL="https://api.github.com/repos/$REPO/releases/latest"
+# latest/download stable URL: 恒指向最新 release，免 API、免版本发现、无回退点
 AUTH=()
 [ -n "${GH_TOKEN:-}" ] && AUTH=(-H "Authorization: Bearer $GH_TOKEN")
 if [ -z "${GH_TOKEN:-}" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
   AUTH=(-H "Authorization: Bearer $GITHUB_TOKEN")
 fi
 
-TGZ_NAME=""
-TAG=""
-if curl -fsSL -H "Accept: application/vnd.github+json" "${AUTH[@]}" "$API_URL" -o "$TMPDIR/release.json"; then
-  TAG=$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{console.log(JSON.parse(d).tag_name||"")})' < "$TMPDIR/release.json")
-  TGZ_NAME=$(node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const a=JSON.parse(d).assets||[];const t=a.find(x=>x.name&&x.name.endsWith(".tgz"));console.log(t?t.name:"")})' < "$TMPDIR/release.json")
-fi
-
-if [ -z "$TAG" ] || [ -z "$TGZ_NAME" ]; then
-  TAG="v0.1.2"
-  TGZ_NAME="dsh-security-helmd-0.1.2.tgz"
-  echo "  falling back to pinned release $TAG"
-fi
-
-URL="https://github.com/$REPO/releases/download/$TAG/$TGZ_NAME"
-echo "  fetching $TGZ_NAME"
-curl -fsSL -o "$CACHE_DIR/$TGZ_NAME" "$URL"
+TGZ_NAME="helmd.tgz"
+URL="https://github.com/$REPO/releases/latest/download/$TGZ_NAME"
+echo "  fetching latest $TGZ_NAME from $REPO (latest/download)"
+curl -fsSL "${AUTH[@]}" -L -o "$CACHE_DIR/$TGZ_NAME" "$URL"
 
 echo "[2/4] installing helmd from local tarball ..."
 PROFILE_PKG="$DSH_HOME/profiles/$PROFILE/package.json"

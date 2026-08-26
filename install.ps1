@@ -19,25 +19,11 @@ try {
     $ghToken = if ($env:GH_TOKEN) { $env:GH_TOKEN } elseif ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN }
     if ($ghToken) { $headers["Authorization"] = "Bearer $ghToken" }
 
-    $Tag = $null
-    $tgzName = $null
-    try {
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $headers
-        $Tag = $release.tag_name
-        $tgzName = ($release.assets | Where-Object { $_.name -like "*.tgz" } | Select-Object -First 1).name
-    } catch {
-        Write-Host "  (release API unavailable: $($_.Exception.Message))"
-    }
-
-    if (-not $Tag -or -not $tgzName) {
-        $Tag = "v0.1.2"
-        $tgzName = "dsh-security-helmd-0.1.2.tgz"
-        Write-Host "  falling back to pinned release $Tag"
-    }
-
-    $url = "https://github.com/$Repo/releases/download/$Tag/$tgzName"
-    Write-Host "  fetching $tgzName"
-    Invoke-WebRequest -Uri $url -OutFile (Join-Path $cacheDir $tgzName) -UseBasicParsing
+    # latest/download stable URL: 恒指向最新 release，无需查 API，无版本回退点
+    $tgzName = "helmd.tgz"
+    $url = "https://github.com/$Repo/releases/latest/download/$tgzName"
+    Write-Host "  fetching latest $tgzName from $Repo (latest/download)"
+    Invoke-WebRequest -Uri $url -OutFile (Join-Path $cacheDir $tgzName) -UseBasicParsing -MaximumRedirection 5
 
     Write-Host "[2/4] installing helmd from local tarball ..."
     $profilePkg = Join-Path $DSH_HOME ("profiles\" + $Profile + "\package.json")
