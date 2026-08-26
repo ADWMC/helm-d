@@ -64,7 +64,7 @@ DSH 的安全分析能力原本分散在多个领域 bundle：装 Android 要 ad
 
 helmd 把七大领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）+ 工具箱（toolbox）打包成一个 bundle：
 
-`一个 preset` &ensp; `一个 bundle` &ensp; `26 个工具` &ensp; `零手动拼装`
+`一个 preset` &ensp; `一个 bundle` &ensp; `31 个工具` &ensp; `零手动拼装`
 
 装一次，会话里发 `helmd`，全领域工具就绪。
 
@@ -109,7 +109,8 @@ helmd 会话遵循以下固定规则：
 | 首轮锚定 | 首个顶层请求仅暴露 shell + `read`；首次工具调用或助手消息后晋升，放开全部工具 |
 | 子代理豁免 | delegationDepth > 0 的会话始终可见完整目录 |
 | 分析档位 | Ponytail 式阶梯：`analysis_mode` 设 lite（快速分诊）/ full（标准流程，默认）/ deep（完整证据链），会话内持久，选能回答任务的最浅档 |
-| 确定性路由 | `route_task(hint)` 关键词匹配出 PRIMARY 路由 + 一句依据（先路由后动手），未命中回落决策树 |
+| 确定性路由 | `route_task(hint) 关键词匹配出 PRIMARY 路由 + 一句依据（先路由后动手），未命中回落决策树 |
+| Case 工作区 | `begin_case` 建立磁盘工作区（sample/evidence/scripts/CASE.md），工具输出自动入证据链；`record_finding` 强制引用 E 编号；上下文压缩后 `case_status()` 从磁盘恢复状态 |
 
 ### 知识与路由
 
@@ -134,7 +135,7 @@ helmd 会话遵循以下固定规则：
 | 规则 | 行为 |
 |------|------|
 | 报告模板 | 结论按 severity / confidence 分级，模板见 `references/evidence/reporting.md` |
-| case 工作区 | 正式分析用 `create_case` 建 case.json 结构化工作区，产物可追溯 |
+| case 工作区 | `begin_case` 建磁盘工作区，工具输出经 persist 钩子自动入 `evidence/`，结论必须引用 E 编号（`record_finding` 校验） |
 
 ## 快速上手
 
@@ -230,7 +231,9 @@ detect_packer <file> → 判定 PE/ELF 保护器
 | **AI-Security** | `ai_reference` | AI/LLM 安全参考文档 |
 | **AI-Security** | `llm_sim` | LLM 应用模拟测试 |
 | **Evidence** | `evidence_reference` | 证据/报告参考文档 |
-| **Evidence** | `create_case` | 创建逆向 case 工作区 |
+| **Case** | `begin_case / `case_status / `record_finding / `end_case` | 磁盘工作区生命周期：建案/恢复/带校验记录结论/关闭（deep 档强制 findings） |
+| **Case** | `find_tool` | GitHub 检索现成工具（变体查询建议 + helmd-tools 货架命中） |
+| **Case** | `save_evidence` | 外部 CLI 输出统一入证据链（E 编号） |
 | **Evidence** | `triage_artifact` | 离线分诊 |
 | **Evidence** | `hash_artifact` | SHA-256 哈希 |
 | **Toolbox** | `tool_recommend` | 工具库推荐 |
@@ -333,7 +336,7 @@ helmd/
 │       │   ├── bootstrap.ts   首轮工具收窄过滤器
 │       │   ├── router.ts      skill_catalog / read_reference 路由
 │       │   ├── seam.ts        共享 IO seam（fs / subprocess / 命令解析 / 路径校验）
-│       │   └── tools/         8 个工具模块（26 个工具）
+│       │   └── tools/         8 个工具模块（31 个工具）
 │       ├── references/        209 个参考文档，按需读取（8 大域 + toolbox）
 │       ├── scripts/           80 个分析脚本，经 runSeam 调用（含 native/jvm 管线）
 │       └── cordis.patch.yml   bundle 挂载清单

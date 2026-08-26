@@ -52,7 +52,7 @@ Domain knowledge, rules, workflows and cases live in `references/` (209 docs) an
 
 ### First-turn tool anchoring
 
-The first top-level request only exposes shell + `read`; the full catalog of 26 tools opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
+The first top-level request only exposes shell + `read`; the full catalog of 31 tools opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
 
 </td>
 </tr>
@@ -64,7 +64,7 @@ DSH security-analysis capability used to be scattered across domain bundles: `ad
 
 helmd packs seven domains + evidence tooling + first-turn bootstrap + toolbox into one bundle:
 
-`one preset` &ensp; `one bundle` &ensp; `26 tools` &ensp; `zero manual wiring`
+`one preset` &ensp; `one bundle` &ensp; `31 tools` &ensp; `zero manual wiring`
 
 Install once, send `helmd` in a session, and every domain's tools are ready.
 
@@ -109,7 +109,7 @@ A helmd session follows these fixed rules:
 | First-turn anchoring | Only shell + `read` on the first top-level request; after the first tool call or assistant message the session promotes and every tool opens |
 | Subagent exemption | Sessions with delegationDepth > 0 always see the full catalog |
 | Analysis ladder | Ponytail-style: `analysis_mode` sets lite (quick triage) / full (standard flow, default) / deep (full evidence chain); per-session persistence, pick the shallowest rung that answers the task |
-| Deterministic routing | `route_task(hint)` keyword-matches a PRIMARY route plus a one-line rationale (route before you act); falls back to the decision tree |
+| Deterministic routing | `route_task(hint)` keyword-matches a PRIMARY route plus a one-line rationale (route before you act); falls back to the decision tree || Case workspace | `begin_case` creates an on-disk workspace (sample/evidence/scripts/CASE.md); tool outputs auto-persist to the evidence chain; `record_finding` enforces E-id citations; after compaction `case_status()` restores state from disk |
 
 ### Knowledge & routing
 
@@ -134,7 +134,7 @@ A helmd session follows these fixed rules:
 | Rule | Behavior |
 |------|----------|
 | Report template | Conclusions carry severity / confidence grades; template in `references/evidence/reporting.md` |
-| Case workspaces | Formal analyses use `create_case` for a case.json structured workspace with traceable artifacts |
+| Case workspaces | `begin_case` creates an on-disk workspace; the persist hook auto-saves tool output into `evidence/`; conclusions must cite E ids (validated by `record_finding`) |
 
 ## Quick start
 
@@ -228,7 +228,9 @@ Any of the above returning normally means the install succeeded.
 | **AI-Security** | `ai_reference` | AI/LLM security reference docs |
 | **AI-Security** | `llm_sim` | LLM app simulation testing |
 | **Evidence** | `evidence_reference` | Evidence/reporting reference docs |
-| **Evidence** | `create_case` | Create a reverse-engineering case workspace |
+| **Case** | `begin_case` / `case_status` / `record_finding` / `end_case` | On-disk case lifecycle: open/resume/validated conclusions/close (deep mode requires findings) |
+| **Case** | `find_tool` | Search GitHub for existing tools (variant queries + helmd-tools shelf hits) |
+| **Case** | `save_evidence` | Persist arbitrary external CLI output into the evidence chain (E-numbered) |
 | **Evidence** | `triage_artifact` | Offline triage |
 | **Evidence** | `hash_artifact` | SHA-256 hashing |
 | **Toolbox** | `tool_recommend` | Tool library recommendations |
@@ -331,7 +333,7 @@ helmd/
 │       │   ├── bootstrap.ts   first-turn tool-narrowing filter
 │       │   ├── router.ts      skill_catalog / read_reference routing
 │       │   ├── seam.ts        shared IO seam (fs / subprocess / cmd resolve / path guard)
-│       │   └── tools/         8 tool modules (26 tools)
+│       │   └── tools/         9 tool modules (31 tools)
 │       ├── references/        209 on-demand reference docs (8 domains + toolbox)
 │       ├── scripts/           80 analysis scripts invoked via runSeam (incl. native/jvm pipeline)
 │       └── cordis.patch.yml   bundle mount manifest

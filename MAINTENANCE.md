@@ -15,7 +15,7 @@
 
 | 层 | 谁写入 | 内容 |
 |----|--------|------|
-| Profile | `dsh plugin add` / install.ps1 / update.ps1 | 26 个工具、bootstrap 收窄、router、references、scripts |
+| Profile | `dsh plugin add` / install.ps1 / update.ps1 | 31 个工具（case 流程 6 + router 4 + 领域 21）、bootstrap 收窄、references、scripts |
 | Preset | `setup-preset` 脚本 / install.ps1 [3/4] | luna persona、激活词 `helmd`、全套工具 section |
 
 **单一事实源表**
@@ -82,7 +82,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 - 描述里的**数字声明会被 reviewer 和 decay scan 对照代码核验**（工具数、版本号）。改了工具集必须同步：
   - README.md / README.en.md 的徽章行和目录树行
   - registry yml 的 en/zh description（需向上游提 PR）
-- 当前计数基准：26 个工具（router 4 + 领域 22）。核对方法：
+- 当前计数基准：31 个工具（case 流程 4 + find_tool/save_evidence + router 4 + 领域 21；create_case 已废弃）。核对方法：
   ```powershell
   # mock ctx 捕获全部注册名（见 git log 00c081a 之前的测试脚本）
   ```

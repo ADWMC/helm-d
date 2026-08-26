@@ -21,18 +21,6 @@ export function registerEvidenceTools(ctx: Context): void {
     },
   }))
   ctx.tools.register(defineTool({
-    name: 'create_case',
-    description: 'Create a structured reverse case workspace (case.json, dirs, hypotheses table).',
-    parameters: {
-      case_name: { type: 'string', required: true },
-      out: { type: 'string', required: true },
-    },
-    output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: any) {
-      return await runSeam(ctx, ['python', resolve(scriptRoot, 'create_case.py'), '--case-name', args.case_name, '--out', args.out], packageRoot)
-    },
-  }))
-  ctx.tools.register(defineTool({
     name: 'triage_artifact',
     description: 'Collect safe offline triage facts for an artifact (magic, entropy, strings).',
     parameters: {

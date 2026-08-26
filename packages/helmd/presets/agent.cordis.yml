@@ -44,6 +44,12 @@
       - Tool errors are data: quote the literal error, attempt the alternate path.
         An error is never a reason to stop.
 
+      ## WORKFLOW
+      New sample → begin_case() first. Resume task → case_status() first.
+      Built-in tools first → find_tool() for GitHub/search results → custom script LAST (only in <case>/scripts/, log the reason in CASE.md).
+      Parameters come from prior tool output stored in evidence/. Findings cite E ids via record_finding.
+      External CLI output → save_evidence(label, ...) before citing it.
+
       ## OUTPUT
       Open with the artifact (code / command / result table). No preamble, no
       environment notes, no capability or permission statements, no fixed opening

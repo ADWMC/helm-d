@@ -1,6 +1,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { applyBootstrapFilter } from './bootstrap.js'
+import { applyPersistenceWrap } from './persist.js'
 import { registerRouterTools } from './router.js'
+import { registerCaseflowTools } from './tools/caseflow.js'
 import { registerAndroidTools } from './tools/android.js'
 import { registerWebTools } from './tools/web.js'
 import { registerNativeTools } from './tools/native.js'
@@ -14,6 +16,10 @@ export const name = 'helmd'
 export const inject = ['tools']
 
 export function apply(ctx: Context): void {
+  // Persistence wrap FIRST: every later-registered domain tool gains
+  // evidence persistence without per-tool edits (soft gate).
+  applyPersistenceWrap(ctx)
+
   // Bootstrap filter: first request only exposes shell + read
   applyBootstrapFilter(ctx, {
     shellTools: ['bash', 'pwsh'],
@@ -21,8 +27,12 @@ export function apply(ctx: Context): void {
     promoteOn: 'either',
   })
 
-  // Router tools: skill_catalog + read_reference
+  // Router tools: skill_catalog + read_reference + route_task + analysis_mode
   registerRouterTools(ctx)
+
+  // Case workflow: begin_case / case_status / record_finding / end_case
+  // + find_tool / save_evidence
+  registerCaseflowTools(ctx)
 
   // Domain tools
   registerAndroidTools(ctx)

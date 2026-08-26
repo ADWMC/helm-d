@@ -8,6 +8,7 @@ import { getLevel, setLevel, normalizeLevel, renderContract } from './mode.js'
 // 目录：领域 -> 触发信号与去向（可发现性元数据，不下结论）
 const catalog: Record<string, string> = {
   // 快速导航
+  case: '样本分析入口 -> begin_case(goal, samples) 建工作区；续接用 case_status()',
   tree: '分诊决策树 -> references/toolbox/decision-tree.md — 拿到样本后先走这里',
   methodology: '方法论 -> references/toolbox/methodology.md — 分析流程、工具选择、实战案例',
   patterns: '模式速查 -> references/toolbox/patterns.md — 保护器签名、反分析技术、Patch 编码',
@@ -21,7 +22,7 @@ const catalog: Record<string, string> = {
   protocol: 'PCAP/TCP/UDP/gRPC/Protobuf -> pcap_parse + references/protocol/',
   malware: 'C2/persistence/IOC/sample -> ioc_extract/yara_gen + references/malware/',
   ai: 'prompt/model/injection -> llm_sim + references/ai-security/',
-  evidence: 'case/report/hash/triage -> create_case + references/evidence/',
+  evidence: 'case 工作区/报告/存证 -> begin_case + case_status + references/evidence/',
   // 信号级路由 (signal -> tool -> reference)
   apk: 'APK/AAB/DEX -> apk_fingerprint -> android',
   shell: 'packer/UPX/VMP/Themida/OLLVM -> detect_packer -> native',
