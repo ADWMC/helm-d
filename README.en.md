@@ -152,13 +152,45 @@ macOS / Linux:
 ./install.sh
 ```
 
-The installer downloads the latest Release `helmd.tgz`, installs it into the profile, and writes the preset in one shot. Then boot:
+The installer downloads the latest Release `helmd.tgz`, installs it into the profile, and writes the preset. **The preset's platform rows are not snapshot-copied — the installer derives them live on your machine from the dsh host `standard` preset you actually have installed** (`gen-preset.mjs --out`), falling back to the bundled snapshot only when the generator is unavailable. Platform rows therefore always match your own dsh version and never drift on host upgrades. Then boot:
 
 ```bash
 dsh web
 ```
 
 Send `helmd` in a session to activate.
+
+## Preset / host sync (three-layer fingerprint defense)
+
+Every generated `agent.cordis.yml` opens with a host fingerprint line:
+
+```yaml
+# gen-preset: host=<sha256 of installed dsh standard>
+```
+
+A hand-copied preset once drifted after a host upgrade and assembled a crippled 44-tool catalog (incident 2026-08-26, see `docs/incident-2026-08-26-preset-stale-generation.md`). The same verdict now guards three surfaces:
+
+| Layer | Entry | Behavior |
+|------|------|------|
+| CLI | `node packages/helmd/scripts/gen-preset.mjs --check` | fingerprint moved → `HOST UPGRADED`; content drift → `STALE (content drift)`; non-zero exit |
+| Install/update | `install.ps1` / `setup-preset.ps1` | generates against the local host at install time, no manual copying |
+| GUI | the helmd card in the dsh settings page (below) | evaluated once per boot, badge always visible |
+
+## Health status card
+
+Since 0.2.1, helmd ships a read-only health card in the **dsh web settings page**: Settings → Plugins → Plugin configuration → "helmd 安全分析包".
+
+Each dsh boot evaluates the deployed `~/.dsh/.agent-presets/helmd/agent.cordis.yml` fingerprint against the installed host:
+
+| Badge | Meaning | Action |
+|------|------|------|
+| 🟢 Healthy | preset matches the host | none |
+| 🟠 Host upgraded | dsh was upgraded, platform rows stale | re-run install / setup-preset, restart |
+| 🔴 Content drift | agent.cordis.yml hand-edited or persona changed without re-sync | regenerate as above |
+| 🟣 Legacy preset | file lacks the fingerprint header | regenerate |
+| ⚪ Not deployed | preset missing | run install |
+
+Expanding the card shows both fingerprints (12 chars), version, evaluation time, and both paths for fast diagnosis.
 
 ## Install from the plugin store
 
@@ -187,7 +219,8 @@ The script writes `preset.yml` + `agent.cordis.yml` into `~/.dsh/.agent-presets/
 ## Verification
 
 ```bash
-dsh --profile web --dump-config   # you should see one @dsh-security/helmd row
+dsh --profile web --dump-config                        # one @dsh-security/helmd row
+node packages/helmd/scripts/gen-preset.mjs --check     # preset check OK (non-zero: follow the fingerprint hint)
 ```
 
 After sending `helmd` in a session:
@@ -198,7 +231,7 @@ native_reference     → reads the Native reference
 detect_packer <file> → identifies the PE/ELF protector
 ```
 
-Any of the above returning normally means the install succeeded.
+Settings → Plugins → Plugin configuration should show the helmd card with a green "健康 Healthy" badge. Any of the above returning normally means the install succeeded.
 
 ## Package & tools
 
@@ -332,14 +365,17 @@ helmd/
 │       ├── src/
 │       │   ├── bootstrap.ts   first-turn tool-narrowing filter
 │       │   ├── router.ts      skill_catalog / read_reference routing
+│       │   ├── health.ts      settings-page health face (boot-time fingerprint eval → settings namespace)
 │       │   ├── seam.ts        shared IO seam (fs / subprocess / cmd resolve / path guard)
 │       │   └── tools/         9 tool modules (31 tools)
+│       ├── client.js          browser half: settings-page health card (lazy-CJS factory, no build chain)
 │       ├── references/        209 on-demand reference docs (8 domains + toolbox)
-│       ├── scripts/           80 analysis scripts invoked via runSeam (incl. native/jvm pipeline)
-│       └── cordis.patch.yml   bundle mount manifest
-├── presets/full-reverse/      preset definition (persona + every tool row)
+│       ├── scripts/           analysis scripts + gen-preset.mjs (install-time preset generator)
+│       ├── presets/           persona single source + generated mirror
+│       └── cordis.patch.yml   bundle mount manifest (helmd tools row + helmd-health row)
+├── presets/full-reverse/      preset definition (generated; persona + every tool row)
 ├── install.ps1/.sh/.bat       one-command installer
-└── docs/                      design docs
+└── docs/                      design docs & postmortems
 ```
 
 > Other directories under `packages/` are legacy split bundles superseded by the helmd single bundle; kept for archival only, no longer published.
@@ -365,18 +401,18 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 ## Publishing
 
 - The root package is `private: true` and is not published; `@dsh-security/helmd` is.
-- The `files` whitelist is limited to `dist`, `references`, `scripts`, `cordis.patch.yml`.
+- The `files` whitelist: `dist`, `client.js`, `references`, `scripts`, `presets`, `cordis.patch.yml`.
 - The `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.1.4`.
+- Current version: `0.2.1`.
 - Release assets: `dsh-security-helmd-<ver>.tgz` plus the stable alias `helmd.tgz` (used by the store's tarball field and the installers).
 
 ## Risks & mitigations
 
 | Risk | Mitigation |
 |------|------------|
-| DSH host upgrade breaks compat | peer deps on cordis / dsh-tools, pinned via `overrides` |
+| DSH host upgrade breaks compat | peer deps on cordis / dsh-tools, pinned via `overrides`; three-layer preset fingerprint defense above exposes drift automatically |
 | Missing `python` on the host | seam auto-probes python / py / python3, falls back to the `py` launcher |
-| Bundle/preset version drift | version 0.1.4, tarball and release published together |
+| Bundle/preset version drift | version 0.2.1, tarball and release published together |
 | Reference knowledge goes stale | read on demand, model's own judgment, non-binding |
 
 ## Acknowledgements

@@ -153,13 +153,45 @@ macOS / Linux：
 ./install.sh
 ```
 
-安装器会下载最新 Release 的 `helmd.tgz`、装入 profile、写入 preset，一步到位。然后启动：
+安装器会下载最新 Release 的 `helmd.tgz`、装入 profile、写入 preset。**preset 平台行不靠快照复制——安装器在本机上直接读取你已装的 dsh 宿主 `standard` 预设实时派生生成**（`gen-preset.mjs --out`），只在生成器不可用时才退回包内快照。这意味着平台工具行永远匹配你自己装的 dsh 版本，不会因宿主升级而漂移。然后启动：
 
 ```bash
 dsh web
 ```
 
 会话里发送 `helmd` 即激活。
+
+## Preset 与宿主同步（三层指纹防线）
+
+每个生成的 `agent.cordis.yml` 首行携带宿主指纹：
+
+```yaml
+# gen-preset: host=<sha256 of installed dsh standard>
+```
+
+8/26 曾发生过手抄平台行在宿主升级后漂移、组装出 44 工具残废目录的事故（见 `docs/incident-2026-08-26-preset-stale-generation.md`），此后的防线是同一套判定在三个面上生效：
+
+| 层 | 入口 | 行为 |
+|------|------|------|
+| CLI | `node packages/helmd/scripts/gen-preset.mjs --check` | 指纹移动 → `HOST UPGRADED`；内容漂移 → `STALE (content drift)`；退出码非 0 |
+| 安装/更新 | `install.ps1` / `setup-preset.ps1` | 安装时对本地宿主实时生成，不做人工拷贝 |
+| GUI | dsh 设置页 helmd 卡片（见下节） | 每次启动评估一次，常驻徽标 |
+
+## 健康状态卡片
+
+helmd 0.2.1 起在 **dsh 网页设置页**常驻一块只读健康卡片：设置 → 插件 → 插件配置 → 「helmd 安全分析包」。
+
+每次 dsh 启动时评估一次部署位 `~/.dsh/.agent-presets/helmd/agent.cordis.yml` 的指纹与当前宿主的关系：
+
+| 徽标 | 含义 | 动作 |
+|------|------|------|
+| 🟢 健康 Healthy | preset 与宿主匹配 | 无 |
+| 🟠 宿主已升级 Host upgraded | 升级过 dsh，平台行过期 | 重跑 install / setup-preset，再重启 |
+| 🔴 内容漂移 Content drift | 手改了 agent.cordis.yml 或 persona 未同步 | 同上，重新生成 |
+| 🟣 旧版产物 Legacy preset | 无指纹头的旧文件 | 重新生成 |
+| ⚪ 未部署 Not deployed | preset 缺失 | 跑 install |
+
+展开可见双指纹（12 位）、版本、评估时间与两条路径，方便定位问题。
 
 ## 从插件商店安装
 
@@ -189,6 +221,7 @@ dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 
 ```bash
 dsh --profile web --dump-config   # 应看到 @dsh-security/helmd 一行
+node packages/helmd/scripts/gen-preset.mjs --check   # preset check OK（红了按指纹提示处理）
 ```
 
 会话里发送 `helmd` 后：
@@ -199,7 +232,7 @@ native_reference     → 读取 Native 领域参考
 detect_packer <file> → 判定 PE/ELF 保护器
 ```
 
-上面任一正常返回即安装成功。
+设置 → 插件 → 插件配置 里应出现绿色「健康 Healthy」的 helmd 卡片。上面任一正常返回即安装成功。
 
 ## 包清单
 
@@ -335,14 +368,17 @@ helmd/
 │       ├── src/
 │       │   ├── bootstrap.ts   首轮工具收窄过滤器
 │       │   ├── router.ts      skill_catalog / read_reference 路由
+│       │   ├── health.ts      设置页健康面（boot 时指纹评估 → settings namespace）
 │       │   ├── seam.ts        共享 IO seam（fs / subprocess / 命令解析 / 路径校验）
 │       │   └── tools/         8 个工具模块（31 个工具）
+│       ├── client.js          浏览器半：设置页健康卡片（lazy-CJS factory，免构建）
 │       ├── references/        209 个参考文档，按需读取（8 大域 + toolbox）
-│       ├── scripts/           80 个分析脚本，经 runSeam 调用（含 native/jvm 管线）
-│       └── cordis.patch.yml   bundle 挂载清单
-├── presets/full-reverse/      preset 定义（persona + 全部工具行）
+│       ├── scripts/           分析脚本 + gen-preset.mjs（安装时派生 preset 生成器）
+│       ├── presets/           persona 单源 + 生成物镜像
+│       └── cordis.patch.yml   bundle 挂载清单（helmd 工具行 + helmd-health 行）
+├── presets/full-reverse/      preset 定义（生成物；persona + 全部工具行）
 ├── install.ps1/.sh/.bat       一键安装器
-└── docs/                      设计文档
+└── docs/                      设计文档与事故复盘
 ```
 
 > `packages/` 下其余目录为历史拆分包，已由 helmd 单包取代，仅作归档保留、不再发布。
@@ -368,18 +404,18 @@ pnpm build
 ## 发布
 
 - 根包 `private: true`，不发布；发布对象是 `@dsh-security/helmd` 单包。
-- `files` 白名单限定为 `dist`、`references`、`scripts`、`cordis.patch.yml`。
+- `files` 白名单：`dist`、`client.js`、`references`、`scripts`、`presets`、`cordis.patch.yml`。
 - `prepare` 脚本会在发布前自动执行 `tsc`。
-- 当前版本 `0.1.4`。
+- 当前版本 `0.2.1`。
 - Release 资产：`dsh-security-helmd-<ver>.tgz` + 稳定别名 `helmd.tgz`（供商店 tarball 字段与安装器使用）。
 
 ## 风险与缓解
 
 | 风险 | 缓解 |
 |------|------|
-| DSH 宿主版本升级不兼容 | peer 依赖 cordis / dsh-tools，`overrides` 固定版本 |
+| DSH 宿主版本升级不兼容 | peer 依赖 cordis / dsh-tools，`overrides` 固定版本；preset 指纹三层防线（见上）自动暴露漂移 |
 | 本机缺 `python` | seam 自动探测 python / py / python3，Windows 兼容 `py -3` |
-| 单包版本错位 | 版本 0.1.4，tarball 与 release 同步发布 |
+| 单包版本错位 | 版本 0.2.1，tarball 与 release 同步发布 |
 | 参考知识过时 | 按需读、模型自主判断，非硬性规则 |
 
 ## 参考项目
