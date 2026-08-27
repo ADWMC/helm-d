@@ -79,20 +79,40 @@ if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
     }
 
     Write-Host "[3/4] writing preset ..."
-    Write-Host "[3/4] writing preset ..."
     $presetRoot = Join-Path $DSH_HOME ".agent-presets"
     New-Item -ItemType Directory -Force $presetRoot | Out-Null
     $presetDir = Join-Path $presetRoot $Preset
     New-Item -ItemType Directory -Force $presetDir | Out-Null
 
-    # copy the authoritative FULL preset shipped inside the bundle
-    # (single source of truth -- replaces the old condensed inline heredoc)
-    $bundlePresets = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\@dsh-security\helmd\presets")
+    $bundleRoot = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\@dsh-security\helmd")
+    $bundlePresets = Join-Path $bundleRoot "presets"
     if (-not (Test-Path (Join-Path $bundlePresets "agent.cordis.yml"))) { throw "bundle presets not found at $bundlePresets" }
-    Copy-Item (Join-Path $bundlePresets "preset.yml") (Join-Path $presetDir "preset.yml") -Force
-    Copy-Item (Join-Path $bundlePresets "agent.cordis.yml") (Join-Path $presetDir "agent.cordis.yml") -Force
+
+    # Regenerate on THIS machine from the installed dsh host's own standard
+    # preset, so the platform rows always match the local host version. Falls
+    # back to the shipped snapshot when the generator cannot run (e.g. no node
+    # or dsh not installed via npm) — a checked-in copy beats no preset.
+    $genScript = Join-Path $bundleRoot "scripts\gen-preset.mjs"
+    $generated = $false
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        & node $genScript --out $presetDir 2>&1 | ForEach-Object { Write-Host ("    " + $_) }
+        if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $presetDir "agent.cordis.yml"))) {
+            $generated = $true
+            Write-Host "  preset regenerated from local dsh standard (platform rows match this host)"
+        } else {
+            Write-Host "  (generator failed with exit $LASTEXITCODE; falling back to shipped snapshot)"
+        }
+    }
+    if (-not $generated) {
+        Copy-Item (Join-Path $bundlePresets "preset.yml") (Join-Path $presetDir "preset.yml") -Force
+        Copy-Item (Join-Path $bundlePresets "agent.cordis.yml") (Join-Path $presetDir "agent.cordis.yml") -Force
+        Write-Host "  preset copied from bundle snapshot"
+    }
 
     Write-Host "[4/4] preset written: $Preset (default NOT auto-set; pick 'helmd' in the UI preset picker)"
+    Write-Host ""
+    Write-Host "NOTE: if dsh is currently running, restart it so the preset standing"
+    Write-Host "mount rebuilds from this file (see docs/incident-2026-08-26-preset-stale-generation.md)."
     Write-Host ""
     Write-Host "done. run: dsh $Profile   (or: npx --yes @deepseek-ai/dsh $Profile)"
     Write-Host "then send the activation word: $Preset"

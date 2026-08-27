@@ -21,10 +21,28 @@ fi
 PRESET_DIR="$DSH_HOME/.agent-presets/$PRESET"
 mkdir -p "$PRESET_DIR"
 
+# Regenerate against the LOCAL host inside this run: platform rows must match
+# the installed dsh, not the release snapshot. Fall back to snapshot when node
+# or the generator is unavailable.
+GEN_SCRIPT="$SCRIPT_DIR/gen-preset.mjs"
+GENERATED=false
+if command -v node >/dev/null 2>&1 && [ -f "$GEN_SCRIPT" ]; then
+  if node "$GEN_SCRIPT" --out "$PRESET_DIR" && [ -f "$PRESET_DIR/agent.cordis.yml" ]; then
+    GENERATED=true
+    echo "  [gen] preset regenerated from local dsh standard (match this host)"
+  else
+    echo "  [gen] generator failed; falling back to snapshot"
+  fi
+fi
+
 for f in preset.yml agent.cordis.yml; do
   if [ -f "$PRESET_DIR/$f" ]; then cp "$PRESET_DIR/$f" "$PRESET_DIR/$f.bak"; fi
-  cp "$SRC/$f" "$PRESET_DIR/$f"
-  echo "  wrote $f"
+  if [ "$f" = "agent.cordis.yml" ] && [ "$GENERATED" = "true" ]; then
+    echo "  kept generated $f"
+  else
+    cp "$SRC/$f" "$PRESET_DIR/$f"
+    echo "  wrote $f"
+  fi
 done
 echo "[done] preset '$PRESET' written to $PRESET_DIR"
 echo "pick '$PRESET' in the UI preset picker when starting a session."

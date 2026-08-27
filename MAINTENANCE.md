@@ -23,7 +23,7 @@
 | 数据 | 唯一编辑点 | 自动流向 |
 |------|-----------|---------|
 | persona 文本 | `packages/helmd/presets/persona.txt` | repack 经 `scripts/gen-preset.mjs` 注入 → `presets/full-reverse/agent.cordis.yml`（生成物）→ 包内镜像 → tgz |
-| preset 平台行 | **不存在**——从宿主内置 standard 派生 | `gen-preset.mjs` 读宿主 `<dsh>/config/agent-presets/standard/agent.cordis.yml` 原文，仅覆写 persona 段 + 追加 helmd 行 |
+| preset 平台行 | **不存在**——从宿主内置 standard 派生 | `gen-preset.mjs` 读宿主 `<dsh>/config/agent-presets/standard/agent.cordis.yml` 原文，仅覆写 persona 段 + 追加 helmd 行；**安装/更新脚本在目标机再次生成**（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |

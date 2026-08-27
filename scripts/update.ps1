@@ -138,3 +138,6 @@ if ($LASTEXITCODE -ne 0) { throw "plugin add failed (exit $LASTEXITCODE)" }
 Remove-LegacyBundles
 
 Write-Host "[done] $Bundle -> $latest"
+Write-Host "NOTE: bundle updated. If the release changed the agent preset, run"
+Write-Host "  & `"$DSH_HOME\profiles\$Profile\node_modules\@dsh-security\helmd\scripts\setup-preset.ps1`""
+Write-Host "to regenerate/refresh .agent-presets/helmd, then restart dsh if it is running."

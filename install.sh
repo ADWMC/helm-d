@@ -58,18 +58,40 @@ if [ -d "$SEC_DIR" ]; then
 fi
 
 echo "[3/4] writing preset ..."
-echo "[3/4] writing preset ..."
-mkdir -p "$DSH_HOME/.agent-presets/$PRESET"
+PRESET_DIR="$DSH_HOME/.agent-presets/$PRESET"
+mkdir -p "$PRESET_DIR"
 
-# copy the authoritative FULL preset shipped inside the bundle
-# (single source of truth -- replaces the old condensed inline heredoc)
-BUNDLE_PRESETS="$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security/helmd/presets"
+BUNDLE_ROOT="$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security/helmd"
+BUNDLE_PRESETS="$BUNDLE_ROOT/presets"
 if [ ! -f "$BUNDLE_PRESETS/agent.cordis.yml" ]; then
   echo "bundle presets not found at $BUNDLE_PRESETS"; exit 1
 fi
-cp "$BUNDLE_PRESETS/preset.yml" "$DSH_HOME/.agent-presets/$PRESET/preset.yml"
-cp "$BUNDLE_PRESETS/agent.cordis.yml" "$DSH_HOME/.agent-presets/$PRESET/agent.cordis.yml"
+
+# Regenerate on THIS machine from the installed dsh host's own standard preset
+# so platform rows match the local host version; fall back to the shipped
+# snapshot when generation cannot run (no node / dsh not installed via npm).
+GEN_SCRIPT="$BUNDLE_ROOT/scripts/gen-preset.mjs"
+GENERATED=false
+if command -v node >/dev/null 2>&1 && [ -f "$GEN_SCRIPT" ]; then
+  if node "$GEN_SCRIPT" --out "$PRESET_DIR" && [ -f "$PRESET_DIR/agent.cordis.yml" ]; then
+    GENERATED=true
+    echo "  preset regenerated from local dsh standard (platform rows match this host)"
+  else
+    echo "  (generator failed; falling back to shipped snapshot)"
+  fi
+fi
+if [ "$GENERATED" != "true" ]; then
+  cp "$BUNDLE_PRESETS/preset.yml" "$PRESET_DIR/preset.yml"
+  cp "$BUNDLE_PRESETS/agent.cordis.yml" "$PRESET_DIR/agent.cordis.yml"
+  echo "  preset copied from bundle snapshot"
+fi
+
 echo "[4/4] preset written: $PRESET (default NOT auto-set; pick 'helmd' in the UI preset picker)"
 echo
+if curl -fsS --max-time 3 "https://127.0.0.1:3080/" >/dev/null 2>&1; then
+  echo "NOTE: dsh looks running locally — restart it so the preset standing mount"
+  echo "rebuilds from this file (see docs/incident-2026-08-26-preset-stale-generation.md)."
+  echo
+fi
 echo "done. run: dsh $PROFILE   (or: npx --yes @deepseek-ai/dsh $PROFILE)"
 echo "then send the activation word: $PRESET"

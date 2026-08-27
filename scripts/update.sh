@@ -120,3 +120,6 @@ fi
 remove_legacy_bundles
 
 echo "[done] @dsh-security/helmd -> $latest"
+echo "NOTE: bundle updated. If the release changed the agent preset, run"
+echo "  \"$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security/helmd/scripts/setup-preset.sh\""
+echo "to regenerate/refresh .agent-presets/helmd, then restart dsh if it is running."
