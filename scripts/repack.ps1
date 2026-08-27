@@ -4,9 +4,15 @@ $out = Join-Path $repo "dist-tgz"
 if (Test-Path $out) { Remove-Item -LiteralPath $out -Recurse -Force }
 New-Item -ItemType Directory -Force $out | Out-Null
 
-# Preset single-source sync: presets/full-reverse/ is the ONLY place humans
-# edit persona/preset; repack mirrors it into the package so every consumer
-# (installer, setup-preset, store tarball) ships byte-identical files.
+# Preset anti-drift derivation: agent.cordis.yml is GENERATED from the
+# installed host's OWN standard preset (platform rows stay byte-identical to
+# the running dsh); the only human-edited source is persona.txt. Hand-copying
+# produced incident 2026-08-26 — never reintroduce a manually authored copy.
+Write-Output "generating preset from installed dsh standard..."
+node (Join-Path $repo "scripts\gen-preset.mjs")
+if ($LASTEXITCODE -ne 0) { throw "gen-preset failed (exit $LASTEXITCODE)" }
+
+# Preset single-source sync: presets/full-reverse/ mirrors into the package so
 $presetSrc = Join-Path $repo "presets\full-reverse"
 $presetDst = Join-Path $repo "packages\helmd\presets"
 foreach ($f in @("preset.yml", "agent.cordis.yml")) {

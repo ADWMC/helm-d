@@ -1,5 +1,4 @@
-# The `anchored-standard` experimental preset: Standard capabilities with the
-# Minimal mode system-prompt condition used by the V4 trajectory evaluation.
+# The `standard` agent preset: the full coding agent, mounted once per process.
 #
 # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
 # standing scope; every session naming it joins by scope parentage, so the
@@ -20,10 +19,8 @@
 
 # ── identity ────────────────────────────────────────────────────────────────
 
-# Keep this text byte-identical to the Minimal preset. `complete` prevents the
-# Harness identity and per-tool guidance from changing the system prompt, while
-# runtime-context suppression leaves task and repository rules to user messages
-# and explicit file reads. Tool schemas and their runtime enforcement remain.
+# The preset's own persona, shadowing the deployment default for this agent.
+# `{{model}}` and `{{cwd}}` resolve from the agent's own route and workspace.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
@@ -81,9 +78,6 @@
   name: '@deepseek-ai/dsh-agent-instructions'
   config:
     maxBytes: 65536
-
-# Bootstrap filter is now integrated into @dsh-security/helmd.
-# First request only exposes shell + read; promotion happens automatically.
 
 # ── shell ───────────────────────────────────────────────────────────────────
 
@@ -250,16 +244,17 @@
         toolName: subagent_fork
         backgroundMode: continuable
 
-    # Product providers are host-plane singletons. Copy this preset, then
-    # remove `disabled` from either ordinary tool row to expose that product
-    # only to agents composed from the copy.
+    # Production dsh does not install these optional providers. Install the
+    # matching Bundle in this Profile and restart the Host, then copy this
+    # preset and remove `disabled` from the matching tool row. Host availability
+    # alone grants no tool.
     - id: tool-subagent-codex
       name: '@deepseek-ai/dsh-tool-subagent'
       disabled: true
       config:
         provider: codex
         toolName: subagent_codex
-        enableRunInBackground: false
+        backgroundMode: one-shot
         maxDepth: provider-managed
 
     - id: tool-subagent-claude-code
@@ -268,7 +263,7 @@
       config:
         provider: claude-code
         toolName: subagent_claude_code
-        enableRunInBackground: false
+        backgroundMode: one-shot
         maxDepth: provider-managed
 
     - id: workflow-worker-thread
@@ -302,7 +297,6 @@
   config:
     fetch: false
     searchTimeoutMs: 60000
-
 
 # ── helmd unified security bundle ──────────────────────────────────────
 - id: helmd

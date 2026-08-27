@@ -22,11 +22,14 @@
 
 | 数据 | 唯一编辑点 | 自动流向 |
 |------|-----------|---------|
-| persona / preset 配置 | `presets/full-reverse/` | repack 同步 → `packages/helmd/presets/` → tgz；installer 与 setup 从安装后的包拷贝 |
+| persona 文本 | `packages/helmd/presets/persona.txt` | repack 经 `scripts/gen-preset.mjs` 注入 → `presets/full-reverse/agent.cordis.yml`（生成物）→ 包内镜像 → tgz |
+| preset 平台行 | **不存在**——从宿主内置 standard 派生 | `gen-preset.mjs` 读宿主 `<dsh>/config/agent-presets/standard/agent.cordis.yml` 原文，仅覆写 persona 段 + 追加 helmd 行 |
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
+
+> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。手抄平台行会在宿主升级后漂移——2026-08-26 事故（组装出 44 工具的残废目录、宿主平台工具全失）即由此而来，见 `docs/incident-2026-08-26-preset-stale-generation.md`。生成器内建断言：行集合 ≡ 宿主 standard + persona + helmd、无重复 id、非触碰区逐字节守恒，违者构建即红。
 
 ## 2. 发布流程（checklist 式）
 
@@ -65,16 +68,20 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 
 ## 3. 改人格 / preset 的流程
 
-1. **只编辑 `presets/full-reverse/`**（preset.yml + agent.cordis.yml），不要直接改包内副本或 `.dsh` 下的现役文件
-2. `.\scripts\repack.ps1`（自动镜像到 `packages/helmd/presets/`）
+1. **只编辑 `packages/helmd/presets/persona.txt`**（人格文本单源）。preset.yml 可直接编辑。**不要手改任何 `agent.cordis.yml`**——它是生成物
+2. `.\scripts\repack.ps1`（自动执行 gen-preset 生成 + 镜像到 `packages/helmd/presets/`）
 3. 本机生效二选一：
    ```powershell
    # 方式 A：重装 bundle 后跑 setup（模拟商店用户路径）
    & "$env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-security\helmd\scripts\setup-preset.ps1"
+   # 方式 B：直接把生成物覆盖到现役 preset 目录（stamp 变化 ⇒ 下个会话重建 mount）
+   Copy-Item .\presets\full-reverse\agent.cordis.yml "$env:USERPROFILE\.dsh\.agent-presets\helmd\agent.cordis.yml" -Force
    ```
-4. 重启会话选 `helmd` preset 验证
+4. 重启会话选 `helmd` preset 验证（见 §8 护栏断言）
 
-> 三处拷贝已收敛为「一处编辑 + 两处自动镜像」。若发现任何文件出现第三份 persona 文本，即为 bug。
+> 单源规则：persona.txt 一处编辑，其余全部自动派生。若发现第三份 persona 文本，即为 bug。
+>
+> 宿主升级后必须重跑一次 repack（或 `node scripts\gen-preset.mjs && node scripts\gen-preset.mjs --check`），否则生成物还停留在旧宿主形状。`gen-preset --check` 非 0 = 现役文件已过期。
 
 ## 4. Registry（awesome-dsh-plugin）维护
 
@@ -99,6 +106,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 | GitHub API 匿名限流 | update.ps1 报 403 | `$env:GH_TOKEN = gh auth token` 再跑 |
 | bash 测 Windows 路径 | WSL 报 No such file | 用 `/mnt/c/...` 形式传给 `bash -n` |
 | 强降级 | dev 新版被 latest release 覆盖 | update 脚本自带守卫；绕过需显式 `-AllowDowngrade` |
+| 手抄 preset 平台行 | 宿主升级后 standing mount 重建出残废工具目录（2026-08-26：44 工具、零平台工具、bootstrap 两件套消失） | preset 一律由 `gen-preset.mjs` 从宿主 standard 派生；部署新 preset 后**必须**开测试会话断言（§8 护栏） |
 
 ## 6. 更新脚本用法（自用/分发同一套）
 
@@ -133,3 +141,4 @@ PR #2708        已合并 (2026-08-23)
 - [ ] `repack` 后 tgz 内含 `presets/` + `scripts/setup-preset.*`
 - [ ] setup-preset 从安装位置跑通且与 `presets/full-reverse/` 逐字节一致
 - [ ] release 五件资产齐全 + 稳定别名 200
+- [ ] **preset 护栏**（每次改动 agent.cordis.yml 产物后）：新开 helmd-preset 测试会话，读首条 `request/header`——首轮 tools 恰为 `[pwsh, read]`（win32），晋升后全量目录含 helmd 域工具 + 平台工具且 ≥60 个。不达标立即回滚 `.bak` 并查 `docs/incident-2026-08-26-preset-stale-generation.md` §4
