@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r exec tsc -p tsconfig.json --noEmit"
+    "typecheck": "pnpm -r exec tsc -p tsconfig.json --noEmit",
+    "test:preset": "node scripts/test-gen-preset.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

@@ -45,4 +45,5 @@ for f in preset.yml agent.cordis.yml; do
   fi
 done
 echo "[done] preset '$PRESET' written to $PRESET_DIR"
+echo "NOTE: if dsh is currently running, restart it after a changed preset so its standing mount reloads cleanly."
 echo "pick '$PRESET' in the UI preset picker when starting a session."

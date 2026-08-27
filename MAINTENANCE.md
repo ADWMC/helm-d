@@ -23,13 +23,13 @@
 | 数据 | 唯一编辑点 | 自动流向 |
 |------|-----------|---------|
 | persona 文本 | `packages/helmd/presets/persona.txt` | repack 经 `scripts/gen-preset.mjs` 注入 → `presets/full-reverse/agent.cordis.yml`（生成物）→ 包内镜像 → tgz |
-| preset 平台行 | **不存在**——从宿主内置 standard 派生 | `gen-preset.mjs` 读宿主 `<dsh>/config/agent-presets/standard/agent.cordis.yml` 原文，仅覆写 persona 段 + 追加 helmd 行；**安装/更新脚本在目标机再次生成**（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
+| preset 平台行 | **不存在**——由宿主组合提供 | `gen-preset.mjs` 读取宿主 standard 并记录指纹，仅生成 persona overlay；**安装/更新脚本在目标机再次生成**（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
 
-> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。手抄平台行会在宿主升级后漂移——2026-08-26 事故（组装出 44 工具的残废目录、宿主平台工具全失）即由此而来，见 `docs/incident-2026-08-26-preset-stale-generation.md`。生成器内建断言：行集合 ≡ 宿主 standard + persona + helmd、无重复 id、非触碰区逐字节守恒，违者构建即红。
+> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。手抄平台行会在宿主升级后漂移，且在 standing mount 重建时与宿主注册表冲突；2026-08-26 事故见 `docs/incident-2026-08-26-preset-stale-generation.md`。生成器内建断言：输出只能包含 persona，且不得重复声明 host 或 helmd bundle 行，违者构建即红。
 
 ## 2. 发布流程（checklist 式）
 
@@ -109,6 +109,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 | bash 测 Windows 路径 | WSL 报 No such file | 用 `/mnt/c/...` 形式传给 `bash -n` |
 | 强降级 | dev 新版被 latest release 覆盖 | update 脚本自带守卫；绕过需显式 `-AllowDowngrade` |
 | 手抄 preset 平台行 | 宿主升级后 standing mount 重建出残废工具目录（2026-08-26：44 工具、零平台工具、bootstrap 两件套消失） | preset 一律由 `gen-preset.mjs` 从宿主 standard 派生；部署新 preset 后**必须**开测试会话断言（§8 护栏） |
+| 重复运行安装器 | preset 内容未变也会触发 standing mount 重建，运行中宿主可能报 `already registered` | 生成器对相同内容保持文件 mtime；内容实际变化后仍须重启 dsh 再开新会话 |
 
 ## 6. 更新脚本用法（自用/分发同一套）
 

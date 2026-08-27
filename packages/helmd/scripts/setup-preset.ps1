@@ -24,7 +24,8 @@ New-Item -ItemType Directory -Force $presetDir | Out-Null
 # when node or the generator is unavailable.
 $genScript = Join-Path $PSScriptRoot "gen-preset.mjs"
 $generated = $false
-if (Get-Command node -ErrorAction SilentlyContinue -and (Test-Path $genScript)) {
+$nodeCommand = Get-Command node -ErrorAction SilentlyContinue
+if ($nodeCommand -and (Test-Path $genScript)) {
     & node $genScript --out $presetDir 2>&1 | ForEach-Object { Write-Host ("    " + $_) }
     if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $presetDir "agent.cordis.yml"))) {
         $generated = $true
@@ -46,4 +47,5 @@ foreach ($f in @("preset.yml", "agent.cordis.yml")) {
     }
 }
 Write-Host "[done] preset '$Preset' written to $presetDir"
+Write-Host "NOTE: if dsh is currently running, restart it after a changed preset so its standing mount reloads cleanly."
 Write-Host "pick '$Preset' in the UI preset picker when starting a session."
