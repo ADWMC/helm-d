@@ -17,14 +17,26 @@
  * Usage:
  *   node scripts/gen-preset.mjs            # write generated files (repo layout)
  *   node scripts/gen-preset.mjs --out <dir># write <dir>/agent.cordis.yml only (bundle layout)
- *   node scripts/gen-preset.mjs --check    # verify on-disk == freshly generated
+ *   node scripts/gen-preset.mjs --check    # verify on-disk == freshly generated;
+ *                                          #   distinguishes "host upgraded"
+ *                                          #   (fingerprint moved) from "file
+ *                                          #   drifted" (same host fingerprint)
+ *
+ * The first line of every generated file is
+ *
+ *   # gen-preset: host=<sha256 of the host standard text>
+ *
+ * so --check can tell WHICH side moved: a fingerprint mismatch means the
+ * installed dsh upgraded (regenerate), a content mismatch with a matching
+ * fingerprint means persona.txt or the file itself changed (re-sync).
  *
  * Persona single source: packages/helmd/presets/persona.txt (repo) or
  * <bundle>/presets/persona.txt (installed bundle; resolved relative to this
  * script so the same file works in both layouts).
  * Overridable host discovery env: DSH_HOST_STANDARD_YML
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -193,25 +205,49 @@ function assertShape(hostText, out, personaText) {
 // ── main ────────────────────────────────────────────────────────────────────
 const hostYml = locateHostStandard()
 const hostText = readFileSync(hostYml, 'utf8')
+const hostHash = createHash('sha256').update(hostText, 'utf8').digest('hex')
 const personaText = readFileSync(personaPath, 'utf8')
-const generated = generate(hostText, personaText)
+const body = generate(hostText, personaText)
+const generated = `# gen-preset: host=${hostHash}\n\n` + body
+
+// Read a generated file's recorded host fingerprint, or null when absent.
+function fileFingerprint(p) {
+  let cur
+  try { cur = readFileSync(p, 'utf8') } catch { return null }
+  const m = cur.match(/^# gen-preset: host=([0-9a-f]{64})\n/)
+  return m ? m[1] : null
+}
 
 if (CHECK) {
   let bad = false
   for (const p of outPaths) {
     let cur
     try { cur = readFileSync(p, 'utf8') } catch { cur = null }
-    if (cur !== generated) {
-      console.error(`STALE: ${p} does not match generation from ${hostYml}`)
-      bad = true
+    if (cur === generated) continue
+    const fp = fileFingerprint(p)
+    if (fp !== null && fp !== hostHash) {
+      console.error(`HOST UPGRADED: ${p} was generated against dsh standard ${fp.slice(0, 12)}…;`)
+      console.error(`  the installed host standard now hashes ${hostHash.slice(0, 12)}… — platform rows are stale.`)
+      console.error(`  regenerate: node ${process.argv[1]}  (or re-run repack / setup-preset)`)
+    } else {
+      console.error(`STALE: ${p} does not match generation from ${hostYml} (same host fingerprint, content drifted)`)
     }
+    bad = true
   }
   console.log(bad ? 'preset check FAILED' : `preset check OK (${hostYml})`)
   process.exit(bad ? 1 : 0)
 }
 
+let wroteAny = false
 for (const p of outPaths) {
+  const oldFp = fileFingerprint(p)
+  mkdirSync(dirname(p), { recursive: true })
   writeFileSync(p, generated, 'utf8')
+  wroteAny = true
   console.log(`generated: ${p}`)
+  if (oldFp !== null && oldFp !== hostHash) {
+    console.log(`  note: host standard changed since last generation (${oldFp.slice(0, 12)}… → ${hostHash.slice(0, 12)}…)`)
+  }
 }
+if (!wroteAny) console.log('nothing to write')
 console.log(`source of truth: ${hostYml}`)

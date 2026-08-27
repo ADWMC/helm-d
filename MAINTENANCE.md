@@ -81,7 +81,9 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 
 > 单源规则：persona.txt 一处编辑，其余全部自动派生。若发现第三份 persona 文本，即为 bug。
 >
-> 宿主升级后必须重跑一次 repack（或 `node scripts\gen-preset.mjs && node scripts\gen-preset.mjs --check`），否则生成物还停留在旧宿主形状。`gen-preset --check` 非 0 = 现役文件已过期。
+> 宿主升级后必须重跑一次 repack（或 `node scripts\gen-preset.mjs && node scripts\gen-preset.mjs --check`），否则生成物还停留在旧宿主形状。`gen-preset --check` 非 0 时**区分两种过期**：
+> - **`HOST UPGRADED`**（生成物头部指纹 `# gen-preset: host=<sha256>` 与现宿主 standard 不一致）＝宿主 dsh 已升级，平台行过期，重新生成/重装即可；
+> - **`STALE … content drifted`**（指纹一致但产物与生成不符）＝persona.txt 或手改导致漂移，走本流程第一步同步。
 
 ## 4. Registry（awesome-dsh-plugin）维护
 

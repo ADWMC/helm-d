@@ -1,3 +1,5 @@
+# gen-preset: host=fa14feb98daef20b810fef30bb7239a89a786de3c45c602b37743f7100d9a5af
+
 # The `standard` agent preset: the full coding agent, mounted once per process.
 #
 # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
