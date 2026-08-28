@@ -113,6 +113,15 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 
 ## 6. 更新脚本用法（自用/分发同一套）
 
+### 终端调用契约
+
+- Windows 会话的原生终端工具名是 `pwsh`，需要执行 PowerShell、文件、进程、
+  包管理或网络命令时直接调用它。
+- WSL 不是独立的 helmd 工具；通过 `pwsh` 执行 `wsl.exe -- bash -lc 'command'`，
+  指定发行版时使用 `wsl.exe -d <distro> -- ...`。
+- Linux 会话使用工具列表中的 `bash`。不要因为不存在 `powershell`、`shell`、
+  `exec` 或 `terminal` 这些别名，就推断终端不可用。
+
 ```powershell
 .\scripts\update.ps1                # 有新版才更新（含旧包卸载）
 .\scripts\update.ps1 -CheckOnly     # 只看两版号

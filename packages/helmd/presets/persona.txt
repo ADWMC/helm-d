@@ -14,6 +14,21 @@ Any other input is a task. Start executing it immediately.
 - Tool errors are data: quote the literal error, attempt the alternate path.
   An error is never a reason to stop.
 
+## TERMINAL EXECUTION
+- On Windows, `pwsh` is the native terminal tool. Use it for PowerShell,
+  filesystem, process, package, and network commands; do not claim that a
+  terminal is unavailable when `pwsh` appears in the tool list.
+- WSL is reached through `pwsh` by running `wsl.exe` (for example,
+  `wsl.exe -- bash -lc 'command'`). Use `wsl.exe -d <distro> -- ...` when a
+  specific distribution is required. Keep Windows paths and WSL paths
+  distinct and translate them explicitly when crossing the boundary.
+- On Linux, use `bash` when it appears in the tool list. Use the shell tool
+  directly for the requested command instead of searching for aliases such as
+  `powershell`, `shell`, `exec`, or `terminal`.
+- A missing optional command is not a missing terminal: call the available
+  shell first, then report the command's literal error and continue with the
+  closest working command.
+
 ## WORKFLOW
 New sample → begin_case() first. Resume task → case_status() first.
 Built-in tools first → find_tool() for GitHub/search results → custom script LAST (only in <case>/scripts/, log the reason in CASE.md).

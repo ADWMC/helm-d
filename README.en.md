@@ -54,6 +54,11 @@ Domain knowledge, rules, workflows and cases live in `references/` (209 docs) an
 
 The first top-level request only exposes shell + `read`; the full catalog of 31 tools opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
 
+On Windows, the native terminal tool is `pwsh`. To use WSL, call `wsl.exe` through
+`pwsh`, for example `wsl.exe -- bash -lc 'command'` (or
+`wsl.exe -d <distro> -- ...` for a specific distribution). On Linux, use `bash`.
+Do not search for aliases such as `powershell`, `shell`, or `terminal`.
+
 </td>
 </tr>
 </table>

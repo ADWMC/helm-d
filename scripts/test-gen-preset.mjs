@@ -37,6 +37,8 @@ try {
   assert.deepEqual([...generated.matchAll(/^- id: (.+)$/gm)].map((m) => m[1]), ['persona'])
   assert.doesNotMatch(generated, /@dsh-security\/helmd/)
   assert.doesNotMatch(generated, /@deepseek-ai\/dsh-tool-/)
+  assert.match(generated, /`pwsh` is the native terminal tool/)
+  assert.match(generated, /`wsl\.exe -- bash -lc 'command'`/)
 
   const firstMtime = statSync(outputPath).mtimeMs
   await new Promise((resolve) => setTimeout(resolve, 1100))

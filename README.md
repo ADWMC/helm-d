@@ -54,6 +54,10 @@ Android · Web · Native · Protocol · Malware · AI-Security 六大安全领�
 
 首个顶层请求只暴露 shell + `read`，晋升后放开完整目录。文本首答不会困在 bootstrap，第二轮一定见到全量工具。
 
+Windows 会话的原生终端工具名是 `pwsh`；需要使用 WSL 时，通过 `pwsh` 执行
+`wsl.exe -- bash -lc 'command'`（指定发行版用 `wsl.exe -d <distro> -- ...`）。Linux
+会话使用 `bash`。不要搜索 `powershell`、`shell` 或 `terminal` 这些别名。
+
 </td>
 </tr>
 </table>
