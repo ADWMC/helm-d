@@ -23,13 +23,13 @@
 | 数据 | 唯一编辑点 | 自动流向 |
 |------|-----------|---------|
 | persona 文本 | `packages/helmd/presets/persona.txt` | repack 经 `scripts/gen-preset.mjs` 注入 → `presets/full-reverse/agent.cordis.yml`（生成物）→ 包内镜像 → tgz |
-| preset 平台行 | **不存在**——由宿主组合提供 | `gen-preset.mjs` 读取宿主 standard 并记录指纹，仅生成 persona overlay；**安装/更新脚本在目标机再次生成**（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
+| preset 平台行 | 宿主内置 `standard` | `gen-preset.mjs` 读取宿主 `<dsh>/config/agent-presets/standard/agent.cordis.yml`，保留平台行并替换 persona；**不**写入由 profile bundle 挂载的 `@dsh-security/helmd` 行。安装/更新脚本在目标机再次生成（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
 
-> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。手抄平台行会在宿主升级后漂移，且在 standing mount 重建时与宿主注册表冲突；2026-08-26 事故见 `docs/incident-2026-08-26-preset-stale-generation.md`。生成器内建断言：输出只能包含 persona，且不得重复声明 host 或 helmd bundle 行，违者构建即红。
+> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。平台行必须从当前宿主 `standard` 生成，否则 `pwsh`、`read` 等工具会缺失或在升级后漂移；`@dsh-security/helmd` 则只能由 profile bundle 挂载，写入 preset 会重复注册。生成器内建断言：平台行集合与宿主 standard 一致、无重复 id、且没有 helmd bundle 行，违者构建即红。
 
 ## 2. 发布流程（checklist 式）
 

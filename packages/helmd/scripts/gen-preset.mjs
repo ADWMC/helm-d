@@ -3,16 +3,16 @@
  * gen-preset.mjs — generate presets/full-reverse/agent.cordis.yml from the
  * HOST's own installed `standard` agent preset.
  *
- * Why: the profile already mounts the standard platform rows and the helmd
- * bundle through its host composition. Re-declaring those rows in a user
- * preset collides with the host registry (and can fail with "already
- * registered"), especially when a standing mount is rebuilt. This script
- * therefore emits a deliberately small overlay by construction:
+ * Why: standard platform tools (pwsh/bash/read/etc.) belong to the agent
+ * preset and must be copied from the installed dsh standard preset. The
+ * profile already mounts the helmd bundle, however; declaring that bundle in
+ * the user preset registers helmd twice and can fail with "already
+ * registered" when a standing mount is rebuilt. This script therefore emits:
  *
- *   output = luna persona row
+ *   output = host standard - host persona + luna persona
  *
- * The host standard is still read and fingerprinted so --check detects a
- * host upgrade, while the generated preset never owns host-plane tools.
+ * The generated preset owns standard platform tool rows, but never owns the
+ * helmd bundle row. --check detects a host upgrade through its fingerprint.
  *
  * Usage:
  *   node scripts/gen-preset.mjs            # write generated files (repo layout)
@@ -124,10 +124,19 @@ function renderPersonaRow(text) {
 }
 
 function generate(hostText, personaText) {
-  if (!/^- id: persona\r?\n/m.test(hostText)) {
+  const startMatch = hostText.match(/^- id: persona\r?\n/m)
+  if (!startMatch || startMatch.index === undefined) {
     throw new Error('host standard has no `- id: persona` row')
   }
-  const out = renderPersonaRow(personaText) + '\n'
+  const startIndex = startMatch.index
+  const nextRow = /^- id: /gm
+  nextRow.lastIndex = startIndex + startMatch[0].length
+  const nextMatch = nextRow.exec(hostText)
+  const endIndex = nextMatch?.index ?? hostText.length
+  const out =
+    hostText.slice(0, startIndex)
+    + renderPersonaRow(personaText) + '\n\n'
+    + hostText.slice(endIndex).replace(/^\r?\n+/, '')
   assertShape(hostText, out, personaText)
   return out
 }
@@ -135,12 +144,19 @@ function generate(hostText, personaText) {
 // ── assertions: fail loud, never emit a silently-wrong preset ──────────────
 function assertShape(hostText, out, personaText) {
   const ids = (t) => [...t.matchAll(/^- id: (.+)$/gm)].map((m) => m[1])
+  const hostIds = ids(hostText)
   const outIds = ids(out)
-  if (JSON.stringify(outIds) !== JSON.stringify(['persona'])) {
-    throw new Error(`overlay must contain only persona row, got: ${outIds.join(', ')}`)
+  const expect = [...hostIds].sort()
+  const got = [...outIds].sort()
+  if (JSON.stringify(got) !== JSON.stringify(expect)) {
+    throw new Error(`row id set mismatch\n  expected: ${expect.join(', ')}\n  got:      ${got.join(', ')}`)
   }
-  if (out.includes('@dsh-security/helmd') || /@deepseek-ai\/dsh-tool-/.test(out)) {
-    throw new Error('overlay must not redeclare host or helmd bundle entries')
+  for (const id of outIds) {
+    const count = outIds.filter((candidate) => candidate === id).length
+    if (count !== 1 && id !== '_') throw new Error(`duplicated row id: ${id} (x${count})`)
+  }
+  if (out.includes('@dsh-security/helmd')) {
+    throw new Error('preset must not redeclare the profile-owned helmd bundle')
   }
 
   const pBlock = out.slice(out.indexOf('- id: persona'), out.indexOf('- id: ', out.indexOf('- id: persona') + 1))
@@ -152,7 +168,6 @@ function assertShape(hostText, out, personaText) {
   }
   if (!out.includes('helmd online')) throw new Error('activation line missing from persona')
   if (!personaText.trim()) throw new Error('persona.txt is empty')
-
 }
 
 // ── main ────────────────────────────────────────────────────────────────────

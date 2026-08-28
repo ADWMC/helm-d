@@ -34,9 +34,9 @@ try {
   assert.match(first, /generated:/)
   const generated = readFileSync(outputPath, 'utf8')
   assert.match(generated, /^# gen-preset: host=[0-9a-f]{64}/)
-  assert.deepEqual([...generated.matchAll(/^- id: (.+)$/gm)].map((m) => m[1]), ['persona'])
+  assert.deepEqual([...generated.matchAll(/^- id: (.+)$/gm)].map((m) => m[1]), ['persona', 'tool-example'])
+  assert.match(generated, /- id: tool-example/)
   assert.doesNotMatch(generated, /@dsh-security\/helmd/)
-  assert.doesNotMatch(generated, /@deepseek-ai\/dsh-tool-/)
   assert.match(generated, /`pwsh` is the native terminal tool/)
   assert.match(generated, /`wsl\.exe -- bash -lc 'command'`/)
 
