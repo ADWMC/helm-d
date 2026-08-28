@@ -97,6 +97,8 @@ helmd/
 - `skill-evidence/references/reverse-flow-skill.md`：删除旧的激活协议与强制"进入逆向模式"开场白。
 - `skill-evidence/references/prompting.md`：删除旧的启动提示代码块与开场白。
 - 全仓库无旧的 `Activation protocol` / skill 内激活词。
+- 激活协议唯一来源为 `packages/helmd/presets/persona.txt`，精确输入 `helmd` 才返回固定上线语；router 残留 prompt 不再定义第二套激活回复。
+- `create_case` 生成的 case prompt 只记录任务上下文，不自动宣告进入逆向模式，避免把普通 case 创建误当作启动指令。
 
 ## 7. 验证
 
