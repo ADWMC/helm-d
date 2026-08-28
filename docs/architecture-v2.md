@@ -94,9 +94,9 @@ helmd/
 
 ## 6. 本轮删除项
 
-- `skill-evidence/references/reverse-flow-skill.md`：删除 `Activation protocol`、`真心为你` 与强制"进入逆向模式"开场白。
-- `skill-evidence/references/prompting.md`：删除 `Startup prompt` 代码块及 `真心为你` 开场白。
-- 全仓库无 `Activation protocol` / `真心为你` / 其他 skill 内激活词。
+- `skill-evidence/references/reverse-flow-skill.md`：删除旧的激活协议与强制"进入逆向模式"开场白。
+- `skill-evidence/references/prompting.md`：删除旧的启动提示代码块与开场白。
+- 全仓库无旧的 `Activation protocol` / skill 内激活词。
 
 ## 7. 验证
 

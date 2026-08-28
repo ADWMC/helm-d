@@ -43,8 +43,6 @@ def main() -> int:
     (case_dir / "notes" / "user-decisions.md").write_text("# User Decisions\n\n| Time | Phase | Options offered | User choice | Result |\n|---|---|---|---|---|\n", encoding="utf-8")
     (case_dir / "prompts" / "reverse-mode-prompt.md").write_text("""# Reverse Mode Prompt
 
-真心为你
-
 已进入逆向模式。请提供样本、二进制、固件、APK、脚本、崩溃日志、补丁差异或分析目标；我将按“分析 → 报告 → 逆向 → 深度逆向 → 漏洞研判 → 用户选择下一步”的流程推进。
 
 ## Internal English Core
