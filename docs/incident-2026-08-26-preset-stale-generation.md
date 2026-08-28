@@ -136,3 +136,54 @@ v0.2.0 部署（08/26 20:53）改写了 `~/.dsh/.agent-presets/helmd/agent.cordi
 - `scripts/repack.ps1` — 打包前先跑生成器（接入）
 - `MAINTENANCE.md` — 单源表、§3 流程、§5 坑位表、§8 护栏改写
 - 已部署：`~/.dsh/.agent-presets/helmd/agent.cordis.yml` = 生成版（与 repo 哈希一致，已活体验证）
+
+## 9. 后续修复：取消重复注册（2026-08-28）
+
+### 问题是什么
+
+上一版方案 C 仍把宿主 `standard` 的平台工具行和
+`@dsh-security/helmd` 行写进用户 preset。后续实测证明，web profile
+的 host composition 已经提供这些平台注册项和 helmd bundle；用户 preset
+再次声明同一批行会向同一注册表重复注册。
+
+当 dsh 对 `helmd` preset 建立或重建 standing mount 时，真实
+`session.create` 会失败，错误为 `tool "<name>" is already registered`，
+受影响项包括 `pwsh`、`read`、平台工具和 helmd 工具。这个现象不是包缺失、
+也不是 persona 解析失败，而是 host-owned 工具被 preset 重复声明。
+
+### 如何修复
+
+1. 将 `scripts/gen-preset.mjs` 和包内镜像
+   `packages/helmd/scripts/gen-preset.mjs` 改为只生成 `persona` overlay。
+   生成器仍读取并记录宿主 standard 的哈希，但不再输出任何平台行或
+   `@dsh-security/helmd` 行。
+2. 生成器增加断言：输出只能有 `persona` 一行，且不能包含
+   `@dsh-security/helmd` 或 `@deepseek-ai/dsh-tool-*`。
+3. 对字节相同的生成结果不重写文件，避免无意义变更 mtime 而触发
+   standing mount 重建。内容发生变化后，安装脚本明确提示先重启 dsh。
+4. 同步仓库生成物与包内 `presets/agent.cordis.yml`，确保 tgz 安装路径
+   使用同一份 persona-only preset。
+5. 修复 `setup-preset.ps1` 的条件表达式：先取得 `Get-Command node`
+   的结果再判断，避免 PowerShell 将 `-and` 误解析为 `Get-Command` 参数。
+
+### 验证证据
+
+| 验证项 | 结果 |
+|---|---|
+| `pnpm test:preset` | 通过；覆盖生成器幂等性及 persona-only 约束 |
+| `node scripts/gen-preset.mjs --check` | 通过 |
+| `pnpm typecheck` / `pnpm build` | 均通过 |
+| `setup-preset.ps1` 临时 `DSH_HOME` 安装 | 通过；生成结果与仓库 preset 逐字节一致 |
+| 新启动 dsh 后 HTTP `session.create(agentPreset: "helmd")` | 成功，返回 `ok: true` 和新 sessionId，未出现重复注册错误 |
+| 新会话 `request/header` | 已包含 `pwsh`、`read` 与 helmd 域工具 |
+
+模型驱动的 `pwsh` 回合未能完成，原因是该测试环境的模型提供方返回
+`403 Insufficient account balance`；这是外部账户余额限制，不是 preset
+mount、工具注册或 `pwsh` 可用性错误。
+
+### 维护结论
+
+此处的 persona-only overlay 取代本报告第 5 和第 7 节中旧方案 C 的
+“复制宿主 standard 并追加 helmd 行”实现。今后用户 preset 只负责 persona；
+平台工具和 helmd bundle 均由 profile host composition 负责。改动 preset
+内容后仍必须重启 dsh，再创建新会话进行 `session.create` 验证。
