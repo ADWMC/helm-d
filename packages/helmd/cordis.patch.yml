@@ -1,5 +1,3 @@
 - insert:
-    - id: helmd
-      name: '@dsh-security/helmd'
     - id: helmd-health
       name: '@dsh-security/helmd/dist/health.js'

@@ -1,5 +1,5 @@
 /**
- * Host-plane health surface for the helmd bundle.
+ * Host-plane health surface for the helmd package.
  *
  * Registers the read-only settings namespace `helmd` whose composed base
  * carries a boot-time evaluation of the deployed preset fingerprint
@@ -11,9 +11,9 @@
  * (incident 2026-08-26: generation replacement collides in the same preset
  * scope), so boot time is exactly the moment this verdict is true.
  *
- * All @deepseek-ai/* imports resolve through the composition loader's
- * harness-base importer, like every other bundle row — the profile carries no
- * node_modules of its own.
+ * Agent tools are mounted separately by the helmd preset. Keeping this row on
+ * the host plane makes the health card available without exposing helmd tools
+ * to other agents.
  */
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'

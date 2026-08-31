@@ -14,7 +14,7 @@
 
 ## 本地打包与安装
 
-这里的每个子包都是 **bundle**，不是 profile。bundle 通过 `dsh.bundle.patch` 声明自己贡献的 patch；profile 由 dsh 在 `$DSH_HOME/profiles/<name>` 下维护，记录 bundle 的顺序和用户自己的 `cordis.patch.yml`。
+这里的每个子包都是 **bundle**，不是 profile。bundle 通过 `dsh.bundle.patch` 声明自己贡献的 host patch；profile 由 dsh 在 `$DSH_HOME/profiles/<name>` 下维护。`@dsh-security/helmd` 的安全工具是例外：包作为依赖安装，但工具主入口由 helmd Agent preset 加载，全局 patch 只保留健康检查。
 
 本地交付使用已构建的 tarball：
 

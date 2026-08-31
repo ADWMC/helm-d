@@ -314,3 +314,6 @@
   config:
     fetch: false
     searchTimeoutMs: 60000
+
+- id: helmd
+  name: '@dsh-security/helmd'

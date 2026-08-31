@@ -9,6 +9,11 @@ const host = join(root, 'standard', 'agent.cordis.yml')
 const out = join(root, 'helmd')
 
 try {
+  assert.equal(
+    readFileSync(join(import.meta.dirname, 'gen-preset.mjs'), 'utf8'),
+    readFileSync(join(import.meta.dirname, '..', 'packages', 'helmd', 'scripts', 'gen-preset.mjs'), 'utf8'),
+    'packaged preset generator drifted from the repository source',
+  )
   mkdirSync(join(root, 'standard'), { recursive: true })
   writeFileSync(host, [
     '- id: persona',
@@ -34,9 +39,12 @@ try {
   assert.match(first, /generated:/)
   const generated = readFileSync(outputPath, 'utf8')
   assert.match(generated, /^# gen-preset: host=[0-9a-f]{64}/)
-  assert.deepEqual([...generated.matchAll(/^- id: (.+)$/gm)].map((m) => m[1]), ['persona', 'tool-example'])
+  assert.deepEqual([...generated.matchAll(/^- id: (.+)$/gm)].map((m) => m[1]), ['persona', 'tool-example', 'helmd'])
   assert.match(generated, /- id: tool-example/)
-  assert.doesNotMatch(generated, /@dsh-security\/helmd/)
+  assert.equal((generated.match(/@dsh-security\/helmd/g) ?? []).length, 1)
+  const bundlePatch = readFileSync(join(import.meta.dirname, '..', 'packages', 'helmd', 'cordis.patch.yml'), 'utf8')
+  assert.doesNotMatch(bundlePatch, /name: '@dsh-security\/helmd'$/m)
+  assert.match(bundlePatch, /@dsh-security\/helmd\/dist\/health\.js/)
   assert.match(generated, /`pwsh` is the native terminal tool/)
   assert.match(generated, /`wsl\.exe -- bash -lc 'command'`/)
 

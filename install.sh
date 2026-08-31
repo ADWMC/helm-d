@@ -81,10 +81,10 @@ if command -v node >/dev/null 2>&1 && [ -f "$GEN_SCRIPT" ]; then
   fi
 fi
 if [ "$GENERATED" != "true" ]; then
-  cp "$BUNDLE_PRESETS/preset.yml" "$PRESET_DIR/preset.yml"
   cp "$BUNDLE_PRESETS/agent.cordis.yml" "$PRESET_DIR/agent.cordis.yml"
   echo "  preset copied from bundle snapshot"
 fi
+cp "$BUNDLE_PRESETS/preset.yml" "$PRESET_DIR/preset.yml"
 
 echo "[4/4] preset written: $PRESET (default NOT auto-set; pick 'helmd' in the UI preset picker)"
 echo

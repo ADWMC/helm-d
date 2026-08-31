@@ -36,7 +36,7 @@ Android · Web · Native · Protocol · Malware · AI-Security 六大安全领�
 
 ### 单包聚合 · 一条命令
 
-全部能力收敛进一个 `@dsh-security/helmd` bundle：bootstrap、router、七大领域工具、toolbox 全在里面。`install.ps1` / `install.sh` 下载 Release 预构建 tarball 一条命令装齐，preset 自动写入。
+全部能力收敛进一个 `@dsh-security/helmd` 包。profile 只加载健康检查，preset 在 Agent 隔离上下文中加载 bootstrap、router、七大领域工具和 toolbox。`install.ps1` / `install.sh` 下载 Release 预构建 tarball并自动写入 preset。
 
 </td>
 </tr>
@@ -66,7 +66,7 @@ Windows 会话的原生终端工具名是 `pwsh`；需要使用 WSL 时，通过
 
 DSH 的安全分析能力原本分散在多个领域 bundle：装 Android 要 add，装 Web 要 add，装 Native 还要 add，preset 和 router 也得自己拼。
 
-helmd 把七大领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）+ 工具箱（toolbox）打包成一个 bundle：
+helmd 把七大领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）+ 工具箱（toolbox）打包成一个 Agent 专属包：
 
 `一个 preset` &ensp; `一个 bundle` &ensp; `31 个工具` &ensp; `零手动拼装`
 
@@ -209,7 +209,7 @@ dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/latest/dow
 dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 ```
 
-**商店安装只含 bundle（工具 + bootstrap + router）。完整版还需写入 agent preset（luna 人格、激活词、工具配置）—— 包内自带模板，装完跑一条命令补齐：**
+**商店安装会把包依赖和健康检查装入 profile。安全工具、bootstrap 和 router 只由 helmd Agent preset 加载；包内自带模板，装完运行一条命令写入：**
 
 ```bash
 # Windows (PowerShell)
@@ -224,7 +224,7 @@ dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 ## 验证
 
 ```bash
-dsh --profile web --dump-config   # 应看到 @dsh-security/helmd 一行
+dsh --profile web --dump-config   # 应只看到 @dsh-security/helmd/dist/health.js 全局行
 node packages/helmd/scripts/gen-preset.mjs --check   # preset check OK（红了按指纹提示处理）
 ```
 
@@ -242,7 +242,7 @@ detect_packer <file> → 判定 PE/ELF 保护器
 
 | 包 | 注入 | 职责 | 暴露工具 |
 | --- | --- | --- | --- |
-| `@dsh-security/helmd` | tools + systemPrompt | 全领域安全分析一体化 | 见下表 |
+| `@dsh-security/helmd` | preset-scoped tools | 全领域安全分析一体化，仅影响 helmd Agent | 见下表 |
 
 ### helmd 暴露的工具
 
@@ -317,13 +317,13 @@ dsh plugin --profile web add .\dist-tgz\helmd.tgz       # 装进 web profile
 
 一键安装见上「快速上手」；手动分步如下。前置：`@dsh-security/helmd` 包已发布到 npm（见「发布」）。
 
-### 1. 安装 bundle 到 profile
+### 1. 安装包依赖与健康检查到 profile
 
 ```bash
 dsh plugin --profile web add @dsh-security/helmd
 ```
 
-`dsh plugin` 会把参数转发给 profile 目录里的 pnpm，包落到 `$DSH_HOME/profiles/node_modules/`。
+`dsh plugin` 会把参数转发给 profile 目录里的 pnpm，包落到 `$DSH_HOME/profiles/node_modules/`；全局 patch 只注册只读健康检查，不注册安全工具。
 
 ### 2. 挂载 preset
 

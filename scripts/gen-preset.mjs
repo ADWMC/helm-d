@@ -5,14 +5,14 @@
  *
  * Why: standard platform tools (pwsh/bash/read/etc.) belong to the agent
  * preset and must be copied from the installed dsh standard preset. The
- * profile already mounts the helmd bundle, however; declaring that bundle in
- * the user preset registers helmd twice and can fail with "already
- * registered" when a standing mount is rebuilt. This script therefore emits:
+ * profile mounts only the host-plane health surface. The agent-scoped helmd
+ * tools must be declared by the user preset so other agents remain untouched.
+ * This script therefore emits:
  *
- *   output = host standard - host persona + luna persona
+ *   output = host standard - host persona + luna persona + helmd tools
  *
  * The generated preset owns standard platform tool rows, but never owns the
- * helmd bundle row. --check detects a host upgrade through its fingerprint.
+ * helmd tools row. --check detects a host upgrade through its fingerprint.
  *
  * Usage:
  *   node scripts/gen-preset.mjs            # write generated files (repo layout)
@@ -136,7 +136,8 @@ function generate(hostText, personaText) {
   const out =
     hostText.slice(0, startIndex)
     + renderPersonaRow(personaText) + '\n\n'
-    + hostText.slice(endIndex).replace(/^\r?\n+/, '')
+    + hostText.slice(endIndex).replace(/^\r?\n+/, '').trimEnd()
+    + "\n\n- id: helmd\n  name: '@dsh-security/helmd'\n"
   assertShape(hostText, out, personaText)
   return out
 }
@@ -146,7 +147,7 @@ function assertShape(hostText, out, personaText) {
   const ids = (t) => [...t.matchAll(/^- id: (.+)$/gm)].map((m) => m[1])
   const hostIds = ids(hostText)
   const outIds = ids(out)
-  const expect = [...hostIds].sort()
+  const expect = [...hostIds, 'helmd'].sort()
   const got = [...outIds].sort()
   if (JSON.stringify(got) !== JSON.stringify(expect)) {
     throw new Error(`row id set mismatch\n  expected: ${expect.join(', ')}\n  got:      ${got.join(', ')}`)
@@ -155,9 +156,7 @@ function assertShape(hostText, out, personaText) {
     const count = outIds.filter((candidate) => candidate === id).length
     if (count !== 1 && id !== '_') throw new Error(`duplicated row id: ${id} (x${count})`)
   }
-  if (out.includes('@dsh-security/helmd')) {
-    throw new Error('preset must not redeclare the profile-owned helmd bundle')
-  }
+  if ((out.match(/@dsh-security\/helmd/g) ?? []).length !== 1) throw new Error('preset must declare helmd exactly once')
 
   const pBlock = out.slice(out.indexOf('- id: persona'), out.indexOf('- id: ', out.indexOf('- id: persona') + 1))
   for (const probe of ['complete: true', 'includeRuntimeContext: false']) {

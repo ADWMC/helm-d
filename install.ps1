@@ -104,10 +104,10 @@ if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
         }
     }
     if (-not $generated) {
-        Copy-Item (Join-Path $bundlePresets "preset.yml") (Join-Path $presetDir "preset.yml") -Force
         Copy-Item (Join-Path $bundlePresets "agent.cordis.yml") (Join-Path $presetDir "agent.cordis.yml") -Force
         Write-Host "  preset copied from bundle snapshot"
     }
+    Copy-Item (Join-Path $bundlePresets "preset.yml") (Join-Path $presetDir "preset.yml") -Force
 
     Write-Host "[4/4] preset written: $Preset (default NOT auto-set; pick 'helmd' in the UI preset picker)"
     Write-Host ""

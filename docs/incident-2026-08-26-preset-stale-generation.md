@@ -3,6 +3,10 @@
 > 状态：根因定位完成，最后一公里（致哑具体行）待受控复现定音。
 > 所有结论附证据与置信度。调查过程未修改任何部署文件。
 
+> 2026-08-31 架构更新：本文记录的是当时“helmd 主插件由 profile 全局加载”的
+> 历史修复。当前全局 bundle 只加载 `helmd-health`，主插件由 helmd preset 在
+> Agent 隔离上下文中加载；不要再按本文旧结论把主插件移回 profile。
+
 ## 0. 一句话结论
 
 v0.2.0 部署（08/26 20:53）改写了 `~/.dsh/.agent-presets/helmd/agent.cordis.yml`，当晚首个新顶层会话触发 DSH agent-presets 的 standing-mount **重建新一代**；新代组装出「只剩 bundle 工具、宿主平台工具层整体缺失」的残废目录并静默开席，导致 luna 分析师整场无法调用 shell/read/fs 等任何平台工具。

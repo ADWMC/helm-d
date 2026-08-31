@@ -21,6 +21,7 @@ foreach ($f in @("preset.yml", "agent.cordis.yml")) {
     New-Item -ItemType Directory -Force $presetDst | Out-Null
     Copy-Item $s (Join-Path $presetDst $f) -Force
 }
+Copy-Item (Join-Path $repo "scripts\gen-preset.mjs") (Join-Path $repo "packages\helmd\scripts\gen-preset.mjs") -Force
 Write-Output "presets synced: full-reverse -> packages/helmd/presets"
 
 # Single unified bundle. The unversioned copy keeps the stable download URL
