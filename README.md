@@ -410,7 +410,7 @@ pnpm build
 - 根包 `private: true`，不发布；发布对象是 `@dsh-security/helmd` 单包。
 - `files` 白名单：`dist`、`client.js`、`references`、`scripts`、`presets`、`cordis.patch.yml`。
 - `prepare` 脚本会在发布前自动执行 `tsc`。
-- 当前版本 `0.2.1`。
+- 当前版本 `0.2.2`。
 - Release 资产：`dsh-security-helmd-<ver>.tgz` + 稳定别名 `helmd.tgz`（供商店 tarball 字段与安装器使用）。
 
 ## 风险与缓解
@@ -419,7 +419,7 @@ pnpm build
 |------|------|
 | DSH 宿主版本升级不兼容 | peer 依赖 cordis / dsh-tools，`overrides` 固定版本；preset 指纹三层防线（见上）自动暴露漂移 |
 | 本机缺 `python` | seam 自动探测 python / py / python3，Windows 兼容 `py -3` |
-| 单包版本错位 | 版本 0.2.1，tarball 与 release 同步发布 |
+| 单包版本错位 | 版本 0.2.2，tarball 与 release 同步发布 |
 | 参考知识过时 | 按需读、模型自主判断，非硬性规则 |
 
 ## 参考项目
