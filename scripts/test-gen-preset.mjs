@@ -10,8 +10,8 @@ const out = join(root, 'helmd')
 
 try {
   assert.equal(
-    readFileSync(join(import.meta.dirname, 'gen-preset.mjs'), 'utf8'),
-    readFileSync(join(import.meta.dirname, '..', 'packages', 'helmd', 'scripts', 'gen-preset.mjs'), 'utf8'),
+    readFileSync(join(import.meta.dirname, 'gen-preset.mjs'), 'utf8').replace(/\r\n/g, '\n'),
+    readFileSync(join(import.meta.dirname, '..', 'packages', 'helmd', 'scripts', 'gen-preset.mjs'), 'utf8').replace(/\r\n/g, '\n'),
     'packaged preset generator drifted from the repository source',
   )
   mkdirSync(join(root, 'standard'), { recursive: true })

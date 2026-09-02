@@ -74,10 +74,13 @@ function locateHostStandard(): string | null {
   const candidates: string[] = []
   const appdata = process.env.APPDATA
   if (appdata) {
+    candidates.push(join(appdata, 'npm', 'node_modules', '@deepseek-ai', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-agent-presets', 'presets', 'standard', 'agent.cordis.yml'))
     candidates.push(join(appdata, 'npm', 'node_modules', '@deepseek-ai', 'dsh', 'config', 'agent-presets', 'standard', 'agent.cordis.yml'))
   }
   // Typical POSIX global roots when APPDATA is absent (non-Windows hosts).
   candidates.push(
+    '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-presets/presets/standard/agent.cordis.yml',
+    '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-presets/presets/standard/agent.cordis.yml',
     '/usr/lib/node_modules/@deepseek-ai/dsh/config/agent-presets/standard/agent.cordis.yml',
     '/usr/local/lib/node_modules/@deepseek-ai/dsh/config/agent-presets/standard/agent.cordis.yml',
   )

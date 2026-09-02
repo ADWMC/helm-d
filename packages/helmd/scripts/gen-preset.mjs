@@ -89,18 +89,21 @@ function locateHostStandard() {
     console.error(`note: "${npmCmd} root -g" failed (${String(e.message).split('\n')[0]}); probing default locations`)
   }
   // Probe order: npm-reported root, then the platform-default global roots.
-  const std = ['@deepseek-ai', 'dsh', 'config', 'agent-presets', 'standard', 'agent.cordis.yml']
+  const std = ['@deepseek-ai', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-agent-presets', 'presets', 'standard', 'agent.cordis.yml']
   const bases = []
   if (globalRoot) bases.push(globalRoot)
   if (process.env.APPDATA) bases.push(join(process.env.APPDATA, 'npm', 'node_modules'))
   bases.push('/usr/local/lib/node_modules', '/usr/lib/node_modules')
+  const legacy = ['@deepseek-ai', 'dsh', 'config', 'agent-presets', 'standard', 'agent.cordis.yml']
   for (const b of bases) {
     const c = join(b, ...std)
     if (exists(c)) return c
+    const old = join(b, ...legacy)
+    if (exists(old)) return old
   }
   throw new Error(
     'host standard preset not found; probed:\n  ' + bases.join('\n  ')
-    + '\nset DSH_HOST_STANDARD_YML to <dsh>/config/agent-presets/standard/agent.cordis.yml',
+    + '\nset DSH_HOST_STANDARD_YML to <dsh>/node_modules/@deepseek-ai/dsh-agent-presets/presets/standard/agent.cordis.yml',
   )
 }
 function exists(p) {
