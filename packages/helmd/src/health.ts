@@ -21,7 +21,6 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 
 /** The settings namespace this module serves. Also the client card key. */
 export const HELMD_HEALTH_NS = 'helmd'
@@ -158,11 +157,14 @@ function evaluateHealth(): HelmdHealth {
  * @param ctx - the host composition context this row was plugged into.
  */
 export function apply(ctx: Context): void {
-  ctx.inject(['settings'], (settingsCtx: { settings: { register(ns: unknown, schema: unknown, opts: unknown): unknown } }) => {
+  ctx.inject(['settings'], (settingsCtx) => {
+    const settings = (settingsCtx as Context & {
+      settings: { register(ns: unknown, schema: unknown, opts: unknown): unknown }
+    }).settings
     const health = evaluateHealth()
     try {
-      settingsCtx.settings.register(
-        settingsNamespace(HELMD_HEALTH_NS),
+      settings.register(
+        HELMD_HEALTH_NS,
         HelmdHealthSchema,
         { base: { ...health } },
       )
