@@ -34,20 +34,23 @@ async function persistHook(sessionId: string | undefined, toolName: string, resu
  * Wrap register so every later-registered tool executes through the hook.
  * Must be called BEFORE any register*Tools(ctx) in apply().
  */
-export function applyPersistenceWrap(ctx: Context): void {
+export function applyPersistenceWrap(ctx: Context): () => void {
   const target = ctx.tools as unknown as {
     register: (def: { name: string; execute?: (...a: any[]) => any }) => void
   }
-  const rawRegister = target.register.bind(ctx.tools)
+  const originalRegister = target.register
   target.register = (def) => {
     if (!def || typeof def.execute !== 'function' || isNoPersist(def.name)) {
-      return rawRegister(def)
+      return originalRegister.call(ctx.tools, def)
     }
     const original = def.execute.bind(def)
     ;(def as any).execute = async (args: unknown, exec?: { agent?: { id?: string } }) => {
       const result = await original(args, exec)
       return await persistHook(exec?.agent?.id, def.name, result)
     }
-    return rawRegister(def)
+    return originalRegister.call(ctx.tools, def)
+  }
+  return () => {
+    target.register = originalRegister
   }
 }
