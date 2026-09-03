@@ -408,7 +408,7 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 - The root package is `private: true` and is not published; `@dsh-security/helmd` is.
 - The `files` whitelist: `dist`, `client.js`, `references`, `scripts`, `presets`, `cordis.patch.yml`.
 - The `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.2.1`.
+- Current version: `0.2.3`.
 - Release assets: `dsh-security-helmd-<ver>.tgz` plus the stable alias `helmd.tgz` (used by the store's tarball field and the installers).
 
 ## Risks & mitigations
@@ -417,7 +417,7 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 |------|------------|
 | DSH host upgrade breaks compat | peer deps on cordis / dsh-tools, pinned via `overrides`; three-layer preset fingerprint defense above exposes drift automatically |
 | Missing `python` on the host | seam auto-probes python / py / python3, falls back to the `py` launcher |
-| Bundle/preset version drift | version 0.2.1, tarball and release published together |
+| Bundle/preset version drift | version 0.2.3, tarball and release published together |
 | Reference knowledge goes stale | read on demand, model's own judgment, non-binding |
 
 ## Acknowledgements
