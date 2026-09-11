@@ -33,6 +33,26 @@ export const STANCE_KEY = 'stance:no-hedge'
 /** Standing metric key for the challenge-the-premise discipline. */
 export const CHALLENGE_KEY = 'stance:challenged'
 
+/** Standing metric key for the delivery-report format. */
+export const REPORT_KEY = 'stance:report-prefix'
+
+/**
+ * The four labels a delivery report must pick from (same four names as AGENTS.md §9).
+ * A report that carries none of them is a vague claim, not a report.
+ */
+const REPORT_PREFIX_MARKERS = ['已修复并验证', '已修复未验证', '待决策', '已知问题']
+
+/**
+ * Turns that ask for a delivery report. Deliberately explicit phrasings rather than bare
+ * 状态 / status: "check the service status" is a task, not a request for a report, and a
+ * false arm would record an ordinary reply as an ignored report.
+ */
+const REPORT_REQUEST_RE = new RegExp([
+  '进展如何|进展怎样|进度如何|进度怎样|汇报一下|汇报进展|汇报进度|状态如何|现在什么情况|怎么样了',
+  '修完了吗|做完了吗|完成了吗|弄好了吗|哪些还没做|哪些没做|还有什么没做|还剩什么|结果如何|结果怎么样',
+  'status (report|update)|what(?:\'s| is) the status|any (?:update|progress)|are we done|what(?:\'s| is) left|where (?:are|do) (?:we|you) stand',
+].join('|'), 'i')
+
 /**
  * Claim-shaped user turns: absolute/assertive wording, a quantified claim, or an
  * explicit request to be challenged. A bare digit (a menu reply) is NOT a claim —
@@ -85,6 +105,36 @@ function armStanceMetric(sessionId: string, events: readonly unknown[]): void {
   }, events.length)
 }
 
+/**
+ * Arm the report-format metric when the user asked for a status report: that reply owes
+ * one of the four labels. Track-only, like the other standing metrics — it measures the
+ * discipline, it does not re-enter the prompt.
+ */
+function armReportMetric(sessionId: string, events: readonly unknown[]): void {
+  if (hasPending(sessionId, REPORT_KEY)) return
+  const turn = latestEventText(events, USER_MESSAGE) ?? ''
+  if (!turn || !REPORT_REQUEST_RE.test(turn)) return
+  submitAdvisory(sessionId, {
+    key: REPORT_KEY,
+    tier: 'mandatory',
+    content: 'delivery report format: label the outcome 已修复并验证 / 已修复未验证 / 待决策 / 已知问题',
+    proof: { kind: 'reply_shows', markers: REPORT_PREFIX_MARKERS },
+    withinTurns: 1,
+    trackOnly: true,
+  }, events.length)
+}
+
+/**
+ * Whether the newest event is the user's message, i.e. the turn is still open.
+ * Standing metrics measure the reply to a user turn, so they arm only here. Arming after the
+ * reply has already arrived (which an unconditional per-assembly arm does) leaves an entry
+ * that the NEXT turn's reply can never satisfy, and that reply is then recorded as ignored.
+ */
+function turnIsOpen(events: readonly unknown[]): boolean {
+  const last = events[events.length - 1] as { type?: unknown } | undefined
+  return events.length > 0 && last?.type === USER_MESSAGE
+}
+
 export function registerAdvisoryHook(ctx: Context): void {
   registerAssemblyListener(ctx, {
     before(context) {
@@ -93,8 +143,10 @@ export function registerAdvisoryHook(ctx: Context): void {
       try {
         const events = sessionEvents(context.agent, name)
         reckonAdvisories(sessionId, events)
+        if (!turnIsOpen(events)) return
         armStanceMetric(sessionId, events)
         armChallengeMetric(sessionId, events)
+        armReportMetric(sessionId, events)
       } catch {
         // reckoning is bookkeeping — never block the assembly
       }
