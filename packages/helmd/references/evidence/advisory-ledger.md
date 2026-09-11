@@ -11,15 +11,18 @@
 
 ---
 
-## 1. 两条角色（别混）
+## 1. 三种角色（别混）
 
 | 角色 | 例子 | 是否进 prompt | 是否降频 |
 |------|------|---------------|---------|
 | **投递型** | 拒绝信号 → H-CoT 指令 | 是（渲染为 section） | 是（`ignored ≥ 3` 降频） |
 | **仅计量型** `trackOnly` | `route_task` 的 PRIMARY 卡片 | 否（卡片本身已投递） | 否（每次调用都是一次事实） |
+| **先教后测型** `adaptive` | 汇报四类前缀 `stance:report-prefix` | 账本还不认这条纪律时进 prompt，够了就退场 | 否（`mandatory`），但渲染会退场 |
 
 判据：**这句话是"反复提醒"还是"一次性事实"？** 前者投递并降频，后者只计量。
 把一次性事实丢进降频通道 = 忽略 3 次就不再告知，方向反了。
+第三种是"值得说几次、不值得说到永远"的纪律：`adaptive` 只在该 key 的账本样本 <5 或采纳率 <70%
+时渲染提醒，达标后提醒退场、计量继续（`shouldTeach()`）。**教与测是同一次 submit**，退场的只是那段正文。
 
 ## 2. 提交（producer 侧）
 
@@ -31,6 +34,7 @@ submitAdvisory(sessionId, {
   proof: { kind: 'tool_called', tools: ['hcot_attack'] },  // 采纳签名
   withinTurns: 1,                    // 超过 N 个 assistant 回合仍未命中 → ignored
   trackOnly: false,                  // 设计量型就置 true
+  adaptive: false,                   // 设"先教后测型"就置 true（达标后渲染退场、计量继续）
 }, atEventCount)
 ```
 
@@ -43,6 +47,9 @@ submitAdvisory(sessionId, {
 - 逐条判定：窗口内命中 `proof` → `adopted`；窗口内未命中 → `ignored`；无 `proof` → `delivered`。
 - 账本：`~/.dsh/helmd-tools/advisories.jsonl`（`HELMD_TOOLS_DIR` 可改），一行一次核销。
 - 降频：同 key `ignored ≥ 3` 且 `tier ≠ mandatory` → 不再渲染（`route_task` 卡片显示 `已降频`）。
+- 退场（`adaptive`）：同 key 样本 ≥5 且采纳率 ≥70% → 不再渲染提醒，账本继续记。
+- 武装时机：常驻指标只在**回合仍开着**（会话日志最后一条是用户消息）时武装。回复产生后再武装会留下
+  一个下一轮永远无法满足的锚点，把无关回复记成 ignored（该缺陷曾存在于 `reply_shows` 类指标）。
 
 > 目的不是"多发提示"，而是**让每条提示背 KPI**：adopted 的留下，ignored 的退场。
 

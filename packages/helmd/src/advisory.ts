@@ -44,6 +44,12 @@ export interface Advisory {
    * per-call fact. Track-only advisories are still reckoned and recorded.
    */
   trackOnly?: boolean
+  /**
+   * Teach, then measure: render the reminder only while the ledger says this discipline is
+   * not yet followed (see {@link shouldTeach}). Used for guidance that is worth stating a
+   * few times but not forever — once the rate is good it stays a pure metric.
+   */
+  adaptive?: boolean
 }
 
 export type Verdict = 'adopted' | 'ignored' | 'delivered'
@@ -315,9 +321,30 @@ export function renderAdvisoryStats(limit = 5): string {
   return '[建议采纳率]\n' + rows.join('\n')
 }
 
+/** Samples and adoption rate a discipline needs before the reminder stops being rendered. */
+const TEACH_MIN_SAMPLES = 5
+const TEACH_MIN_RATE = 0.7
+
+/**
+ * Whether a teaching advisory is still worth rendering: until the ledger shows the
+ * discipline is followed often enough, then never again — it stays a pure metric.
+ * Teaching and measuring are the same submission; only the reminder retires.
+ */
+export function shouldTeach(key: string): boolean {
+  const entry = tally().get(key)
+  if (entry === undefined) return true
+  const total = entry.adopted + entry.ignored
+  if (total < TEACH_MIN_SAMPLES) return true
+  return entry.adopted / total < TEACH_MIN_RATE
+}
+
 /** Render the session's surviving advisories as one prompt section body. */
 export function renderAdvisories(sessionId: string): string {
-  const live = advisoryQueue(sessionId).filter((a) => !a.trackOnly && !isDemoted(a.key, a.tier))
+  const live = advisoryQueue(sessionId).filter((a) => {
+    if (a.trackOnly) return false
+    if (isDemoted(a.key, a.tier)) return false
+    return !a.adaptive || shouldTeach(a.key)
+  })
   if (live.length === 0) return ''
   return live
     .map((a) => {

@@ -107,8 +107,9 @@ function armStanceMetric(sessionId: string, events: readonly unknown[]): void {
 
 /**
  * Arm the report-format metric when the user asked for a status report: that reply owes
- * one of the four labels. Track-only, like the other standing metrics — it measures the
- * discipline, it does not re-enter the prompt.
+ * one of the four labels. Adaptive rather than track-only — the reminder is rendered while
+ * the ledger says the discipline is not yet followed (shouldTeach), then retires and only
+ * the measurement continues.
  */
 function armReportMetric(sessionId: string, events: readonly unknown[]): void {
   if (hasPending(sessionId, REPORT_KEY)) return
@@ -117,10 +118,10 @@ function armReportMetric(sessionId: string, events: readonly unknown[]): void {
   submitAdvisory(sessionId, {
     key: REPORT_KEY,
     tier: 'mandatory',
-    content: 'delivery report format: label the outcome 已修复并验证 / 已修复未验证 / 待决策 / 已知问题',
+    content: 'delivery report format: label every item 已修复并验证 / 已修复未验证 / 待决策 / 已知问题',
     proof: { kind: 'reply_shows', markers: REPORT_PREFIX_MARKERS },
     withinTurns: 1,
-    trackOnly: true,
+    adaptive: true,
   }, events.length)
 }
 

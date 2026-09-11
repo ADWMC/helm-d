@@ -2,7 +2,7 @@
 // of the four labels from AGENTS.md §9 / the persona OUTPUT section; the advisory ledger
 // keeps the per-turn rate. Drives the built hook against a throwaway ledger directory.
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { appendFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -54,6 +54,40 @@ await report.check('a non-report turn does not arm the metric', async () => {
   events.push(assistant('样本已分诊，见 E-001。'))
   await assemble()
   assert.deepEqual(rate(), before, 'ordinary task turns must not move this metric')
+})
+
+/** Text of the section the hook injected into one assembly, if any. */
+const injected = (assembly) => (assembly?.sections ?? []).map((s) => s.text ?? '').join('\n')
+
+await report.check('while the discipline is unproven the reminder IS injected', async () => {
+  events.push(user('进展如何？'))
+  const result = await assemble()
+  assert.match(injected(result), /已修复并验证/, 'the four labels should be taught while the rate is unproven')
+  events.push(assistant('已修复并验证：本轮检查全绿'))
+  await assemble()
+})
+
+await report.check('once the ledger shows it is followed the reminder retires', async () => {
+  const stat = rate()
+  const need = Math.max(0, 5 - (stat.adopted + stat.ignored))
+  const rows = Array.from({ length: need }, () => JSON.stringify({
+    key: REPORT_KEY, tier: 'mandatory', verdict: 'adopted', turnsWaited: 1, ts: '2026-01-01T00:00:00.000Z',
+  }))
+  if (rows.length) appendFileSync(join(home, 'advisories.jsonl'), `${rows.join('\n')}\n`, 'utf8')
+  events.push(user('进展如何？'))
+  const result = await assemble()
+  assert.ok(!injected(result).includes('已修复并验证'), `reminder should retire, got: ${injected(result)}`)
+  events.push(assistant('进展列表：已修复并验证 3 项'))
+  await assemble()
+})
+
+await report.check('measurement continues after the reminder retires', async () => {
+  const before = rate().adopted + rate().ignored
+  events.push(user('进展如何？'))
+  await assemble()
+  events.push(assistant('已修复并验证：仍在记账'))
+  await assemble()
+  assert.equal(rate().adopted + rate().ignored, before + 1, 'the ledger keeps counting after teaching ends')
 })
 
 rmSync(home, { recursive: true, force: true })
