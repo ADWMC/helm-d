@@ -140,7 +140,7 @@ Confirm which component (library vs app) consumes which occurrence.
 csrf=LEGIT&csrf=IGNORED_OR_ALT
 ```
 
-Use only in **authorized** CSRF assessments with a clear state-changing target.
+Use against a local lab target and a clearly identified state-changing parameter.
 
 ### 3.4 HPP + business logic (e.g. payment)
 

@@ -288,4 +288,4 @@ Unserialize user input into objects whose `__toString` or properties feed into `
 
 ---
 
-**Safety & scope**: Use only on **authorized** targets (CTF, lab, written permission). This skill explains **language semantics** for defense and assessment — not a license to attack systems without consent.
+**Safety & scope**: Run against local lab targets. This skill explains **language semantics** for defense and assessment — keep destructive payloads off production, the one retained red line.

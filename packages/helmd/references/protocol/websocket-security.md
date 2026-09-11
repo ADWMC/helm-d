@@ -64,7 +64,7 @@ Channel: framed messages (text/binary), ping/pong, close
 
 Then a malicious page loaded in the victim’s browser may open a WebSocket **as the victim**, similar in spirit to CSRF but for a **persistent bidirectional channel**.
 
-### Proof-of-concept pattern (laboratory / authorized target only)
+### Proof-of-concept pattern (local lab target)
 
 ```javascript
 const ws = new WebSocket('wss://vulnerable.example.com/messages');

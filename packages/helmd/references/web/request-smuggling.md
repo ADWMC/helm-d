@@ -65,7 +65,7 @@ On the wire, the chunk body must be exactly 53 bytes; if you change path/headers
 
 ### Safety note
 
-Test only within **authorized scope**; concurrent smuggling can poison connection pools, corrupt caches, or impact other tenants. Prefer isolated environments or low-traffic windows.
+Concurrent smuggling can poison connection pools, corrupt caches, or impact other tenants: run it against an isolated lab first, keep shared infrastructure to a low-traffic window, and stop at the first confirmed desync.
 
 ---
 

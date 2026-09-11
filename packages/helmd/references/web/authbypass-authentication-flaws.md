@@ -8,7 +8,7 @@ description: >-
 
 > **AI LOAD INSTRUCTION**: Expert authentication bypass techniques. Covers SQL injection-based login bypass, password reset flaws, token predictability, account enumeration, brute force bypass, and multi-factor auth bypass. Distinct from JWT/OAuth (covered in ../jwt-oauth-token-attacks/SKILL.md). Focus on the login mechanism itself.
 
-## 0. AUTHORIZED CREDENTIAL TEST PLANNING
+## 0. CREDENTIAL TEST PLANNING
 
 After reducing routing entries, default credentials, username variants, port focus, and wordlist sizing are handled here in one place.
 

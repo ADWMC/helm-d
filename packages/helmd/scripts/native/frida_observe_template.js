@@ -1,4 +1,4 @@
-// Observation-only Frida template. Replace TARGET with an authorized target method.
+// Observation-only Frida template. Replace TARGET with the target method under analysis.
 Java.perform(function () {
   const Target = Java.use('TARGET');
   const overload = Target.METHOD.overload();

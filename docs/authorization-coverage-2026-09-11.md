@@ -178,3 +178,53 @@
 
 - `pnpm build`、`scripts/repack.ps1`、`gen-preset --check`：全部 exit 0。
 - `pnpm test:checks` 11/11 PASS；`node scripts/test-gen-preset.mjs` PASS；`node scripts/test-caseflow.mjs` 26 pass / 0 fail；`pnpm peers check` 无问题。
+
+## 8. 第三轮：全库清理（同日，用户要求"不要只加在人格上，所有的都要改"）
+
+前两轮只改了 persona 与被点名的参考；本轮改为**全库穷举**——覆盖 `packages/helmd/references` + `packages/helmd/scripts` 共 **429 个文件**。
+
+扫描口径（两组，均为语义组合而非单词）：
+
+1. 禁令 × 数据动作：`(不|禁止|不得|严禁|切勿|避免)[^。；]{0,14}(上传|外发|外传|泄露|披露|分享|发送|提交|联系|接触|存储|留存|导出|公开|散布|传播|散播|转发|提供给)` → 66 行 / 35 文件；英文禁令 2 行；`仅限内部/confidential` 6 行。
+2. 授权闸门：`(授权|许可|获批)…(内|范围|前提|后|才|方可|谨慎)`、`须/需/经…授权|许可|批准`、`书面/明确/事先授权`、英文 `authoriz(ed|ation) … (test|assessment|target|scope|only|prior|written|explicit|permission)` → 26 行 / 22 文件。
+
+合计 **104 行候选**，逐行读原文后判定：**政策条款 27 处**，其余为技术误命中。
+
+### 8.1 本轮改动（27 处，23 + 4）
+
+| 文件 | 改法 |
+|---|---|
+| `evidence/vuln-reward-submission.md:23` | 「验证任务需另外明确授权」→ 用户要求验证时直接执行，本地/隔离靶机留证据，线上只单次低速验证 |
+| `evidence/vuln-reward-submission.md:22` | 「不得发往搜索引擎/其他第三方」补一句"向受影响厂商或提交平台提交报告不受此限" |
+| `evidence/vuln-reward-submission.md:75` | 「提交/上传/保存草稿分别按实际权限确认，不能把本 Skill 当成自动授权」→ 用户要求代填/提交时直接执行，动作前一行说明传输内容与目的站点 |
+| `evidence/vuln-reward-submission.md:139` | 「不自动发送邮件」→ 按用户指令向咨询邮箱发起咨询 |
+| `evidence/vuln-reward-submission.md:69,205`、`vuln-reward-result-template.md:31,85` | 奖励协议勾选从"请本人阅读后决定 / 不预填同意 / 不代同意"→ 默认由用户决定，**用户要求代勾时按其指令执行并说明已代为勾选** |
+| `evidence/vuln-reward-result-template.md:35,89` | 「不能据此直接提交」「本稿不自动提交」→「先补齐再提交」「默认停在填写稿，用户要求代填时直接执行」 |
+| `evidence/pentest-report-template.md:15,16` | `## 2. 授权与范围` / 「授权的测试范围说明」→ `## 2. 范围与边界` / 「本次覆盖范围」 |
+| `evidence/vulnerability-review.md:34` | 「Exploit reliability only at a high level unless the user … authorized target」→ 用户要就给完整复现细节（offsets/steps/harness），工作区就是实验室 |
+| `malware/malware-static-playbook-pe.md:29` | 「授权实验环境内」→「隔离分析环境内」——**第一轮漏掉的第 6 个 playbook**（只改了 apk/elf-macho/office-script/web-payload） |
+| `protocol/websocket-security.md:67` | `(laboratory / authorized target only)` → `(local lab target)` |
+| `protocol/dependency-confusion.md:95` | PoC 示例 description 里的 `authorized … only` → `(lab)` |
+| `web/authbypass-authentication-flaws.md:11` | `## 0. AUTHORIZED CREDENTIAL TEST PLANNING` → `## 0. CREDENTIAL TEST PLANNING` |
+| `web/http-parameter-pollution.md:143` | `Use only in authorized CSRF assessments` → 本地靶机 + 明确的状态变更参数 |
+| `web/race-condition.md:9,240` | `Authorized testing only` / `authorized targets only` → 本地靶机 |
+| `web/request-smuggling.md:68` | `Test only within authorized scope` → 隔离靶机优先、共享设施限低峰、首个确认 desync 即停（保留"会污染连接池/缓存、影响其他租户"这个真实理由） |
+| `web/type-juggling.md:291` | `Use only on authorized targets (CTF, lab, written permission)` → 本地靶机，保留"破坏性 payload 不上生产" |
+| `web/pentest-web-checklist.md:25,45` | 「授权内，避免锁账户」→「先确认锁定策略」；「Webshell 风险须在授权内谨慎」→「上传后记录路径并及时清理」 |
+| `scripts/native/frida_observe_template.js:1` | `an authorized target method` → `the target method under analysis` |
+| `native/exploit-dev-checklist.md:9` | 「不输出可用于直接危害第三方/未授权系统的成品 exploit」→ 交付检测脚本/最小 PoC/复现演示；对无关第三方仍不产出成品利用链 |
+
+### 8.2 有意保留（附理由）
+
+- `malware/vt-lookup.md:37,41`：不上传样本、API Key 不外用——样本外传第三方公共服务属于用户自己也要保留的"不传播"，且该技能是查询用途。
+- 技术义「授权」：`jwt-attack.md:554` `Authorization:` 头、`api-authorization-and-bola.md:9` authorization test（越权测试）、`oauth-token-attacks.md:64` `Authorized scope: read:profile`（OAuth scope）、`open-redirect.md:218` Authorization server、`android-arm64-shellcode-analysis.md:358`「缓存授权到本地」（缓存认证 token）、`social-engineering.md:122` 钓鱼邮件文案里的"经管理层批准"。
+- 越狱触发词样本：`prompt-injection-patterns.md:173-182`、`payload-effectiveness-evaluation.md:198` 的 `CONFIDENTIAL / For System Use Only / OVERRIDE AUTHORIZED`。
+- 攻击技术名：各参考里的 `exfil` / 外带通道（`attack-orchestration.md`、`csp-bypass*.md`、`xxe.md`、`dangling-markup-injection.md` 等）。
+- 与唯一红线同向、且保护操作者的约束：`web-principles.md:18` 禁止 DoS、`web-platform-testing.md:214` 破坏性操作后告知残留、`malware-case-workflow.md:78` 只在隔离机执行样本。
+
+### 8.3 落地方式与校验
+
+- 用一次性迁移脚本 + **显式替换表**落地（脚本放系统 temp，不入仓库）；脚本对每条替换校验"命中且唯一"，不匹配即报错退出，不做模糊替换。
+- 结果：`applied 23/23`、`applied 4/4`，两轮均无 NO MATCH / AMBIGUOUS。
+- 复扫（同一组口径）：授权闸门剩余命中全部为技术义，提交流程内剩余 `不得/禁止` 均为平台规则与措辞纪律（如 A01/A02 收录条件、"不能声称全库唯一"），非本代理的许可闸门。
+- `scripts/repack.ps1` exit 0；`pnpm test:checks` 11/11 PASS；`node scripts/test-caseflow.mjs` 26 pass / 0 fail；`git diff --check` 干净。
