@@ -91,6 +91,7 @@ exports.apply = function apply(ctx) {
 		if (v.hostFingerprint) rows.push(row("宿主指纹 Host fp", v.hostFingerprint + (v.presetFingerprint ? "" : "")));
 		if (v.presetFingerprint) rows.push(row("产物指纹 Preset fp", v.presetFingerprint));
 		if (v.version) rows.push(row("版本 Version", v.version));
+		if (v.autoHeal) rows.push(row("自动修复 Auto-heal", v.autoHeal));
 		if (v.checkedAt) rows.push(row("评估于 Checked at", v.checkedAt));
 		if (v.presetPath) rows.push(row("部署 Preset", v.presetPath));
 		if (v.hostPath) rows.push(row("宿主 standard", v.hostPath));

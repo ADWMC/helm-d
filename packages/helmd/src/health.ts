@@ -17,7 +17,7 @@
  */
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -47,7 +47,10 @@ export interface HelmdHealth {
   checkedAt: string
   /** Installed helmd package version. */
   version: string
-  /** Auto-heal verdict: off | disabled | unavailable | healed (...) | failed (...). */
+  /**
+   * Drift-repair verdict: `off (report-only; …)` by default, `unavailable (…)`,
+   * `failed (…)`, or `healed (<from> → <to>) — …` when `HELMD_AUTO_HEAL=1` wrote the preset.
+   */
   autoHeal: string
 }
 
@@ -92,8 +95,19 @@ function locateHostStandard(): string | null {
   return null
 }
 
-const PRESET_DIR_NAME = 'helmd'
+const DEFAULT_PRESET_NAME = 'helmd'
 const HEALABLE = new Set(['HOST_UPGRADED', 'STALE', 'LEGACY_PRESET'])
+
+/** Deployed preset directory name; overridable for a preset deployed under another name. */
+function presetName(): string {
+  return process.env.HELMD_PRESET_NAME?.trim() || DEFAULT_PRESET_NAME
+}
+
+/** Whether the drift repair may write. Report-only unless explicitly enabled. */
+function autoHealEnabled(): boolean {
+  const flag = process.env.HELMD_AUTO_HEAL?.trim().toLowerCase()
+  return flag === '1' || flag === 'true' || flag === 'yes'
+}
 
 /** Locate the bundled generator that rewrites the deployed preset from the host standard. */
 function resolveGenerator(): string | null {
@@ -105,23 +119,38 @@ function resolveGenerator(): string | null {
   }
 }
 
-/** Regenerate the deployed preset when it drifted; mirrors dsh-purge autoApplyOnStart. */
-function autoHealPreset(): string {
-  if (process.env.HELMD_AUTO_HEAL === '0') return 'disabled'
+/**
+ * Regenerate the deployed preset when it drifted. Report-only by default: the running
+ * host must not rewrite a user-editable composition file without an explicit opt-in —
+ * MAINTENANCE §8 requires a restart plus the live catalog assertion after any preset
+ * content change, which a boot-time rewrite cannot perform. When enabled, the previous
+ * file is preserved as `.bak` first, matching scripts/setup-preset.ps1.
+ */
+function autoHealPreset(): { healed: boolean; verdict: string } {
+  if (!autoHealEnabled()) return { healed: false, verdict: 'off (report-only; set HELMD_AUTO_HEAL=1 to repair)' }
   const gen = resolveGenerator()
-  if (gen === null) return 'unavailable (no generator)'
+  if (gen === null) return { healed: false, verdict: 'unavailable (no generator)' }
+  const out = join(dshHome(), '.agent-presets', presetName())
+  const target = join(out, 'agent.cordis.yml')
   try {
-    const res = spawnSync(process.execPath, [gen, '--out', join(dshHome(), '.agent-presets', PRESET_DIR_NAME)], {
+    if (existsSync(target)) {
+      try {
+        copyFileSync(target, `${target}.bak`)
+      } catch {
+        // A failed backup must not block the repair; the exit status below still reports it.
+      }
+    }
+    const res = spawnSync(process.execPath, [gen, '--out', out], {
       encoding: 'utf8',
       timeout: 60_000,
     })
     if (res.status !== 0) {
       const why = String(res.stderr || res.error?.message || '').trim().split('\n').slice(-1)[0] ?? ''
-      return `failed (exit ${String(res.status)}${why ? `: ${why}` : ''})`
+      return { healed: false, verdict: `failed (exit ${String(res.status)}${why ? `: ${why}` : ''})` }
     }
-    return 'healed'
+    return { healed: true, verdict: 'restart dsh and assert the first request is [pwsh, read] (MAINTENANCE §8)' }
   } catch (e) {
-    return `failed (${(e as Error).message})`
+    return { healed: false, verdict: `failed (${(e as Error).message})` }
   }
 }
 
@@ -159,11 +188,11 @@ function evaluateHealthCore(): HelmdHealth {
     return base
   }
 
-  const presetPath = join(dshHome(), '.agent-presets', 'helmd', 'agent.cordis.yml')
+  const presetPath = join(dshHome(), '.agent-presets', presetName(), 'agent.cordis.yml')
   base.presetPath = presetPath
   if (!existsSync(presetPath)) {
     base.status = 'NOT_DEPLOYED'
-    base.detail = 'no deployed preset under .agent-presets/helmd; run install / setup-preset'
+    base.detail = `no deployed preset under .agent-presets/${presetName()}; run install / setup-preset`
     return base
   }
 
@@ -177,7 +206,7 @@ function evaluateHealthCore(): HelmdHealth {
   if (!m) {
     base.presetFingerprint = ''
     base.status = 'LEGACY_PRESET'
-    base.detail = 'deployed preset has no gen-preset fingerprint header; regenerate (repack or setup-preset)'
+    base.detail = 'deployed preset has no gen-preset fingerprint header; regenerate (repack / setup-preset, or HELMD_AUTO_HEAL=1 + restart)'
     return base
   }
   base.presetFingerprint = m[1].slice(0, 12)
@@ -186,26 +215,26 @@ function evaluateHealthCore(): HelmdHealth {
     base.detail = `preset matches installed dsh standard (${base.hostFingerprint})`
   } else {
     base.status = 'HOST_UPGRADED'
-    base.detail = `preset targets dsh ${base.presetFingerprint} but the host now hashes ${base.hostFingerprint}; regenerate (repack or setup-preset)`
+    base.detail = `preset targets dsh ${base.presetFingerprint} but the host now hashes ${base.hostFingerprint}; regenerate (repack / setup-preset, or HELMD_AUTO_HEAL=1 + restart)`
   }
   return base
 }
 
 /**
- * Evaluate the deployed-preset fingerprint and, when it drifted, regenerate it from the
- * installed host standard (HELMD_AUTO_HEAL=0 disables the repair).
+ * Evaluate the deployed-preset fingerprint and, when it drifted, optionally regenerate it
+ * from the installed host standard (`HELMD_AUTO_HEAL=1` opts in; default is report-only).
  * @returns the health verdict, with the auto-heal outcome folded in.
  */
 function evaluateHealth(): HelmdHealth {
   const first = evaluateHealthCore()
   if (!HEALABLE.has(first.status)) return first
-  const verdict = autoHealPreset()
-  if (verdict !== 'healed') {
-    first.autoHeal = verdict
+  const outcome = autoHealPreset()
+  if (!outcome.healed) {
+    first.autoHeal = outcome.verdict
     return first
   }
   const healed = evaluateHealthCore()
-  healed.autoHeal = `healed (${first.status} → ${healed.status})`
+  healed.autoHeal = `healed (${first.status} → ${healed.status}) — ${outcome.verdict}`
   return healed
 }
 

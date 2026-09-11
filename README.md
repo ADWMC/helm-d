@@ -183,9 +183,9 @@ dsh web
 
 ## 健康状态卡片
 
-helmd 0.2.1 起在 **dsh 网页设置页**常驻一块只读健康卡片：设置 → 插件 → 插件配置 → 「helmd 安全分析包」。
+helmd 0.2.1 起在 **dsh 网页设置页**常驻一块健康卡片：设置 → 插件 → 插件配置 → 「helmd 安全分析包」。卡片本身只展示、不改盘。
 
-每次 dsh 启动时评估一次部署位 `~/.dsh/.agent-presets/helmd/agent.cordis.yml` 的指纹与当前宿主的关系：
+每次 dsh 启动时评估一次部署位 `.agent-presets/<preset>/agent.cordis.yml`（默认 preset 名 `helmd`，可用 `HELMD_PRESET_NAME` 改）的指纹与当前宿主的关系：
 
 | 徽标 | 含义 | 动作 |
 |------|------|------|
@@ -195,7 +195,9 @@ helmd 0.2.1 起在 **dsh 网页设置页**常驻一块只读健康卡片：设�
 | 🟣 旧版产物 Legacy preset | 无指纹头的旧文件 | 重新生成 |
 | ⚪ 未部署 Not deployed | preset 缺失 | 跑 install |
 
-展开可见双指纹（12 位）、版本、评估时间与两条路径，方便定位问题。
+展开可见双指纹（12 位）、版本、**自动修复结论**、评估时间与两条路径，方便定位问题。
+
+**自动修复默认关闭（只报告）**：漂移时卡片只给结论，不动你的 `agent.cordis.yml`。要让它开机自动重生成，显式设 `HELMD_AUTO_HEAL=1`；启用后写盘前会先留 `.bak`，且结论里会提示"必须重启 dsh 并按 MAINTENANCE §8 断言首轮 `[pwsh, read]`"。默认关闭的原因：改 preset 内容必须重启才安全（见事故复盘），开机静默改写会绕过这条护栏。
 
 ## 从插件商店安装
 
@@ -267,6 +269,7 @@ detect_packer <file> → 判定 PE/ELF 保护器
 | **Malware** | `yara_gen` | YARA 规则生成 |
 | **AI-Security** | `ai_reference` | AI/LLM 安全参考文档 |
 | **AI-Security** | `llm_sim` | LLM 应用模拟测试 |
+| **AI-Security** | `hcot_attack` | H-CoT 思维链劫持执行器（模板采集 → 思路伪造 → 注入劫持；变体胜率择优、结果账本；`stats:true` 只看胜率表，`dry_run:true` 不联网；实际调用需自备 OpenAI 兼容端点的 API key，越狱内容会发往该端点） |
 | **Evidence** | `evidence_reference` | 证据/报告参考文档 |
 | **Case** | `begin_case / `case_status / `record_finding / `end_case` | 磁盘工作区生命周期：建案/恢复/带校验记录结论/关闭（deep 档强制 findings） |
 | **Case** | `find_tool` | GitHub 检索现成工具（变体查询建议 + helmd-tools 货架命中） |
@@ -275,6 +278,7 @@ detect_packer <file> → 判定 PE/ELF 保护器
 | **Evidence** | `hash_artifact` | SHA-256 哈希 |
 | **Toolbox** | `tool_recommend` | 工具库推荐 |
 | **Router** | `route_task` | 确定性路由：任务提示 → PRIMARY 路由 + 依据 |
+| **Ledger** | `tool_memory` | 跨会话工具/死路账本：`register` 绑定工具、`note` 记坑与证伪（`note` 必须带证据 id）、`sync` 显式把 H-CoT 结果账本回流、`search` 检索；货架速览自动进 `route_task` 卡片（读取型工具不写盘） |
 | **Session** | `analysis_mode` | 分析档位阶梯 lite/full/deep（Ponytail 式） |
 
 每个 `*_reference` 工具按需读取对应 `references/<domain>/`，入口是各自的 `index.md`。

@@ -183,9 +183,9 @@ A hand-copied preset once drifted after a host upgrade and assembled a crippled 
 
 ## Health status card
 
-Since 0.2.1, helmd ships a read-only health card in the **dsh web settings page**: Settings → Plugins → Plugin configuration → "helmd 安全分析包".
+Since 0.2.1, helmd ships a health card in the **dsh web settings page**: Settings → Plugins → Plugin configuration → "helmd 安全分析包". The card only reports; it never writes.
 
-Each dsh boot evaluates the deployed `~/.dsh/.agent-presets/helmd/agent.cordis.yml` fingerprint against the installed host:
+Each dsh boot evaluates the deployed `.agent-presets/<preset>/agent.cordis.yml` (preset name defaults to `helmd`, overridable via `HELMD_PRESET_NAME`) against the installed host:
 
 | Badge | Meaning | Action |
 |------|------|------|
@@ -195,7 +195,9 @@ Each dsh boot evaluates the deployed `~/.dsh/.agent-presets/helmd/agent.cordis.y
 | 🟣 Legacy preset | file lacks the fingerprint header | regenerate |
 | ⚪ Not deployed | preset missing | run install |
 
-Expanding the card shows both fingerprints (12 chars), version, evaluation time, and both paths for fast diagnosis.
+Expanding the card shows both fingerprints (12 chars), version, the **drift-repair verdict**, evaluation time, and both paths for fast diagnosis.
+
+**Drift repair is off by default (report-only)**: on drift the card states the verdict and leaves your `agent.cordis.yml` alone. To let it regenerate at boot, set `HELMD_AUTO_HEAL=1` explicitly; when enabled it keeps a `.bak` first and the verdict reminds you to restart dsh and assert the first request is `[pwsh, read]` (MAINTENANCE §8). It is off by default because changing preset content is only safe across a restart (see the incident post-mortem), and a silent boot-time rewrite bypasses that guardrail.
 
 ## Install from the plugin store
 
@@ -265,6 +267,7 @@ Settings → Plugins → Plugin configuration should show the helmd card with a 
 | **Malware** | `yara_gen` | YARA rule generation |
 | **AI-Security** | `ai_reference` | AI/LLM security reference docs |
 | **AI-Security** | `llm_sim` | LLM app simulation testing |
+| **AI-Security** | `hcot_attack` | H-CoT chain-of-thought hijacking runner (template probe → forged trace → injection; variant win-rate selection and a result ledger; `stats:true` prints the table, `dry_run:true` stays offline; live runs need your own OpenAI-compatible endpoint key and send the jailbreak payload there) |
 | **Evidence** | `evidence_reference` | Evidence/reporting reference docs |
 | **Case** | `begin_case` / `case_status` / `record_finding` / `end_case` | On-disk case lifecycle: open/resume/validated conclusions/close (deep mode requires findings) |
 | **Case** | `find_tool` | Search GitHub for existing tools (variant queries + helmd-tools shelf hits) |
@@ -273,6 +276,7 @@ Settings → Plugins → Plugin configuration should show the helmd card with a 
 | **Evidence** | `hash_artifact` | SHA-256 hashing |
 | **Toolbox** | `tool_recommend` | Tool library recommendations |
 | **Router** | `route_task` | Deterministic routing: task hint → PRIMARY route + rationale |
+| **Ledger** | `tool_memory` | Cross-session tool/dead-end ledger: `register` binds a tool, `note` records pitfalls and falsified routes (an evidence id is required), `sync` folds the H-CoT result ledger in explicitly, `search` queries both; the shelf overview rides along in `route_task` output (read tools never write) |
 | **Session** | `analysis_mode` | Analysis intensity ladder lite/full/deep (Ponytail-style) |
 
 Each `*_reference` tool reads its own `references/<domain>/` on demand; the entry point is its `index.md`.

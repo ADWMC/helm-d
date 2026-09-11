@@ -111,6 +111,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 | 强降级 | dev 新版被 latest release 覆盖 | update 脚本自带守卫；绕过需显式 `-AllowDowngrade` |
 | 手抄 preset 平台行 | 宿主升级后 standing mount 重建出残废工具目录（2026-08-26：44 工具、零平台工具、bootstrap 两件套消失） | preset 一律由 `gen-preset.mjs` 从宿主 standard 派生；部署新 preset 后**必须**开测试会话断言（§8 护栏） |
 | 重复运行安装器 | preset 内容未变也会触发 standing mount 重建，运行中宿主可能报 `already registered` | 生成器对相同内容保持文件 mtime；内容实际变化后仍须重启 dsh 再开新会话 |
+| 以为插件会自动修 preset | 健康卡片默认只给结论，不动 `agent.cordis.yml` | 要开机自动重生成须显式 `HELMD_AUTO_HEAL=1`（写前留 `.bak`，结论里仍要求重启 + §8 断言）；默认关闭是为了不绕过"改 preset 必须重启"这条护栏 |
 
 ## 6. 更新脚本用法（自用/分发同一套）
 
