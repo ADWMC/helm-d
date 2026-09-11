@@ -5,6 +5,7 @@ import { registerAdvisoryHook } from './advisory-hook.js'
 import { applyPersistenceWrap } from './persist.js'
 import { registerRouterTools } from './router.js'
 import { registerCaseflowTools } from './tools/caseflow.js'
+import { registerToolDiscoveryTools } from './tools/tool-discovery.js'
 import { registerAndroidTools } from './tools/android.js'
 import { registerWebTools } from './tools/web.js'
 import { registerNativeTools } from './tools/native.js'
@@ -41,9 +42,11 @@ export function apply(ctx: Context): void {
     // Tool Ledger: tool_memory register/note/search — cross-session tool memory
     registerLedgerTool(ctx)
 
-    // Case workflow: begin_case / case_status / record_finding / end_case
-    // + find_tool / save_evidence
+    // Case lifecycle: begin_case / case_status / record_finding / save_evidence / end_case
     registerCaseflowTools(ctx)
+
+    // External tool discovery: find_tool (GitHub + local shelf)
+    registerToolDiscoveryTools(ctx)
 
     // Domain tools
     registerAndroidTools(ctx)
