@@ -226,7 +226,7 @@ The script writes `preset.yml` + `agent.cordis.yml` into `~/.dsh/.agent-presets/
 ## Verification
 
 ```bash
-dsh --profile web --dump-config                        # one @dsh-security/helmd row
+dsh --profile web --dump-config                        # one bare @dsh-security/helmd host row (resolves to dist/health.js)
 node packages/helmd/scripts/gen-preset.mjs --check     # preset check OK (non-zero: follow the fingerprint hint)
 ```
 
@@ -416,7 +416,7 @@ Versions are pinned to the host cohort via `overrides` in `pnpm-workspace.yaml` 
 - The root package is `private: true` and is not published; `@dsh-security/helmd` is.
 - The `files` whitelist: `dist`, `client.js`, `references`, `scripts`, `presets`, `cordis.patch.yml`.
 - The `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.3.0`.
+- Current version: `0.3.1`.
 - Release assets: `dsh-security-helmd-<ver>.tgz` plus the stable alias `helmd.tgz` (used by the store's tarball field and the installers).
 
 ## Risks & mitigations
@@ -425,7 +425,7 @@ Versions are pinned to the host cohort via `overrides` in `pnpm-workspace.yaml` 
 |------|------------|
 | DSH host upgrade breaks compat | peer deps on cordis / dsh-tools, pinned via `overrides`; three-layer preset fingerprint defense above exposes drift automatically |
 | Missing `python` on the host | seam auto-probes python / py / python3, falls back to the `py` launcher |
-| Bundle/preset version drift | version 0.3.0, tarball and release published together |
+| Bundle/preset version drift | version 0.3.1, tarball and release published together |
 | Reference knowledge goes stale | read on demand, model's own judgment, non-binding |
 
 ## Acknowledgements

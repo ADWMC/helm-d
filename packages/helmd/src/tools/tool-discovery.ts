@@ -7,7 +7,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { toolsShelfRoot } from '../case.js'
+import { ledgerDir } from '../ledger.js'
 
 export function registerToolDiscoveryTools(ctx: Context): void {
   ctx.tools.register(defineTool({
@@ -59,7 +59,8 @@ export function registerToolDiscoveryTools(ctx: Context): void {
         .map((s) => `"${query} ${s}"`)
         .join(' | ')
       let installed = ''
-      const shelfFile = join(toolsShelfRoot(), 'TOOLS.md')
+      // Same file tool_memory writes: the shelf is machine-global, not workspace-local.
+      const shelfFile = join(ledgerDir(), 'TOOLS.md')
       if (existsSync(shelfFile)) {
         const hits = (await readFile(shelfFile, 'utf8'))
           .split('\n').filter((l) => l.toLowerCase().includes(query.toLowerCase()))
@@ -71,7 +72,7 @@ export function registerToolDiscoveryTools(ctx: Context): void {
         '',
         `variant queries: ${variants}`,
         installed,
-        'install target: <workspace>/helmd-tools/<tool-name>/ then log it in TOOLS.md',
+        `logging target: tool_memory register(tool_name, path, purpose) — the shelf is ${shelfFile}, shared across workspaces`,
       ].filter(Boolean).join('\n')
     },
   }))

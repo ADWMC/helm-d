@@ -30,7 +30,7 @@
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
 
-> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。平台行必须从当前宿主 `standard` 生成，否则 `pwsh`、`read` 等工具会缺失或在升级后漂移。两面的归属是分开的：host 面 `cordis.patch.yml` 只挂 `@dsh-security/helmd/dist/health.js`，agent 面主插件由 preset 末行的 `@dsh-security/helmd` 声明（2026-08-31 `af177e4` 起如此；再早的"只由 profile bundle 挂载"结论已作废）。生成器内建断言：输出行集合 = 宿主 standard 行 + `helmd`、无重复 id、且 `@dsh-security/helmd` 恰好出现一次，违者构建即红。
+> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。平台行必须从当前宿主 `standard` 生成，否则 `pwsh`、`read` 等工具会缺失或在升级后漂移。两面的归属是分开的：host 面 `cordis.patch.yml` 挂**裸包名** `@dsh-security/helmd`（导出解析到 `dist/health.js`，只注册设置命名空间），agent 面主插件由 preset 末行的 `@dsh-security/helmd/agent` 声明（2026-09-11 起如此。此前 host 行写深路径 `@dsh-security/helmd/dist/health.js`，宿主 `client-modules` 的 `exactPackageSpecifier` 只认 `@scope/name` 两段，于是包的 `dsh.client` 从未被发现、设置卡片永远不出现——浏览器半边不是没跑，是没进模块图）。生成器内建断言：输出行集合 = 宿主 standard 行 + `helmd`、无重复 id、且 `@dsh-security/helmd` 恰好出现一次，违者构建即红。
 
 ## 2. 发布流程（checklist 式）
 

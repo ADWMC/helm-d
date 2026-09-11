@@ -38,11 +38,6 @@ export function casesRoot(root?: string): string {
   return resolve(base, 'helmd-cases')
 }
 
-export function toolsShelfRoot(root?: string): string {
-  const base = root?.trim() || process.env.HELMD_CASES_DIR?.trim() || process.cwd()
-  return resolve(base, 'helmd-tools')
-}
-
 function slugify(text: string, max = 40): string {
   const slug = text.toLowerCase().replace(/[^a-z0-9-_]+/g, '-').replace(/^-+|-+$/g, '')
   return (slug || 'case').slice(0, max)

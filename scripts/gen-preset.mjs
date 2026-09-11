@@ -140,7 +140,7 @@ function generate(hostText, personaText) {
     hostText.slice(0, startIndex)
     + renderPersonaRow(personaText) + '\n\n'
     + hostText.slice(endIndex).replace(/^\r?\n+/, '').trimEnd()
-    + "\n\n- id: helmd\n  name: '@dsh-security/helmd'\n"
+    + "\n\n- id: helmd\n  name: '@dsh-security/helmd/agent'\n"
   assertShape(hostText, out, personaText)
   return out
 }

@@ -7,8 +7,8 @@
 // This is deliberately not hook-scoped: any producer (tool, hook, preset) can
 // submit, and the same ledger answers "did the agent act on what we told it?".
 
-import { appendFileSync, copyFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { ledgerDir } from './ledger.js'
 import { ASSISTANT_MESSAGE, eventCount, eventTexts, toolCalls, type ToolCall } from './session-log.js'
 
@@ -140,6 +140,11 @@ function proven(proof: Proof | undefined, calls: ToolCall[], after: readonly unk
 function record(entry: Reckoned): void {
   const path = advisoryLedgerPath()
   try {
+    // The ledger directory is created by the tool ledger on its first write. An advisory
+    // can be reckoned before any tool_memory call ever ran, and a bare appendFileSync into
+    // a missing directory throws ENOENT — swallowed below, so the row would be lost with
+    // no signal while the tally stays empty and every adaptive reminder keeps teaching.
+    mkdirSync(dirname(path), { recursive: true })
     appendFileSync(path, `${JSON.stringify({ ...entry, ts: new Date().toISOString() })}\n`, 'utf8')
     compactLedger(path)
   } catch {

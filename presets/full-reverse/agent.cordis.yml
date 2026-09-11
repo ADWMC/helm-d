@@ -396,4 +396,4 @@
   name: '@deepseek-ai/dsh-tool-present'
 
 - id: helmd
-  name: '@dsh-security/helmd'
+  name: '@dsh-security/helmd/agent'
