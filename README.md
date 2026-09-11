@@ -197,7 +197,7 @@ helmd 0.2.1 起在 **dsh 网页设置页**常驻一块健康卡片：设置 → 
 
 展开可见双指纹（12 位）、版本、**自动修复结论**、评估时间与两条路径，方便定位问题。
 
-**漂移修复策略**：卡片判到漂移时会自动修复，但**只修能证明是本包产物的文件**——部署位带 `gen-preset` 指纹头（`STALE` 内容漂移 / `HOST_UPGRADED` 宿主已升级）就自动按当前宿主 standard 重生成；没有指纹头（`LEGACY_PRESET`，可能是你手写的）只报告、不动它。写盘前一律先留 `.bak`，结论里会提示"必须重启 dsh 并按 MAINTENANCE §8 断言首轮 `[pwsh, read]`"。开关：`HELMD_AUTO_HEAL=0` 全部只报告（手工管理部署用），`=1` 连无指纹头的也重写。
+**漂移修复策略**：卡片判到漂移时会自动修复，但**只修能证明是本包产物的文件**——部署位带 `gen-preset` 指纹头（`STALE` 内容漂移 / `HOST_UPGRADED` 宿主已升级）就自动按当前宿主 standard 重生成；没有指纹头（`LEGACY_PRESET`，可能是你手写的）只报告、不动它。写盘前一律先留 `.bak`；修复后当场跑一次**产物结构断言**（行集合 = 宿主 standard + `helmd`、无重复 id、`@dsh-security/helmd` 恰好一次、persona 是本包的），结论里会写明 `artifact check OK (N rows …)`，然后提示"必须重启 dsh 并按 MAINTENANCE §8 断言首轮 `[pwsh, read]`"——那半需要真机会话，只能由你跑。开关：`HELMD_AUTO_HEAL=0` 全部只报告（手工管理部署用），`=1` 连无指纹头的也重写。
 
 ## 从插件商店安装
 

@@ -155,3 +155,5 @@ PR #2708        已合并 (2026-08-23)
 - [ ] setup-preset 从安装位置跑通且与 `presets/full-reverse/` 逐字节一致
 - [ ] release 五件资产齐全 + 稳定别名 200
 - [ ] **preset 护栏**（每次改动 agent.cordis.yml 产物后）：新开 helmd-preset 测试会话，读首条 `request/header`——首轮 tools 恰为 `[pwsh, read]`（win32），晋升后全量目录含 helmd 域工具 + 平台工具且 ≥60 个。不达标立即回滚 `.bak` 并查 `docs/incident-2026-08-26-preset-stale-generation.md` §4
+  - 产物结构那一半已自动跑：自动修复后 `health.autoHeal` 会带 `artifact check OK (N rows …)`（行集合 = 宿主 standard + helmd、无重复 id、helmd 行恰好一次、persona 激活行在）——失败会写成 `ARTIFACT CHECK FAILED: …`
+  - 真机会话那一半（首轮 `[pwsh, read]`）仍需操作者手跑：它要在重启后的宿主里发起请求，无法由宿主进程自证

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { pathToFileURL } from 'node:url'
 import { join } from 'node:path'
 import { distDir, hostStandardEntry, loadArtifacts } from './artifacts.mjs'
 import { createReporter, skip } from './reporter.mjs'
@@ -80,13 +81,39 @@ await report.check('a preset generated for an older host is repaired by default'
   writeFileSync(presetPath, `# gen-preset: host=${'f'.repeat(64)}\n\n- id: persona\n  name: 'old host'\n`, 'utf8')
   const base = healthBase()
   assert.match(base.autoHeal, /^healed \(HOST_UPGRADED → OK\)/, `expected a repair, got ${base.autoHeal}`)
+  assert.match(base.autoHeal, /artifact check OK \(\d+ rows \(host standard \+ helmd\)\)/, 'a repair must assert the artifact it wrote')
   assert.equal(readFileSync(presetPath, 'utf8').replace(/\r\n/g, '\n'), shipped.replace(/\r\n/g, '\n'))
 })
 
-await report.check('the shipped preset itself reads as OK, CRLF included', () => {
+// The structural assertion the repair runs afterwards, on its own inputs.
+const { assertPresetArtifact } = await import(pathToFileURL(join(distDir, 'health.js')).href)
+const hostText = readFileSync(hostStandard, 'utf8')
+
+await report.check('the artifact assertion accepts host rows + helmd', () => {
+  const good = assertPresetArtifact(shipped, hostText)
+  assert.equal(good.ok, true, good.detail)
+})
+
+await report.check('it rejects a preset missing one of the host rows', () => {
+  const hostRows = [...hostText.matchAll(/^- id: (.+)$/gm)].map((m) => m[1].trim())
+  const withoutOne = hostText.replace(new RegExp(`^- id: ${hostRows[0]}\\n`, 'm'), '')
+  const bad = assertPresetArtifact(`${withoutOne}\n\n- id: helmd\n  name: '@dsh-security/helmd'\n`, hostText)
+  assert.equal(bad.ok, false, 'a dropped platform row must fail the assertion')
+  assert.match(bad.detail, /row ids differ/)
+})
+
+await report.check('it rejects a preset without the activation line', () => {
+  const notOurs = shipped.replace(/helmd online[^\n]*/g, 'somebody else')
+  const bad = assertPresetArtifact(notOurs, hostText)
+  assert.equal(bad.ok, false, 'a foreign persona must fail the assertion')
+  assert.match(bad.detail, /activation line missing/)
+})
+
+await report.check('the shipped preset itself reads as OK, CRLF included, with the structural check stated', () => {
   writeFileSync(presetPath, shipped.replace(/\n/g, '\r\n'), 'utf8')
   const base = healthBase()
   assert.equal(base.status, 'OK', `expected OK, got ${base.status}: ${base.detail}`)
+  assert.match(base.detail, /artifact check OK \(\d+ rows \(host standard \+ helmd\)\)/, 'the assertion should be stated on every boot')
 })
 
 mergeInto(process.env, { DSH_HOME: undefined, DSH_HOST_STANDARD_YML: undefined, HELMD_AUTO_HEAL: undefined })

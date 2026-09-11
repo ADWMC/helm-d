@@ -147,6 +147,48 @@ function resolveGenerator(): string | null {
   }
 }
 
+/** `- id:` rows of a preset or host standard, in file order. */
+function rowIds(text: string): string[] {
+  return [...text.matchAll(/^- id: (.+)$/gm)].map((m) => m[1].trim())
+}
+
+/**
+ * Structural half of the MAINTENANCE §8 guardrail: everything assertable about the artifact
+ * itself, with no session involved. The live half (a restarted host answers the first
+ * request with exactly [pwsh, read]) stays with the operator — it cannot be produced from
+ * inside the process that is being asserted.
+ */
+export function assertPresetArtifact(deployed: string, hostStandardText: string): { ok: boolean; detail: string } {
+  const hostIds = rowIds(hostStandardText)
+  const deployedIds = rowIds(deployed)
+  const expected = [...hostIds, 'helmd'].sort()
+  if (JSON.stringify([...deployedIds].sort()) !== JSON.stringify(expected)) {
+    return {
+      ok: false,
+      detail: `row ids differ from this host's standard (expected ${expected.length}: host rows + helmd, got ${deployedIds.length})`,
+    }
+  }
+  const duplicated = [...new Set(deployedIds.filter((id, i) => deployedIds.indexOf(id) !== i))]
+  if (duplicated.length > 0) return { ok: false, detail: `duplicated row ids: ${duplicated.join(', ')}` }
+  if ((deployed.match(/@dsh-security\/helmd/g) ?? []).length !== 1) {
+    return { ok: false, detail: 'the helmd row is not declared exactly once' }
+  }
+  if (!deployed.includes('helmd online')) return { ok: false, detail: 'activation line missing — this is not luna persona' }
+  return { ok: true, detail: `${deployedIds.length} rows (host standard + helmd)` }
+}
+
+/** Run the artifact assertion against the evaluated paths; unreadable inputs report no verdict. */
+function artifactVerdict(health: HelmdHealth): string {
+  try {
+    const deployed = readFileSync(health.presetPath, 'utf8')
+    const host = readFileSync(health.hostPath, 'utf8')
+    const result = assertPresetArtifact(deployed, host)
+    return result.ok ? `artifact check OK (${result.detail})` : `ARTIFACT CHECK FAILED: ${result.detail}`
+  } catch {
+    return 'artifact check skipped (files unreadable)'
+  }
+}
+
 /**
  * Regenerate the deployed preset from the installed host standard. The caller has already
  * decided (via {@link shouldRepair}) that writing is allowed; this only performs it and
@@ -247,7 +289,9 @@ function evaluateHealthCore(): HelmdHealth {
       return base
     }
     base.status = 'OK'
-    base.detail = `preset matches installed dsh standard (${base.hostFingerprint})`
+    // The structural half of MAINTENANCE §8 is cheap and worth stating on every boot: it is
+    // the assertion that would have caught the 2026-08-26 crippled-catalog preset.
+    base.detail = `preset matches installed dsh standard (${base.hostFingerprint}); ${artifactVerdict(base)}`
   } else {
     base.status = 'HOST_UPGRADED'
     base.detail = `preset targets dsh ${base.presetFingerprint} but the host now hashes ${base.hostFingerprint}; regenerate (repack / setup-preset, or HELMD_AUTO_HEAL=1 + restart)`
@@ -296,7 +340,7 @@ function evaluateHealth(): HelmdHealth {
     return first
   }
   const healed = evaluateHealthCore()
-  healed.autoHeal = `healed (${first.status} → ${healed.status}) — ${outcome.verdict}`
+  healed.autoHeal = `healed (${first.status} → ${healed.status}) — ${artifactVerdict(healed)}; ${outcome.verdict}`
   return healed
 }
 
