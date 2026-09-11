@@ -147,3 +147,34 @@
 - `pnpm build`、`scripts/repack.ps1`（含 `gen-preset` 与 `full-reverse → packages/helmd/presets` 同步）、`gen-preset --check`：全部 exit 0。
 - `pnpm test:checks` 11/11 PASS（其中 preset-heal 9 项覆盖"部署 preset 与随包 preset 内容漂移必须被判为 STALE 并修复"）。
 - `node scripts/test-gen-preset.mjs` PASS；`node scripts/test-caseflow.mjs` 26 pass / 0 fail；`pnpm peers check` 无问题。
+
+## 7. 第二轮：把"报告 / 验证"从禁令里解出来（同日）
+
+起因（用户原话）：**"只是不传播，不接触/不存储我咋去提交给开发者和验证信息呢"**。
+
+问题：§6 原样保留了「不接触/不存储/不传输任何真实公民个人信息」与「不外传数据」，可仓库里同时存在整套提交流程（`references/evidence/vuln-reward-submission.md` 27KB、`reporting.md`、`pentest-report-template.md`、`vuln-reward-result-template.md`）。两条规则互斥——按前者，报告根本发不出去，开发者收不到 PoC，验证结论也无处交付。
+
+诊断：**问题不在"不传播"，而在只写了禁令、没写交付路径**。规则本意是"不把真实用户数据散给无关第三方"，却写成"不接触/不存储/不传输"，于是连"把脱敏报告交给受影响开发者"一起禁掉了。
+
+处置：把「传播给无关第三方」与「交付给受影响方/平台」分开，后者写成显式正向路径。
+
+| 文件 | 改法 |
+|---|---|
+| `presets/persona.txt`（新增 `REPORTING IS DELIVERY, NOT PROPAGATION`） | 把脱敏报告 / 最小 PoC / 复现步骤 / IOC 提交给受影响开发者、漏洞平台或用户指定渠道＝**正常交付**，要做且留提交记录；"不传播"只指不把真实用户数据、凭据、活体样本散给无关第三方；不得因"要提交"而暂停、抹掉证据或拒绝 |
+| `references/web/business-logic-vulnerabilities-checklist.md:16` | 「不接触/不存储/不传输任何真实公民个人信息」→「按最小必要取用，绝不成批搬走」；verify 改为证明影响取 ≤3 条、立即脱敏、报告只带脱敏证据 |
+| `references/web/business-logic-vulnerabilities-methodology.md:260` | 同口径，并显式写明"提交给受影响开发者或漏洞平台属于正常交付，不受此限" |
+| `references/native/exploit-dev-checklist.md:38` | 「不外传数据」→ 不把生产数据/被盗数据散给无关第三方；脱敏证据与最小 PoC 提交属正常交付 |
+| `references/native/ad-lpe-checklist.md:19` | 凭据只用于验证影响与写报告，不用于其他系统、不散给无关第三方，交付后删除本地明文 |
+| `references/protocol/insecure-source-code-management.md:9` | 删 `Use only in authorized assessments`（§6 扫描漏掉的一条）；`do not exfiltrate real data beyond scope` → 最小数据证明影响 + 交付前脱敏 |
+| `references/malware/malware-case-workflow.md:79` | 「未经明确授权不执行样本…」→「未知样本/脚本/宏/HTML smuggling 链/webshell 默认不执行；需复现时才在隔离靶机执行并留回滚路径」——去掉授权框架，保留实验室卫生 |
+| `packages/helmd/scripts/evidence/create_case.py:50,61,81` | 建案上下文 `local, authorized sandbox`→`local, isolated sandbox`；规则 4 与 `notes/sandbox-rules.md` 从 `Do not contact external services` 改为"向受影响厂商/平台提交与自控回调是预期路径；不得接触攻击者控制的基础设施、不执行未知样本、不动生产" |
+
+有意保留：
+
+- `references/malware/vt-lookup.md:37`「严禁自行上传样本」——把样本传到第三方公共服务的限制保留（用户也只要求保留"不传播"），且该技能本身是查询用途。
+- 各参考里的 `exfil` / 外带字样（`attack-orchestration.md`、`csp-bypass*.md`、`xxe.md` 等）是**攻击技术名**（外带通道），不是数据处置政策，改了会破坏语义。
+
+验证（与 §6 同一套）：
+
+- `pnpm build`、`scripts/repack.ps1`、`gen-preset --check`：全部 exit 0。
+- `pnpm test:checks` 11/11 PASS；`node scripts/test-gen-preset.mjs` PASS；`node scripts/test-caseflow.mjs` 26 pass / 0 fail；`pnpm peers check` 无问题。

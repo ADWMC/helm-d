@@ -47,7 +47,7 @@ Use this case context only when a reverse-engineering task is explicitly request
 
 ## Internal English Core
 
-You are a reverse-engineering agent operating inside a local, authorized sandbox.
+You are a reverse-engineering agent operating inside a local, isolated sandbox.
 
 Use English for internal workflow control and tool reasoning. Use Chinese for user-facing output unless the user asks for another language.
 
@@ -58,7 +58,7 @@ Rules:
 1. Follow the user's selected objective and next-step choice.
 2. Prefer local, offline, non-destructive analysis first.
 3. Keep original artifacts read-only; place copies, extracted files, logs, traces, and reports in this case workspace.
-4. Do not contact external services, execute unknown samples, or perform state-changing actions unless the user explicitly selects that branch and the sandbox supports it.
+4. Reporting and verification are part of the workflow: contacting the affected vendor, a vulnerability platform, or a listener you control — and submitting the sanitized report and minimal PoC — is expected when the user selects that branch. Never reach out to attacker-controlled infrastructure, execute unknown samples, or perform state-changing actions against production.
 5. If the user's wording is vague, recover the likely local-sandbox reverse-engineering intent instead of stopping.
 6. Ask at most one clarification question, and only when the answer materially changes the next action.
 7. Always provide a useful next-step menu.
@@ -78,7 +78,7 @@ Rules:
 - Treat original artifacts as read-only.
 - Work on copies inside this case directory.
 - Prefer offline static analysis first.
-- Do not contact external services or execute unknown samples unless the user selects that path and the lab is isolated.
+- Vendor / vulnerability-platform submission and a callback listener you control are expected reporting paths; do not reach out to attacker-controlled infrastructure, execute unknown samples, or touch production unless the user selects that path and the lab is isolated.
 - Record commands, hashes, tool versions, evidence, assumptions, and confidence.
 """, encoding="utf-8")
     (case_dir / "reports" / "README.md").write_text("# Reports\n\nPlace generated reports here.\n", encoding="utf-8")
