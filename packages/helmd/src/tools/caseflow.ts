@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import {
   bindCase, getCase, unbindCase, createCaseDir, loadCaseMd, closeCase,
-  validateEvidenceIds, appendFinding, saveEvidence,
+  validateEvidenceIds, appendFinding, saveEvidence, countEvidence,
   casesRoot,
 } from '../case.js'
 import { getLevel } from '../mode.js'
@@ -20,7 +20,7 @@ const RULES = [
   '1. Built-in tools first; missing capability → find_tool() (GitHub); custom scripts LAST, only in <case>/scripts/.',
   '2. External CLI output → save_evidence(label, ...) before citing it.',
   '3. Parameters come from prior tool output in evidence/. Findings cite E ids via record_finding.',
-  '4. Resume after compaction → case_status().',
+  '4. Resume after compaction → case_status(); before compaction, bring the CASE.md `## resume` block up to date.',
   '5. Installed a tool or learned a verified usage → tool_memory(register/note) with evidence id; route falsified (2-3 fails) → tool_memory note target=deadend.',
 ].join('\n')
 
@@ -77,6 +77,9 @@ export function registerCaseflowTools(ctx: Context): void {
       const lines = md.split('\n')
       const head = lines.slice(0, lines.indexOf('## timeline') >= 0 ? lines.indexOf('## timeline') : 12).join('\n')
       const timeline = lines.filter((l) => l.startsWith('- [')).slice(-5).join('\n')
+      // The resume block is the handoff contract: it must survive a truncated window.
+      const resumeAt = lines.findIndex((l) => l.startsWith('## resume'))
+      const resume = resumeAt >= 0 ? lines.slice(resumeAt).join('\n').trim() : ''
       return [
         `case: ${active.name}`,
         `dir: ${active.dir}`,
@@ -85,6 +88,7 @@ export function registerCaseflowTools(ctx: Context): void {
         '',
         'recent timeline:',
         timeline || '  (empty)',
+        ...(resume ? ['', resume] : []),
         '',
         RULES,
         ...(renderAdvisoryStats() ? ['', renderAdvisoryStats()] : []),
@@ -123,7 +127,9 @@ export function registerCaseflowTools(ctx: Context): void {
     name: 'end_case',
     description:
       'Close the active case: stamps CASE.md completed and unbinds the session. ' +
-      'In deep mode at least one recorded finding is required before closing.',
+      'In deep mode at least one recorded finding is required before closing. ' +
+      'Closing also requires at least one evidence entry on disk, unless the summary states why there is none ' +
+      'with "(no-evidence: …)".',
     parameters: { summary: { type: 'string', description: 'One-line closing summary.' } },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: { summary?: string }, exec?: ExecLike) {
@@ -136,6 +142,17 @@ export function registerCaseflowTools(ctx: Context): void {
         if (count === 0) {
           return 'DEEP mode requires at least one record_finding before end_case. Evidence chain incomplete.'
         }
+      }
+      // Completion is an external fact, not a self-report: a closed case must point at
+      // evidence on disk, or say in words why it has none.
+      const evidence = await countEvidence(active.dir)
+      if (evidence === 0 && !/\(no-evidence:\s*\S/i.test(args.summary ?? '')) {
+        return [
+          'REJECTED — 关闭前必须交代证据：evidence/ 里一条 E-xxx 都没有。',
+          '两条路径：① 先落地证据（跑工具，或 save_evidence(label, ...)）再关闭；',
+          '② 本次确实无证据（纯咨询 / 被阻塞）就在 summary 里写明：',
+          '   summary: "… (no-evidence: 用户仅咨询，未接触样本)"。',
+        ].join('\n')
       }
       await closeCase(active.dir, args.summary)
       unbindCase(exec?.agent?.id)

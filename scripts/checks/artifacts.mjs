@@ -38,6 +38,12 @@ export function hostStandardEntry() {
   return candidates.find((candidate) => existsSync(candidate)) ?? null
 }
 
+/** helm-d's built composition root, or null when the build is missing. */
+export function pluginEntry() {
+  const entry = join(distDir, 'index.js')
+  return existsSync(entry) ? entry : null
+}
+
 /** Whether every built module a check may import is present. */
 export function distReady() {
   return ['session-log.js', 'prompt-assembly.js', 'bootstrap.js', 'hcot-hook.js', 'router.js', 'advisory.js', 'ledger.js', 'health.js']

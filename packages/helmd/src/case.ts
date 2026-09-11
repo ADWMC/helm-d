@@ -113,14 +113,25 @@ export async function createCaseDir(opts: {
     '## timeline',
     `- [${nowStamp()}] BEGIN — created by begin_case`,
     '',
-    '## resume',
-    'context compacted? → case_status() first. Parameters come from evidence/, never memory.',
+    '## resume（压缩恢复契约：恢复时先 case_status()；压缩前把 1-6 更新到当前）',
+    '1. 目标与用户约束：goal + 用户说过的授权范围/边界（安全相关约束逐字保留，不要转述）',
+    '2. 已确认事实：验证过的结论 + 对应 E-id（未验证的猜测不要写进来）',
+    '3. 关键参数：命令 / 偏移 / 哈希 / 工具版本 —— 正文只写 E-id，细节留在 evidence/',
+    '4. 已排除的路线：试过且失败的路子（同步进 DEAD_ENDS，写明根因）',
+    '5. 当前进展：正在做的这一步、做到哪、下一步的最小动作',
+    '6. 待办与阻塞：等授权 / 等材料 / 等外部结果（写明等什么、由谁给）',
     '',
   ].join('\n')
   await writeFile(join(dir, 'CASE.md'), caseMd, 'utf8')
   await writeFile(join(dir, 'findings.md'), `# FINDINGS ${name}\n`, 'utf8')
 
   return { dir, name, goal: opts.goal, mode: opts.mode, route: opts.route }
+}
+
+/** Evidence files present for a case (E-xxx entries), counted from disk. */
+export async function countEvidence(caseDir: string): Promise<number> {
+  const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
+  return files.filter((f) => /^E-\d{3}/.test(f)).length
 }
 
 /** Next E-number = max existing + 1 (survives restarts; no in-memory counter). */
