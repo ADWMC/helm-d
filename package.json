@@ -6,7 +6,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r exec tsc -p tsconfig.json --noEmit",
     "test:preset": "node scripts/test-gen-preset.mjs",
-    "test:seam": "node scripts/checks/session-log.check.mjs && node scripts/checks/prompt-assembly.check.mjs && node scripts/checks/bootstrap-anchor.check.mjs"
+    "test:checks": "node scripts/checks/run-all.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

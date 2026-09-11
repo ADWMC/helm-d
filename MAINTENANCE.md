@@ -151,7 +151,7 @@ PR #2708        已合并 (2026-08-23)
 
 - [ ] `pnpm build` 无错
 - [ ] `pnpm peers check` 无问题（依赖图 cohort 与宿主一致，无跨 cohort peer）
-- [ ] `pnpm test:seam` 三份 host-seam 检查全绿（会话事件访问器 / 装配顺序 / 首轮锚定；宿主换 seam 即红，不必等真机会话才暴露）
+- [ ] `pnpm test:checks` 全部绿（自动跑 `scripts/checks/*.check.mjs`；host seam 那几份直接跑在宿主真实 `dsh-session` 包上，宿主换访问器即红，不必等真机会话才暴露）
 - [ ] mock-ctx 工具数与 README/registry 一致
 - [ ] `repack` 后 tgz 内含 `presets/` + `scripts/setup-preset.*`
 - [ ] setup-preset 从安装位置跑通且与 `presets/full-reverse/` 逐字节一致

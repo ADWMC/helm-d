@@ -57,7 +57,7 @@ const ROUTE_TABLE: Route[] = [
   { key: 'har', kw: ['har', 'http', '请求', 'response', '接口'], why: 'HTTP 会话' },
   { key: 'ioc', kw: ['ioc', 'c2', '域名', 'domain', 'hash', '持久化', 'persistence'], why: '威胁指标' },
   { key: 'malware', kw: ['恶意', 'malware', '病毒', 'backdoor', '木马', 'yara'], why: '恶意样本判定' },
-  { key: 'hcot', kw: ['h-cot', 'hcot', 'chain-of-thought', '思维链', '思维链劫持', 'cot 劫持', '劫持'], why: 'H-CoT 思维链劫持 / 模型越狱' },
+  { key: 'hcot', kw: ['h-cot', 'hcot', 'chain-of-thought', '思维链', '思维链劫持', 'cot 劫持'], why: 'H-CoT 思维链劫持 / 模型越狱' },
   { key: 'llm', kw: ['prompt', '注入', 'injection', 'llm', '越狱', 'jailbreak'], why: 'LLM 应用安全' },
   { key: 'web', kw: ['sqli', 'xss', 'ssrf', 'ssti', 'xxe', 'rce', 'lfi', '文件上传', '越权', 'idor', 'jwt', 'oauth', 'csrf', '渗透', 'pentest', 'webshell'], why: 'Web 攻击特征 -> references/web/（含 hs-* 攻击 playbook）' },
   { key: 'native', kw: ['exploit', 'pwn', '提权', 'privesc', 'kerberos', 'ntlm', '内网', '横向', 'rop', '堆溢出', 'heap'], why: '主机/二进制攻击特征 -> references/native/（含 hs-* 攻击 playbook）' },

@@ -13,12 +13,29 @@ export const name = 'helmd-hcot-hook'
 /** Prompt assembly must exist before this filter can register. */
 export const inject = ['systemPrompt']
 
-/** Refusal markers (CN + EN). Kept narrow to avoid firing on ordinary hedging. */
-const REFUSAL_RE =
-  /(抱歉|对不起|我无法|我不能|无法提供|不能提供|不予|拒绝执行|拒绝协助|不能协助|无法协助|不合规|不在(?:我的)?范围|I can'?t|I cannot|I'?m sorry|I am unable|I won'?t|I must decline)/i
+/**
+ * Refusal markers (CN + EN) — delivery refusals only.
+ * A verification statement such as "我无法核实来源" is REQUIRED by the
+ * challenge-the-premise rule, so bare 无法/不能 must not arm the H-CoT channel:
+ * the same narrowing rule advisory-hook's hedge markers follow.
+ */
+const REFUSAL_RE = new RegExp([
+  '抱歉[，,]?\\s*我(?:无法|不能)', '对不起[，,]?\\s*我(?:无法|不能)',
+  '我(?:无法|不能)(?:协助|提供|满足|继续|回答|生成|执行)',
+  '(?:无法|不能)(?:协助|提供|满足)',
+  '不予(?:提供|答复|协助)', '拒绝(?:执行|协助|回答)',
+  '不合规', '不在(?:我的)?(?:职责|服务)?范围',
+  "I can'?t (?:assist|help|provide)", 'I cannot (?:assist|help|provide)',
+  "I'?m sorry, but", 'I am sorry, but', 'I am unable to', "I won'?t", 'I must decline',
+].join('|'), 'i')
 
 /** Dedupe key for the refusal advisory; the ledger demotes it if never acted on. */
 export const HCOT_ADVISORY_KEY = 'hcot-on-refusal'
+
+/** Whether a reply reads as a delivery refusal. Exported for the host-seam checks. */
+export function isRefusal(text: string): boolean {
+  return REFUSAL_RE.test(text)
+}
 
 /**
  * Newest user turn as the refused-request hint, whitespace-normalized and bounded.
@@ -35,7 +52,7 @@ function refusedRequest(events: readonly unknown[]): string {
 }
 
 function refusalExcerpt(text: string | null): string | null {
-  if (!text || !REFUSAL_RE.test(text)) return null
+  if (!text || !isRefusal(text)) return null
   return text.replace(/\s+/g, ' ').trim().slice(0, 240)
 }
 
