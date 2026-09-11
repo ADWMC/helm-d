@@ -2,10 +2,11 @@
 // not rewrite the user's agent.cordis.yml; with HELMD_AUTO_HEAL=1 it keeps a .bak first.
 // Everything runs against a throwaway DSH_HOME, so the real deployment is never touched.
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { hostStandardEntry, loadArtifacts } from './artifacts.mjs'
+import { distDir, hostStandardEntry, loadArtifacts } from './artifacts.mjs'
 import { createReporter, skip } from './reporter.mjs'
 
 const seam = await loadArtifacts()
@@ -49,6 +50,25 @@ await report.check('HELMD_AUTO_HEAL=1 rewrites it and keeps the previous file as
   assert.match(base.autoHeal, /^healed \(LEGACY_PRESET → /, `unexpected verdict: ${base.autoHeal}`)
   assert.equal(readFileSync(`${presetPath}.bak`, 'utf8'), drifted, 'previous content should survive as .bak')
   assert.match(readFileSync(presetPath, 'utf8'), /^# gen-preset: host=[0-9a-f]{64}/)
+})
+
+// Content drift: same host fingerprint, but the file is not what this package ships (an
+// older deployment, or a hand edit). The header alone cannot see this.
+const hostHash = createHash('sha256').update(readFileSync(hostStandard, 'utf8'), 'utf8').digest('hex')
+const shipped = readFileSync(join(distDir, '..', 'presets', 'agent.cordis.yml'), 'utf8')
+delete process.env.HELMD_AUTO_HEAL
+
+await report.check('same host fingerprint but different content reads as STALE, untouched by default', () => {
+  writeFileSync(presetPath, `# gen-preset: host=${hostHash}\n\n- id: persona\n  name: 'x'\n`, 'utf8')
+  const base = healthBase()
+  assert.equal(base.status, 'STALE', `expected STALE, got ${base.status}: ${base.detail}`)
+  assert.equal(readFileSync(presetPath, 'utf8').includes("name: 'x'"), true, 'report-only must not rewrite it')
+})
+
+await report.check('the shipped preset itself reads as OK, CRLF included', () => {
+  writeFileSync(presetPath, shipped.replace(/\n/g, '\r\n'), 'utf8')
+  const base = healthBase()
+  assert.equal(base.status, 'OK', `expected OK, got ${base.status}: ${base.detail}`)
 })
 
 mergeInto(process.env, { DSH_HOME: undefined, DSH_HOST_STANDARD_YML: undefined, HELMD_AUTO_HEAL: undefined })

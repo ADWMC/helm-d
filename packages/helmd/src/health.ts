@@ -211,6 +211,16 @@ function evaluateHealthCore(): HelmdHealth {
   }
   base.presetFingerprint = m[1].slice(0, 12)
   if (m[1].startsWith(base.hostFingerprint)) {
+    // Same host standard: the deployed file should therefore be byte-equal to the preset
+    // this package ships (both derive from that standard plus persona.txt). A difference
+    // means the deployment is older than the package or was edited by hand — the case the
+    // README's "content drift" badge is for, and otherwise invisible because the header
+    // only tracks the HOST.
+    if (!matchesBundledPreset(text)) {
+      base.status = 'STALE'
+      base.detail = 'deployed preset no longer matches the preset this package ships (persona or rows changed without re-sync); regenerate (repack / setup-preset, or HELMD_AUTO_HEAL=1 + restart)'
+      return base
+    }
     base.status = 'OK'
     base.detail = `preset matches installed dsh standard (${base.hostFingerprint})`
   } else {
@@ -218,6 +228,28 @@ function evaluateHealthCore(): HelmdHealth {
     base.detail = `preset targets dsh ${base.presetFingerprint} but the host now hashes ${base.hostFingerprint}; regenerate (repack / setup-preset, or HELMD_AUTO_HEAL=1 + restart)`
   }
   return base
+}
+
+/** Bundled generated preset that this package ships as its own mirror. */
+function bundledPreset(): string | null {
+  try {
+    const p = fileURLToPath(new URL('../presets/agent.cordis.yml', import.meta.url))
+    return existsSync(p) ? readFileSync(p, 'utf8') : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Whether the deployed preset equals the shipped one.
+ * Line endings are normalized: git may check the repo out with CRLF while the generator
+ * writes LF, and that difference is not drift. An unreadable bundle reports no verdict.
+ */
+function matchesBundledPreset(deployed: string): boolean {
+  const shipped = bundledPreset()
+  if (shipped === null) return true
+  const normalize = (s: string) => s.replace(/\r\n/g, '\n').trimEnd()
+  return normalize(shipped) === normalize(deployed)
 }
 
 /**
