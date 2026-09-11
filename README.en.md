@@ -452,6 +452,7 @@ This project integrates design ideas and implementation patterns from many excel
 - [docs/architecture.md](docs/architecture.md) — architecture
 - [docs/architecture-v2.md](docs/architecture-v2.md) — architecture v2 (persona + tool anchoring + on-demand knowledge)
 - [docs/case-studies/](docs/case-studies/boosterx-dotnet-license-bypass.md) — case studies
+- [docs/skills-reference/](docs/skills-reference/authorized-pentest-framework.md) — imported pentest skill digests (authorized framework / practitioner)
 
 ## Contributing
 

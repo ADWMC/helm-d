@@ -454,6 +454,7 @@ pnpm build
 - [docs/architecture.md](docs/architecture.md) — 架构
 - [docs/architecture-v2.md](docs/architecture-v2.md) — 架构 v2（persona + 工具锚定 + 按需知识）
 - [docs/case-studies/](docs/case-studies/boosterx-dotnet-license-bypass.md) — 实战案例
+- [docs/skills-reference/](docs/skills-reference/authorized-pentest-framework.md) — 导入的渗透测试 skill 合并文档（授权框架 / 实战派）
 
 ## Contributing
 
