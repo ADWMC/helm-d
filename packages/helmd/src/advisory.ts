@@ -321,21 +321,38 @@ export function renderAdvisoryStats(limit = 5): string {
   return '[建议采纳率]\n' + rows.join('\n')
 }
 
-/** Samples and adoption rate a discipline needs before the reminder stops being rendered. */
+/**
+ * Teaching thresholds, measured over a SLIDING window of the key's most recent verdicts.
+ * A cumulative rate cannot answer "is this being followed *now*": after enough good history
+ * it never drops below the bar (so a later regression is never taught), and near the bar it
+ * flaps. The window retires the reminder once the discipline holds and brings it back when
+ * it degrades.
+ */
+const RECENT_WINDOW = 10
 const TEACH_MIN_SAMPLES = 5
 const TEACH_MIN_RATE = 0.7
 
+/** This key's most recent verdicts, oldest → newest, capped at the window. */
+function recentOutcomes(key: string, window = RECENT_WINDOW): Verdict[] {
+  const out: Verdict[] = []
+  for (const row of ledgerRows()) {
+    if (row.key !== key) continue
+    if (row.verdict !== 'adopted' && row.verdict !== 'ignored') continue
+    out.push(row.verdict)
+  }
+  return out.slice(-window)
+}
+
 /**
- * Whether a teaching advisory is still worth rendering: until the ledger shows the
- * discipline is followed often enough, then never again — it stays a pure metric.
- * Teaching and measuring are the same submission; only the reminder retires.
+ * Whether a teaching advisory is still worth rendering: until the recent window shows the
+ * discipline is followed often enough, then never again — it stays a pure metric. Teaching
+ * and measuring are the same submission; only the reminder retires.
  */
 export function shouldTeach(key: string): boolean {
-  const entry = tally().get(key)
-  if (entry === undefined) return true
-  const total = entry.adopted + entry.ignored
-  if (total < TEACH_MIN_SAMPLES) return true
-  return entry.adopted / total < TEACH_MIN_RATE
+  const recent = recentOutcomes(key)
+  if (recent.length < TEACH_MIN_SAMPLES) return true
+  const adopted = recent.filter((verdict) => verdict === 'adopted').length
+  return adopted / recent.length < TEACH_MIN_RATE
 }
 
 /** Render the session's surviving advisories as one prompt section body. */

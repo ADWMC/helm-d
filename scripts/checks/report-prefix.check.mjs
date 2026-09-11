@@ -16,7 +16,7 @@ const home = mkdtempSync(join(tmpdir(), 'helmd-report-'))
 process.env.HELMD_TOOLS_DIR = home
 const report = createReporter('report-prefix')
 
-const { registerAdvisoryHook, REPORT_KEY } = await import(pathToFileURL(join(distDir, 'advisory-hook.js')).href)
+const { registerAdvisoryHook, REPORT_KEY, isReportRequest } = await import(pathToFileURL(join(distDir, 'advisory-hook.js')).href)
 const { advisoryStats } = await import(pathToFileURL(join(distDir, 'advisory.js')).href)
 
 /** Capture the assembly listener the hook registers. */
@@ -88,6 +88,28 @@ await report.check('measurement continues after the reminder retires', async () 
   events.push(assistant('已修复并验证：仍在记账'))
   await assemble()
   assert.equal(rate().adopted + rate().ignored, before + 1, 'the ledger keeps counting after teaching ends')
+})
+
+await report.check('the trigger needs both a work noun and an ask', () => {
+  const asked = ['进展如何？', '修完了吗', 'any progress?', 'status update?', '还剩什么没做？', '汇报一下当前情况', "what's left?", 'are we done?']
+  for (const turn of asked) assert.equal(isReportRequest(turn), true, `should ask for a report: ${turn}`)
+  const notAsked = ['帮我分析这个样本', '查看服务状态', 'check the service status', '完成这个任务', '查看进程状态并汇报给日志']
+  for (const turn of notAsked) assert.equal(isReportRequest(turn), false, `should not ask for a report: ${turn}`)
+})
+
+await report.check('a regression inside the recent window brings the reminder back', async () => {
+  // Push the cumulative rate far above the bar (24/29) while the recent window is bad
+  // (5 adopted / 5 ignored): a cumulative rule would stay retired, the window must teach.
+  const rows = [
+    ...Array.from({ length: 20 }, () => JSON.stringify({ key: REPORT_KEY, tier: 'mandatory', verdict: 'adopted', turnsWaited: 1, ts: '2026-01-01T00:00:00.000Z' })),
+    ...Array.from({ length: 5 }, () => JSON.stringify({ key: REPORT_KEY, tier: 'mandatory', verdict: 'ignored', turnsWaited: 1, ts: '2026-01-01T00:00:00.000Z' })),
+  ]
+  appendFileSync(join(home, 'advisories.jsonl'), `${rows.join('\n')}\n`, 'utf8')
+  events.push(user('进展如何？'))
+  const result = await assemble()
+  assert.match(injected(result), /已修复并验证/, 'a degraded recent window must be taught again')
+  events.push(assistant('已修复并验证：窗口内回归，重新受教'))
+  await assemble()
 })
 
 rmSync(home, { recursive: true, force: true })

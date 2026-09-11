@@ -43,15 +43,25 @@ export const REPORT_KEY = 'stance:report-prefix'
 const REPORT_PREFIX_MARKERS = ['已修复并验证', '已修复未验证', '待决策', '已知问题']
 
 /**
- * Turns that ask for a delivery report. Deliberately explicit phrasings rather than bare
- * 状态 / status: "check the service status" is a task, not a request for a report, and a
- * false arm would record an ordinary reply as an ignored report.
+ * A delivery-report request has two signals: it names our work (progress / report / 进展 /
+ * 修完 …), and it is phrased as an ask. Bare 状态 / status is deliberately NOT a noun here —
+ * "check the service status" is a task, and arming it would record an ordinary reply as an
+ * ignored report.
  */
-const REPORT_REQUEST_RE = new RegExp([
-  '进展如何|进展怎样|进度如何|进度怎样|汇报一下|汇报进展|汇报进度|状态如何|现在什么情况|怎么样了',
-  '修完了吗|做完了吗|完成了吗|弄好了吗|哪些还没做|哪些没做|还有什么没做|还剩什么|结果如何|结果怎么样',
-  'status (report|update)|what(?:\'s| is) the status|any (?:update|progress)|are we done|what(?:\'s| is) left|where (?:are|do) (?:we|you) stand',
+const REPORT_NOUN_RE = new RegExp([
+  'progress', 'status (?:report|update)', "what(?:'s| is) left", 'are we done', 'deliverable',
+  '进展', '进度', '汇报', '修完', '做完', '完成', '交付', '还剩', '剩余',
 ].join('|'), 'i')
+
+const REPORT_ASK_RE = new RegExp([
+  '[?？]', '如何', '怎么样', '怎样', '了吗', '没呢', '没有呢', '多少', '一下', '呢\\s*$',
+  'what', 'how', 'where', 'any', 'are we',
+].join('|'), 'i')
+
+/** Whether a user turn asks for a delivery report. Exported for the host-seam checks. */
+export function isReportRequest(text: string): boolean {
+  return REPORT_NOUN_RE.test(text) && REPORT_ASK_RE.test(text)
+}
 
 /**
  * Claim-shaped user turns: absolute/assertive wording, a quantified claim, or an
@@ -114,7 +124,7 @@ function armStanceMetric(sessionId: string, events: readonly unknown[]): void {
 function armReportMetric(sessionId: string, events: readonly unknown[]): void {
   if (hasPending(sessionId, REPORT_KEY)) return
   const turn = latestEventText(events, USER_MESSAGE) ?? ''
-  if (!turn || !REPORT_REQUEST_RE.test(turn)) return
+  if (!turn || !isReportRequest(turn)) return
   submitAdvisory(sessionId, {
     key: REPORT_KEY,
     tier: 'mandatory',
