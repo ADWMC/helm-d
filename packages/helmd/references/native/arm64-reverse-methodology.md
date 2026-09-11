@@ -285,5 +285,5 @@ Interceptor.attach(targetAddr, {
 ## 5. 与其他知识库的关系
 
 - **字符串搜索脚本**：本文件的脚本模板可直接在 IDA Console 运行
-- **Flutter SSL bypass**：ADRP 搜索是定位 `TrustBuiltinRoots` 的关键步骤，详见 `skill-android/references/flutter-ssl-bypass.md`
+- **Flutter SSL bypass**：ADRP 搜索是定位 `TrustBuiltinRoots` 的关键步骤，详见 `skill-android/../android/flutter-ssl-bypass.md`
 - **IDAPython 编码规范**：脚本编写前建议先读 `idapython-conventions.md`

@@ -262,6 +262,6 @@ for k in keys:
 
 ## 参考
 
-- `references/api-blackbox-testing.md` — 无源码 API 黑盒测试方法
-- `references/frontend-js-reverse.md` — 从混淆 JS 提取 API
+- `./api-blackbox-testing.md` — 无源码 API 黑盒测试方法
+- `./frontend-js-reverse.md` — 从混淆 JS 提取 API
 - `web-methodology.md` — Web 安全测试通用方法

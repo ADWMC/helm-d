@@ -1,113 +1,391 @@
-# 代码混淆与去混淆
+---
+name: code-obfuscation-deobfuscation
+description: >-
+  Code obfuscation analysis and deobfuscation playbook. Use when reversing
+  binaries protected by junk code, opaque predicates, self-modifying code,
+  control flow flattening, VM protection, or string encryption.
+---
 
-> 来源提炼: yaklang/hack-skills (code-obfuscation-deobfuscation)
-> 覆盖垃圾代码、不透明谓词、SMC、控制流平坦化、movfuscator、VM 保护、字符串加密、导入隐藏、反反汇编
+# SKILL: Code Obfuscation & Deobfuscation — Expert Analysis Playbook
 
-## 快速识别
+> **AI LOAD INSTRUCTION**: Expert techniques for identifying, classifying, and defeating code obfuscation in native binaries. Covers junk code, opaque predicates, SMC, control flow flattening, movfuscator, VM protectors (VMProtect/Themida/Code Virtualizer), string encryption, import hiding, and anti-disassembly tricks. Base models often conflate packing with obfuscation and miss the distinction between static and dynamic deobfuscation strategies.
 
-| IDA/Ghidra 症状 | 疑似混淆 | 起步 |
-|----------------|---------|------|
-| 扁平 CFG、单一巨型 switch | 控制流平坦化 | 符号执行恢复 CFG |
-| 仅 `mov` 指令 | movfuscator | demovfuscation / trace lifting |
-| pushad/pushfd → VM 入口 | VM 保护 | handler 表提取 |
-| 执行前 XOR 循环 | SMC / 字符串加密 | 动态分析，解码后断点 |
-| 不可能条件(不透明谓词) | 垃圾代码 | 模式移除 |
-| 字符串全不可读 | 字符串加密 | hook 解密函数或模拟 |
-| IAT 无导入 | 导入隐藏 | trace GetProcAddress / hash 解析 |
+## 0. RELATED ROUTING
 
-## 垃圾代码与不透明谓词
+- [anti-debugging-techniques](./anti-debugging-techniques.md) when the obfuscated binary also has anti-debug layers
+- [symbolic-execution-tools](./symbolic-execution-tools.md) when using angr/Z3 for automated deobfuscation
+- [vm-and-bytecode-reverse](./vm-and-bytecode-reverse.md) for deep VM protector bytecode analysis
 
-- 垃圾代码: 写后不读的寄存器/内存、返回值丢弃无副作用调用、不变边界无用循环。用 def-use 链标记死代码。
-- 不透明谓词类型:
+### Quick identification picks
 
-| 类型 | 示例 | 恒为 |
-|------|------|------|
-| 算术 | `x² ≥ 0` | True |
-| 数论 | `x*(x+1) % 2 == 0` | True |
-| 指针 | `ptr == ptr` | True |
-| 哈希 | `CRC32(constant) == known` | True |
+| Symptom in IDA/Ghidra | Likely Obfuscation | Start With |
+|---|---|---|
+| Flat CFG, single giant switch | Control flow flattening | Symbolic execution to recover CFG |
+| Only `mov` instructions | movfuscator | demovfuscation / trace-based lifting |
+| pushad/pushfd → VM entry | VM protector | Handler table extraction |
+| XOR loop before code execution | SMC / string encryption | Dynamic analysis, breakpoint after decode |
+| Impossible conditions (opaque predicates) | Junk code insertion | Pattern-based removal |
+| All strings unreadable | String encryption | Hook decryption routine, or emulate |
+| No imports in IAT | Import hiding | Trace GetProcAddress / hash resolution |
 
-去混淆: 抽象解释、符号执行(Z3 证明 `∀x`)、模式匹配、动态 trace。
+---
+
+## 1. JUNK CODE & OPAQUE PREDICATES
+
+### 1.1 Junk Code Insertion
+
+Dead code that never affects program output, added to increase analysis time.
+
+**Identification**:
+- Instructions that write to registers/memory never read afterward
+- Function calls whose return values are discarded and have no side effects
+- Loops with invariant bounds that compute unused results
+
+**Removal strategy**:
+1. Compute def-use chains (IDA/Ghidra data flow analysis)
+2. Mark instructions with no downstream use as dead
+3. Verify removal doesn't change program behavior (trace comparison)
+
+### 1.2 Opaque Predicates
+
+Conditional branches where the condition is always true or always false, but this is non-obvious.
+
+| Type | Example | Always Evaluates To |
+|---|---|---|
+| Arithmetic | `x² ≥ 0` | True |
+| Number theory | `x*(x+1) % 2 == 0` | True (product of consecutive ints) |
+| Pointer-based | `ptr == ptr` after aliasing | True |
+| Hash-based | `CRC32(constant) == known_value` | True |
+
+**Deobfuscation**:
+- Abstract interpretation: prove the condition is constant
+- Symbolic execution: Z3 proves `∀x: predicate(x) = True`
+- Pattern matching: recognize known opaque predicate families
+- Dynamic: trace and observe the branch is never taken / always taken
 
 ```python
 import z3
 x = z3.BitVec('x', 32)
-s = z3.Solver(); s.add(x * (x + 1) % 2 != 0)
-print(s.check())  # unsat → 恒真
+s = z3.Solver()
+s.add(x * (x + 1) % 2 != 0)
+print(s.check())  # unsat → always true
 ```
 
-## 自修改代码 (SMC)
+---
+
+## 2. SELF-MODIFYING CODE (SMC)
+
+Runtime code patching: encrypted code is decrypted just before execution.
+
+### 2.1 XOR Decryption Loop (Most Common)
 
 ```asm
 lea esi, [encrypted_code]
 mov ecx, code_length
 mov al, xor_key
-decrypt_loop: xor byte [esi], al ; inc esi ; loop decrypt_loop
-jmp encrypted_code
+decrypt_loop:
+    xor byte [esi], al
+    inc esi
+    loop decrypt_loop
+    jmp encrypted_code  ; now decrypted
 ```
 
-策略: 定位解密例程 → 循环后断点 → dump 解密内存 → 重新分析。多层重复。用 Unicorn 模拟自动化解包。
-
-## 控制流平坦化 (CFF)
-
-原始 `A→B→C→D` 变 dispatcher 循环，每块设 `state=next` 跳回。
-
-恢复: angr/Triton/miasm 符号执行、Pin/DynamoRIO trace 重建、D-810(IDA 插件)。
-
-## movfuscator
-
-所有计算化为 `mov`(内存映射计算表)。识别: 仅 mov、数据段大查找表、内存映射标志寄存器。恢复: demovfuscator / trace+taint / 符号执行。
-
-## VM 保护 (VMProtect / Themida / Code Virtualizer)
+### 2.2 Analysis Strategy
 
 ```
-受保护代码 → 字节码编译器 → 自定义字节码
-运行时: VM 入口(pushad/pushfd) → fetch → decode → execute → 退出(popad/popfd)
+1. Identify the decryption routine (look for XOR/ADD/SUB in loops writing to .text)
+2. Set breakpoint AFTER the loop completes
+3. At breakpoint: dump the decrypted memory region
+4. Re-analyze the dumped code in IDA/Ghidra
+5. For multi-layer: repeat for each decryption stage
 ```
 
-- 入口识别: pushad + pushfd + mov ebp,esp + sub esp + mov esi,bytecode_addr + jmp dispatcher
-- handler 表提取: 找 dispatcher(巨型 switch/间接跳转)，每个 case=一个 VM handler，分析操作数、寄存器、字节码指针推进。
-- 去虚拟化: 手工 handler 映射、REVEN/Pin trace、Triton/miasm 符号 lifting、模式匹配。
-- VMProtect 特性: 不透明谓词、handler 变异、多层 VM、内置反调试+完整性检查。
+### 2.3 Automated Unpacking via Emulation
 
-## 字符串加密
+```python
+from unicorn import *
+from unicorn.x86_const import *
 
-| 模式 | 恢复 |
-|------|------|
-| XOR 循环 | hook 或模拟 XOR 函数 |
-| 栈字符串(`mov [esp+0],'H'`) | FLIRT/Ghidra 脚本重组 |
-| RC4 | 提取密钥离线解密 |
-| AES | hook 解密后 |
-| 自定义(Base64+XOR+reverse) | trace decode 函数复现 |
+mu = Uc(UC_ARCH_X86, UC_MODE_32)
+mu.mem_map(0x400000, 0x10000)
+mu.mem_write(0x400000, binary_code)
+mu.emu_start(decrypt_entry, decrypt_end)
+decrypted = mu.mem_read(code_start, code_length)
+```
 
-## 导入隐藏
+---
 
-GetProcAddress + hash 查表(遍历 PEB→LDR→模块列表，遍历导出表 hash 比较)。
+## 3. CONTROL FLOW FLATTENING (CFF)
 
-常见 hash 算法: ROR13(Metasploit shellcode)、djb2、CRC32、FNV-1a。恢复: 识别算法 → 对已知 API 名算 hash → 建查表 → 标注调用。
+### 3.1 Structure
 
-## 反反汇编技巧
+Original sequential blocks are transformed into a dispatcher loop:
 
-| 技巧 | 机制 | 修复 |
-|------|------|------|
-| 重叠指令 | `jmp $+2; db 0xE8` | 正确偏移重新分析 |
-| 未对齐跳转 | 跳进多字节指令中部 | 目标处强制重新分析 |
-| 条件跳转对 | `jz $+5; jnz $+3` | 转无条件 jmp |
-| 返回地址操纵 | `push addr; ret` | 识别为跳转 |
-| 异常流 | 真代码在异常处理器 | 分析处理器链 |
-| call+add [esp] | 计算跳转 | 算实际目标 |
+```
+Original:      A → B → C → D
 
-IDA: U(undefine) → C(code) 在正确偏移 → 必要时 patch。
+Flattened:     ┌──────────────────┐
+               │   dispatcher     │
+               │   switch(state)  │◄─────┐
+               ├──────────────────┤      │
+               │ case 1: block A  │──────┤
+               │ case 2: block B  │──────┤
+               │ case 3: block C  │──────┤
+               │ case 4: block D  │──────┘
+               └──────────────────┘
+```
 
-## 工具
+Each block sets `state = next_state` before jumping back to the dispatcher.
 
-| 工具 | 用途 |
-|------|------|
-| IDA Pro + Hex-Rays | 反汇编/反编译/脚本 |
-| Ghidra | 免费替代 |
-| D-810 | CFF 去平坦化 |
-| miasm / Triton | 符号去混淆 / 不透明谓词 |
-| REVEN | 全系统 trace(VM 保护) |
-| demovfuscator | mov 专用 |
-| Unicorn / Capstone | 模拟 / 反汇编库 |
-| x64dbg | 动态分析 |
+### 3.2 Recovery Techniques
+
+| Technique | Tool | Effectiveness |
+|---|---|---|
+| Symbolic execution | angr, Triton, miasm | High — traces all state transitions |
+| Trace-based recovery | Pin/DynamoRIO trace → reconstruct CFG | Medium — covers executed paths only |
+| Pattern matching | Custom IDA/Ghidra script | Medium — works for known flatteners |
+| D-810 (IDA plugin) | IDA Pro | High — specifically designed for CFF |
+
+### 3.3 Symbolic Deflattening (angr approach)
+
+```python
+import angr, claripy
+
+proj = angr.Project('./obfuscated')
+cfg = proj.analyses.CFGFast()
+
+# Find dispatcher block (highest in-degree basic block)
+dispatcher = max(cfg.graph.nodes(), key=lambda n: cfg.graph.in_degree(n))
+
+# For each case block, symbolically determine successor
+for block in case_blocks:
+    state = proj.factory.blank_state(addr=block.addr)
+    # ... solve state variable to find real successor
+```
+
+---
+
+## 4. MOVFUSCATOR
+
+### 4.1 Concept
+
+All computation reduced to `mov` instructions only (Turing-complete via memory-mapped computation tables). Created by Christopher Domas.
+
+### 4.2 Identification
+
+- Function contains only `mov` instructions (no add, sub, xor, jmp, call)
+- Large lookup tables in data section
+- Memory-mapped flag registers
+
+### 4.3 Demovfuscation
+
+| Approach | Description |
+|---|---|
+| demovfuscator (tool) | Static analysis, recovers original operations from mov patterns |
+| Trace + taint analysis | Run with Pin/DynamoRIO, taint inputs, observe computation |
+| Symbolic execution | Treat entire function as constraint system |
+
+---
+
+## 5. VM PROTECTION (VMProtect / Themida / Code Virtualizer)
+
+### 5.1 VM Architecture
+
+```
+Protected code → bytecode compiler → custom bytecode
+Runtime: VM entry (pushad/pushfd) → fetch → decode → execute → VM exit (popad/popfd)
+```
+
+### 5.2 VM Entry Point Identification
+
+```asm
+; Typical VMProtect entry
+pushad                    ; save all registers
+pushfd                    ; save flags
+mov ebp, esp              ; VM stack frame
+sub esp, VM_LOCALS_SIZE   ; allocate VM context
+mov esi, bytecode_addr    ; bytecode instruction pointer
+jmp vm_dispatcher         ; enter VM loop
+```
+
+### 5.3 Handler Table Extraction
+
+```
+1. Find dispatcher (large switch or indirect jump via table)
+2. Each case/entry = one VM handler (implements one VM opcode)
+3. Map handler addresses to operations by analyzing each handler:
+   - Handler reads operand from bytecode stream (esi)
+   - Performs operation on VM registers/stack
+   - Advances bytecode pointer
+   - Returns to dispatcher
+```
+
+### 5.4 Devirtualization Approaches
+
+| Method | Description | Tool |
+|---|---|---|
+| Manual handler mapping | Reverse each handler, build ISA spec | IDA + scripting |
+| Trace recording | Record all handler executions, reconstruct program | REVEN, Pin |
+| Symbolic lifting | Symbolically execute handlers, lift to IR | Triton, miasm |
+| Pattern matching | Match handler patterns to known VM families | Custom scripts |
+
+### 5.5 VMProtect Specifics
+
+- Uses opaque predicates in dispatcher
+- Handler mutation: same opcode, different handler code per build
+- Multiple VM layers (VM inside VM)
+- Integrates anti-debug and integrity checks
+
+---
+
+## 6. STRING ENCRYPTION
+
+### 6.1 Common Patterns
+
+| Pattern | Example | Recovery |
+|---|---|---|
+| XOR loop | `for (i=0; i<len; i++) s[i] ^= key;` | Hook or emulate XOR function |
+| Stack strings | `mov [esp+0], 'H'; mov [esp+1], 'e'; ...` | IDA FLIRT / Ghidra script to reassemble |
+| RC4 encrypted | Encrypted blob + RC4 key in binary | Extract key, decrypt offline |
+| AES encrypted | Encrypted blob + AES key derived at runtime | Hook after decryption |
+| Custom encoding | Base64 + XOR + reverse | Trace the decode function, replicate |
+
+### 6.2 Automated String Decryption
+
+```python
+# Ghidra script: find XOR decryption calls, emulate them
+from ghidra.program.model.symbol import SourceType
+
+decrypt_func = getFunction("decrypt_string")
+refs = getReferencesTo(decrypt_func.getEntryPoint())
+
+for ref in refs:
+    call_addr = ref.getFromAddress()
+    # extract arguments (encrypted buffer ptr, key, length)
+    # emulate decryption, add comment with plaintext
+```
+
+---
+
+## 7. IMPORT HIDING
+
+### 7.1 GetProcAddress + Hash Lookup
+
+```c
+FARPROC resolve(DWORD hash) {
+    // Walk PEB → LDR → InMemoryOrderModuleList
+    // For each DLL, walk export table
+    // Hash each export name, compare with target hash
+    // Return matching function pointer
+}
+```
+
+### 7.2 Recovery
+
+1. Identify the hash algorithm (common: CRC32, djb2, ROR13+ADD)
+2. Compute hashes for all known API names
+3. Build hash → API name lookup table
+4. Annotate resolved calls in IDA/Ghidra
+
+### 7.3 Common Hash Algorithms
+
+| Name | Algorithm | Used By |
+|---|---|---|
+| ROR13 | `hash = (hash >> 13 \| hash << 19) + char` | Metasploit shellcode |
+| djb2 | `hash = hash * 33 + char` | Various malware |
+| CRC32 | Standard CRC32 of function name | Sophisticated packers |
+| FNV-1a | `hash = (hash ^ char) * 0x01000193` | Modern malware |
+
+---
+
+## 8. ANTI-DISASSEMBLY TRICKS
+
+### 8.1 Techniques
+
+| Trick | Mechanism | Fix |
+|---|---|---|
+| Overlapping instructions | `jmp $+2; db 0xE8` (fake call prefix) | Manual re-analysis from correct offset |
+| Misaligned jumps | Jump into middle of multi-byte instruction | Force IDA to re-analyze at target |
+| Conditional jump pair | `jz $+5; jnz $+3` (always jumps, confuses linear disasm) | Convert to unconditional jmp |
+| Return address manipulation | `push addr; ret` instead of `jmp addr` | Recognize push+ret as jump |
+| Exception-based flow | Trigger exception, real code in handler | Analyze exception handler chain |
+| Call + add [esp] | `call $+5; add [esp], N; ret` (computed jump) | Calculate actual target |
+
+### 8.2 IDA Fixes
+
+```
+Right-click → Undefine (U)
+Right-click → Code (C) at correct offset
+Edit → Patch → Assemble (for permanent fix)
+```
+
+---
+
+## 9. DECISION TREE
+
+```
+Obfuscated binary — how to approach?
+│
+├─ Can you run it?
+│  ├─ Yes → Dynamic analysis first
+│  │  ├─ Set BP on interesting APIs (file, network, crypto)
+│  │  ├─ Trace execution to understand real behavior
+│  │  └─ Dump decrypted code/strings at runtime
+│  │
+│  └─ No (embedded/firmware/exotic arch) → Static only
+│     └─ Identify obfuscation type from patterns below
+│
+├─ What does the code look like?
+│  │
+│  ├─ Giant flat switch/dispatcher loop?
+│  │  ├─ State variable drives control flow → CFF
+│  │  │  └─ Use D-810 or symbolic deflattening
+│  │  └─ Bytecode fetch-decode-execute → VM protection
+│  │     └─ Extract handlers, build disassembler
+│  │
+│  ├─ Only mov instructions?
+│  │  └─ movfuscator → demovfuscator tool
+│  │
+│  ├─ XOR/ADD loop writing to .text section?
+│  │  └─ SMC → breakpoint after decode, dump
+│  │
+│  ├─ Impossible conditions in branches?
+│  │  └─ Opaque predicates → Z3 proving or pattern removal
+│  │
+│  ├─ Disassembly looks wrong / functions overlap?
+│  │  └─ Anti-disassembly → manual re-analysis at correct offsets
+│  │
+│  ├─ No readable strings?
+│  │  └─ String encryption → hook decrypt function or emulate
+│  │
+│  ├─ No imports in IAT?
+│  │  └─ Import hiding → identify hash, build lookup table
+│  │
+│  └─ pushad/pushfd → complex code → popad/popfd?
+│     └─ VM protector entry/exit → full VM analysis
+│
+└─ What tool to use?
+   ├─ Known protector (VMProtect/Themida) → specific deprotection guide
+   ├─ Custom obfuscation → combine: IDA scripting + Triton + manual
+   ├─ CTF challenge → angr symbolic execution often fastest
+   └─ Malware analysis → dynamic (debugger + API monitor) first
+```
+
+---
+
+## 10. TOOLBOX
+
+| Tool | Purpose | Best For |
+|---|---|---|
+| IDA Pro + Hex-Rays | Disassembly, decompilation, scripting | All-around analysis |
+| Ghidra | Free alternative with scripting (Java/Python) | Budget-friendly RE |
+| D-810 (IDA plugin) | Automated CFF deflattening | OLLVM-style obfuscation |
+| miasm | IR-based analysis framework | Symbolic deobfuscation |
+| Triton | Dynamic symbolic execution | Opaque predicate solving, CFF |
+| REVEN | Full-system trace recording and replay | VM protector analysis |
+| demovfuscator | movfuscator reversal | mov-only binaries |
+| x64dbg + plugins | Dynamic analysis with scripting | Windows RE |
+| Unicorn Engine | CPU emulation | SMC unpacking, shellcode |
+| Capstone | Disassembly library | Custom tooling |
+| IDA FLIRT | Function signature matching | Identify library code in stripped binaries |
+| Binary Ninja | Alternative disassembler with MLIL/HLIL | Automated analysis |

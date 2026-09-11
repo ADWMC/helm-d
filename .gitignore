@@ -6,3 +6,9 @@ dist/
 __pycache__/
 *.pyc
 *.log
+
+# 本地参考克隆（嵌套 git 仓库，不入库）
+_refs/
+
+# 凭据类文件，禁止进入历史
+cookie.txt

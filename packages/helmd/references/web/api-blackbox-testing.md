@@ -212,7 +212,7 @@ def main():
 
 ## 前端 JS → API 端点提取
 
-当需要从页面 JS 中发现隐藏 API 时，参考 `references/frontend-js-reverse.md` 的完整工作流。
+当需要从页面 JS 中发现隐藏 API 时，参考 `./frontend-js-reverse.md` 的完整工作流。
 
 ### 关键实践
 

@@ -100,6 +100,6 @@ if (nbg) {
 - `Memory.patchCode(addr, size, callback)` 在 17.x 中正常工作，用于运行时修改代码段（NOP 指令、修改跳转等）
 - `Thread.sleep(seconds)` 可在 Interceptor.onEnter 中调用以阻塞线程（如阻止 exit 调用）
 - shellcode 用 `svc #0` 直接系统调用时，libc exit/exit_group hook 不会触发 — 需要 patch shellcode 中的 svc 指令
-- **360 jiagu 加固 app：`Java` is not defined**。jiagu hook 了 JNI 环境，Frida attach 后整个 `Java` 对象不存在（不是 `Java.perform` 失败，而是 `Java` 本身 undefined）。解决：不用 Java Bridge，用纯 Native API（`Process.enumerateModules()` + `addr.readByteArray()`）dump 解密后的 DEX。见 `skill-android/references/android-unpacking.md`
+- **360 jiagu 加固 app：`Java` is not defined**。jiagu hook 了 JNI 环境，Frida attach 后整个 `Java` 对象不存在（不是 `Java.perform` 失败，而是 `Java` 本身 undefined）。解决：不用 Java Bridge，用纯 Native API（`Process.enumerateModules()` + `addr.readByteArray()`）dump 解密后的 DEX。见 `skill-android/../android/android-unpacking.md`
 - **jiagu app `device.spawn()` 超时**：jiagu 解包过程导致 Frida 等待 app launch 超时。解决：用 `adb shell am start` 启动 app，等 6 秒后 `device.attach(pid)`
 - **`Process.enumerateRanges` 脚本加载超时**：jiagu 映射大量内存区域（300+），全量枚举导致 `session.create_script()` 超时。解决：先用 `Process.enumerateModules()` 找 `base.odex`，按已知地址/大小定向 dump

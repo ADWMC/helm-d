@@ -89,7 +89,7 @@ for i in range(num_sections):
 rsrc_data = data[rsrc_off:rsrc_off+rsrc_size]
 
 # 2. 解析三级资源目录（Type → Name → Language）
-# 见主 skill references/pe-loader-dll-injection.md
+# 见主 skill ./pe-loader-dll-injection.md
 
 # 3. 提取每个 RCDATA 资源的 (RVA, Size, 前16字节)
 #    根据熵值判断内容：>7.9=强加密, 7.0-7.9=弱加密/压缩, 包含字符串=配置

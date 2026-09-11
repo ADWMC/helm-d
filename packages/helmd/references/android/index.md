@@ -1,6 +1,6 @@
 # skill-android references index
 
-知识按需读，模型自主判断，不作为硬性规则。共 28 个文件。
+知识按需读，模型自主判断，不作为硬性规则。共 35 个文件。
 
 **职责边界**：仅移动端（Android/iOS）——APK/IPA、Java/ObjC Bridge、移动 Frida、流量拦截。通用 Frida API 与 native Interceptor 归 `skill-native`；桌面 PE/ELF 二进制归 `skill-native`。
 
@@ -32,3 +32,9 @@
 - mobile-patterns.md
 - mobile-principles.md
 - tls-traffic-interception.md
+
+## hack-skills 融合（hs-*，源自 [yaklang/hack-skills](https://github.com/yaklang/hack-skills)）
+
+- android-pentesting-tricks.md [Mobile Security] — Android pentesting playbook. Use when testing Android applications for SSL pinning bypass, exported component abuse, WebView vulnerabilities, intent r
+- ios-pentesting-tricks.md [Mobile Security] — iOS pentesting playbook. Use when testing iOS applications for keychain extraction, URL scheme hijacking, Universal Links exploitation, runtime manipu
+- mobile-ssl-pinning-bypass.md [Mobile Security] — Mobile SSL pinning bypass playbook. Use when intercepting HTTPS traffic from mobile applications that implement certificate pinning, public key pinnin

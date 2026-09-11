@@ -119,7 +119,7 @@ function renderPersonaRow(text) {
     "- id: persona",
     "  name: '@deepseek-ai/dsh-persona'",
     '  config:',
-    '    text: |',
+    '    prefix: |',
     body,
     '    complete: true',
     '    includeRuntimeContext: false',

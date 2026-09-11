@@ -155,5 +155,5 @@ Interceptor.attach(readPtr, {
 ## 4. 与其他知识库的关系
 
 - Frida Hook 原则：`frida-hook-templates.md`（PC 端模板）或 `frida-hook-templates.md`（通用模板）
-- MITM 方案选型（移动端）：`skill-android/references/mitm-methodology.md`
-- Flutter SSL bypass（移动端）：`skill-android/references/flutter-ssl-bypass.md`
+- MITM 方案选型（移动端）：`skill-android/../android/mitm-methodology.md`
+- Flutter SSL bypass（移动端）：`skill-android/../android/flutter-ssl-bypass.md`

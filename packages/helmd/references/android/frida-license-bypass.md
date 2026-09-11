@@ -1,6 +1,7 @@
 # Frida 动态分析：卡密验证绕过
 
 当静态分析受阻（字符串加密、代码混淆、VMP 保护）时，用 Frida hook API + 内存扫描提取验证逻辑。
+> 相关场景：[frida-license-bypass-android.md](./frida-license-bypass-android.md)（云端下发 ELF / Unicorn 模拟器内验证）
 
 ## 工作流
 

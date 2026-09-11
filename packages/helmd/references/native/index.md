@@ -1,6 +1,6 @@
 # skill-native references index
 
-知识按需读，模型自主判断，不作为硬性规则。共 70 个文件。
+知识按需读，模型自主判断，不作为硬性规则。共 127 个文件。
 
 **职责边界**：仅 native/二进制层——PE/ELF/Mach-O、反调试、壳、驱动、shellcode、Frida 通用 API 与 Interceptor。Android APK / Java Bridge 归 `skill-android`；本目录中的 `android-*` 文件聚焦 native 层（.so / shellcode），移动端整体流程见 `skill-android`。
 
@@ -74,3 +74,40 @@
 - windows-compat-pitfalls.md
 - windows-driver-crypto-extraction.md
 - zygisk-module-license-bypass.md
+
+## hack-skills 融合（hs-*，源自 [yaklang/hack-skills](https://github.com/yaklang/hack-skills)）
+
+- active-directory-acl-abuse.md [Windows & Active Directory] — Active Directory ACL abuse playbook. Use when exploiting misconfigured AD permissions including GenericAll, WriteDACL, DCSync rights, shadow credentia
+- active-directory-certificate-services.md [Windows & Active Directory] — AD Certificate Services attack playbook. Use when targeting misconfigured AD CS for privilege escalation via ESC1-ESC13 template abuse, NTLM relay to 
+- active-directory-kerberos-attacks.md [Windows & Active Directory] — Kerberos attack playbook for Active Directory. Use when targeting AD authentication via AS-REP roasting, Kerberoasting, golden/silver/diamond tickets,
+- anti-debugging-techniques.md [Reverse Engineering] — Anti-debugging detection and bypass playbook. Use when reversing protected binaries that detect debuggers via ptrace, PEB flags, timing checks, or sig
+- arbitrary-write-to-rce.md [Binary Exploitation (Pwn)] — Arbitrary write to RCE playbook. Use when you have an arbitrary write primitive (from heap exploitation, format string, or OOB write) and need to conv
+- binary-protection-bypass.md [Binary Exploitation (Pwn)] — Binary protection bypass playbook. Use when identifying and bypassing ASLR, PIE, NX/DEP, stack canary, RELRO, FORTIFY_SOURCE, CET, and MTE protections
+- browser-exploitation-v8.md [Binary Exploitation (Pwn)] — Browser and V8 exploitation playbook. Use when exploiting JavaScript engine vulnerabilities including JIT type confusion, incorrect bounds elimination
+- classical-cipher-analysis.md [Cryptography Attacks] — Classical cipher analysis playbook. Use when encountering substitution ciphers, Vigenere, transposition, XOR, or encoded text in CTF challenges that r
+- code-obfuscation-deobfuscation.md [Reverse Engineering] — Code obfuscation analysis and deobfuscation playbook. Use when reversing binaries protected by junk code, opaque predicates, self-modifying code, cont
+- container-escape-techniques.md [Linux & Container Security] — Container escape playbook. Use when operating inside a Docker container, LXC, or Kubernetes pod and need to escape to the host via privileged mode, ca
+- format-string-exploitation.md [Binary Exploitation (Pwn)] — Format string exploitation playbook. Use when printf-family functions receive user-controlled format strings, enabling arbitrary stack reads (%p/%s), 
+- hash-attack-techniques.md [Cryptography Attacks] — Hash attack playbook. Use when exploiting length extension, MD5/SHA1 collisions, HMAC timing leaks, birthday attacks, or hash-based proof of work in C
+- heap-exploitation.md [Binary Exploitation (Pwn)] — Heap exploitation playbook. Use when targeting ptmalloc2/glibc heap vulnerabilities including UAF, double free, overflow, off-by-one/null, and leverag
+- kernel-exploitation.md [Binary Exploitation (Pwn)] — Linux kernel exploitation playbook. Use when exploiting kernel vulnerabilities (UAF, OOB, race condition, type confusion) for privilege escalation via
+- kubernetes-pentesting.md [Linux & Container Security] — Kubernetes penetration testing playbook. Use when targeting Kubernetes clusters via API server, RBAC enumeration, service account abuse, etcd access, 
+- lattice-crypto-attacks.md [Cryptography Attacks] — Lattice-based cryptanalysis playbook. Use when attacking RSA via Coppersmith small roots, recovering DSA/ECDSA nonces from bias, solving knapsack prob
+- linux-lateral-movement.md [Linux & Container Security] — Linux lateral movement playbook. Use after gaining initial access to pivot across Linux hosts via SSH hijacking, credential harvesting, internal pivot
+- linux-privilege-escalation.md [Linux & Container Security] — Linux privilege escalation playbook. Use when you have low-privilege shell access and need to escalate to root via SUID/SGID binaries, capabilities, c
+- linux-security-bypass.md [Linux & Container Security] — Linux security mechanism bypass playbook. Use when facing restricted bash/rbash, read-only or noexec filesystems, AppArmor, SELinux, seccomp filters, 
+- macos-process-injection.md [macOS Security] — macOS process injection playbook. Use when you need to inject code into running or launching macOS processes via dylib hijacking, DYLD environment var
+- macos-security-bypass.md [macOS Security] — macOS security bypass playbook. Use when targeting macOS endpoints and need to bypass TCC, Gatekeeper, SIP, sandbox, code signing, or entitlement-base
+- ntlm-relay-coercion.md [Windows & Active Directory] — NTLM relay and authentication coercion playbook. Use when capturing and relaying NTLM authentication to escalate privileges via SMB, LDAP, HTTP, or MS
+- rsa-attack-techniques.md [Cryptography Attacks] — RSA attack playbook for CTF and real-world cryptanalysis. Use when given RSA parameters (n, e, c) and need to recover plaintext by exploiting weak key
+- sandbox-escape-techniques.md [Binary Exploitation (Pwn)] — Sandbox escape playbook. Use when breaking out of Python sandbox, Lua sandbox, seccomp filter, chroot jail, container/Docker, browser sandbox, or name
+- stack-overflow-and-rop.md [Binary Exploitation (Pwn)] — Stack overflow and ROP playbook. Use when exploiting buffer overflows to hijack control flow via return address overwrite, ROP chains, ret2libc, ret2c
+- symbolic-execution-tools.md [Reverse Engineering] — Symbolic execution and constraint solving playbook. Use when solving CTF reversing challenges, recovering keys, bypassing checks, or automating binary
+- symmetric-cipher-attacks.md [Cryptography Attacks] — Symmetric cipher attack playbook. Use when exploiting block cipher mode weaknesses (CBC padding oracle, ECB cut-and-paste, bit flipping), stream ciphe
+- vm-and-bytecode-reverse.md [Reverse Engineering] — Custom VM and bytecode reverse engineering playbook. Use when CTF challenges or protected software implement custom virtual machines with proprietary 
+- windows-av-evasion.md [Windows & Active Directory] — AV/EDR evasion playbook for Windows. Use when bypassing AMSI, ETW, .NET assembly detection, shellcode execution, process injection, API hooking, and s
+- windows-lateral-movement.md [Windows & Active Directory] — Windows lateral movement playbook. Use when pivoting between Windows hosts via PsExec, WMI, WinRM, DCOM, RDP, pass-the-hash, overpass-the-hash, or pas
+- windows-privilege-escalation.md [Windows & Active Directory] — Windows local privilege escalation playbook. Use when you have low-privilege shell access on Windows and need to escalate via token abuse, Potato expl
+
+- ad-lpe-checklist.md — 内网/域提权清单（authorized-pentest-framework）
+- exploit-dev-checklist.md — 漏洞 PoC/检测脚本开发清单

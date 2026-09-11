@@ -1,6 +1,7 @@
 # Android 云端下发 ELF 卡密绕过 — 通用方法论
 
 ## 问题定义
+> 通用卡密实操（模块枚举/Hook/内存扫描/Patch）见 [frida-license-bypass.md](./frida-license-bypass.md)
 
 APK 为壳，真实逻辑在云端下发的 ELF 中（gzip 自解压）。验证在 Unicorn CPU 模拟器内执行，syscall 直调绕过 libc。
 
