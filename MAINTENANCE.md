@@ -15,7 +15,7 @@
 
 | 层 | 谁写入 | 内容 |
 |----|--------|------|
-| Profile | `dsh plugin add` / install.ps1 / update.ps1 | 31 个工具（case 流程 6 + router 4 + 领域 21）、bootstrap 收窄、references、scripts |
+| Profile | `dsh plugin add` / install.ps1 / update.ps1 | 33 个工具（router 4 + 账本 1 + 案件生命周期 5 + 工具发现 1 + 领域 22）、bootstrap 收窄、references、scripts |
 | Preset | `setup-preset` 脚本 / install.ps1 [3/4] | luna persona、激活词 `helmd`、全套工具 section |
 
 **单一事实源表**
@@ -92,10 +92,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 - 描述里的**数字声明会被 reviewer 和 decay scan 对照代码核验**（工具数、版本号）。改了工具集必须同步：
   - README.md / README.en.md 的徽章行和目录树行
   - registry yml 的 en/zh description（需向上游提 PR）
-- 当前计数基准：31 个工具（case 流程 4 + find_tool/save_evidence + router 4 + 领域 21；create_case 已废弃）。核对方法：
-  ```powershell
-  # mock ctx 捕获全部注册名（见 git log 00c081a 之前的测试脚本）
-  ```
+- 当前计数基准：33 个工具（router 4 + tool_memory 1 + 案件生命周期 5（含 save_evidence）+ find_tool 1 + 领域 22；create_case 已废弃）。核对方法：`pnpm test:checks` 里的 `tool-catalog` 检查——它读本行声明的数字与 mock-ctx 实际注册名比对，不一致即红（改工具集而忘了改文档会当场失败）。
 - fork `ADWMC/awesome-dsh-plugin`：PR 合并后即可删（`gh repo delete --yes`）；再提 PR 时重新 fork 即可
 
 ## 5. 已知坑位表（全部踩过）
@@ -153,7 +150,7 @@ PR #2708        已合并 (2026-08-23)
 - [ ] `pnpm build` 无错
 - [ ] `pnpm peers check` 无问题（依赖图 cohort 与宿主一致，无跨 cohort peer）
 - [ ] `pnpm test:checks` 全部绿（自动跑 `scripts/checks/*.check.mjs`；host seam 那几份直接跑在宿主真实 `dsh-session` 包上，宿主换访问器即红，不必等真机会话才暴露）
-- [ ] mock-ctx 工具数与 README/registry 一致
+- [ ] mock-ctx 工具数与 README/registry 一致（由 `pnpm test:checks` 的 `tool-catalog` 机械核对，无需手数）
 - [ ] `repack` 后 tgz 内含 `presets/` + `scripts/setup-preset.*`
 - [ ] setup-preset 从安装位置跑通且与 `presets/full-reverse/` 逐字节一致
 - [ ] release 五件资产齐全 + 稳定别名 200
