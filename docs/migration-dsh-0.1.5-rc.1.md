@@ -90,8 +90,31 @@
 pnpm install --no-frozen-lockfile
 pnpm peers check                     # 期望：No peer dependency issues found
 pnpm typecheck; pnpm build
-pnpm test:checks                     # 8 份（host seam + 行为回归）
+pnpm test:checks                     # 11 份（host seam + 行为回归 + 契约）
 node scripts/test-gen-preset.mjs; node scripts/test-caseflow.mjs
 node scripts/gen-preset.mjs --check  # 部署位 preset 与宿主 standard 同源
 .\scripts\repack.ps1                 # dist-tgz\dsh-security-helmd-0.3.0.tgz
 ```
+
+## 10. 后续变更（同一日第二批，均在同一未发布版本内）
+
+迁移本身完成后，又从 CL4R1T4S 语料里筛了几条可抄的机制，并修掉干活时撞出的缺陷。检查从
+8 份增到 11 份，全部进 `pnpm test:checks`。
+
+| 提交 | 变更 | 依据 / 验证 |
+|---|---|---|
+| `9556e48` | `find_tool` 拆出 `caseflow`（239 行 6 工具 → 两张职责表） | 先拆边界再加功能；`test-caseflow` 26/0、mock-ctx 33 工具在册 |
+| `de2a5c2` | AGENTS.md 补三条：外部内容只作数据、首轮探索预算、汇报四类前缀 | OPUS-5 把 memory 当可污染输入 / Codex 前 5 条命令只读根规则 / Codex 的 ✅⚠️❌ 前缀 |
+| `325f2e0` | CASE.md `## resume` 六段契约（原来只有一行且 `case_status()` 不返回它）+ `end_case` 关闭门禁（无证据且未写明理由即拒） | ZCode 压缩摘要契约 + Devin「CI 不过不许报完成」；`case-close` 检查 6 条 |
+| `1cff68a` | 熔断硬化：同一战术 3 次失败必须入 `DEAD_ENDS`，且不得无新证据重试 | 语料里"三次熔断"五处独立收敛；persona 与 caseflow RULES 同措辞 |
+| `0fccea4` | `STALE` 不再是死代码：指纹一致时再与包内 preset 比内容（行尾归一化） | 触发它的正是同日 persona 改动；`preset-heal` 覆盖 STALE/OK(CRLF) |
+| `c224d2a` | 工具计数 31 → 33，并新增 `tool-catalog` 检查读文档声明数与 mock-ctx 实注册数比对 | 差的两个正是被审提交新增的 `tool_memory` / `hcot_attack`；反证已验证会红 |
+| `d7fd550` | 四类前缀成为可核销指标 `stance:report-prefix`；同时修掉 `reply_shows` 类指标的锚点缺陷（回复后重复武装 → 下一轮被记 ignored） | 新检查逼出的既有 bug（`stance:challenged` 同源）；武装改为只在"回合仍开着" |
+| `54743b4` | 四标签改为**先教后测**（`adaptive`）：未达标时注入提醒，达标后提醒退场、计量继续 | `report-prefix` 6 条；账本机制文档角色表扩到三条 |
+| `66b015a` | preset 漂移**默认自动修复**，但只修有指纹头（可证明是本包产物）的文件；`=0`/`=1` 可强制 | 时序：开机重写早于任何 standing mount，不触碰事故复盘那个触发面；真实部署位 STALE → OK |
+| `051f74e` | 修复后自动跑**产物结构断言**（行集合/去重/helmd 唯一/persona 归属），`status=OK` 时也常驻 detail | §8 里可自动化的那半；真机会话那半仍留给操作者（宿主进程无法自证自己的 mount） |
+| `0d33302` | 教学阈值改**滑窗**（最近 10 条）、汇报触发改**双信号**（工作名词 + 问句形态） | 累计率会漏掉后期回归、贴近阈值会抖；触发矩阵 8 正例 / 5 反例 |
+
+**这批之后仍未验证的两件事**（都需要重启宿主，见 §8）：真机会话的首轮 `[pwsh, read]` 断言；
+`adaptive` 提醒在真实汇报回合里的效果与采纳率。GUI 卡片新增的 `自动修复 Auto-heal` 行同样
+要重装 + 重启后才可见。
