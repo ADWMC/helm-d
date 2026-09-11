@@ -197,7 +197,7 @@ Each dsh boot evaluates the deployed `.agent-presets/<preset>/agent.cordis.yml` 
 
 Expanding the card shows both fingerprints (12 chars), version, the **drift-repair verdict**, evaluation time, and both paths for fast diagnosis.
 
-**Drift repair is off by default (report-only)**: on drift the card states the verdict and leaves your `agent.cordis.yml` alone. To let it regenerate at boot, set `HELMD_AUTO_HEAL=1` explicitly; when enabled it keeps a `.bak` first and the verdict reminds you to restart dsh and assert the first request is `[pwsh, read]` (MAINTENANCE §8). It is off by default because changing preset content is only safe across a restart (see the incident post-mortem), and a silent boot-time rewrite bypasses that guardrail.
+**Drift repair policy**: on drift the card repairs automatically, but **only files it can prove are its own artifact** — a deployed preset carrying the `gen-preset` fingerprint header (`STALE` content drift / `HOST_UPGRADED` host upgraded) is regenerated from the current host standard; one without a header (`LEGACY_PRESET`, possibly hand-written) is only reported and left alone. Every write keeps the previous file as `.bak` first, and the verdict reminds you to restart dsh and assert the first request is `[pwsh, read]` (MAINTENANCE §8). Switches: `HELMD_AUTO_HEAL=0` reports everything (hand-managed deployments), `=1` overwrites even a header-less file.
 
 ## Install from the plugin store
 

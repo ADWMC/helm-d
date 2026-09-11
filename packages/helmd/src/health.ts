@@ -48,8 +48,9 @@ export interface HelmdHealth {
   /** Installed helmd package version. */
   version: string
   /**
-   * Drift-repair verdict: `off (report-only; …)` by default, `unavailable (…)`,
-   * `failed (…)`, or `healed (<from> → <to>) — …` when `HELMD_AUTO_HEAL=1` wrote the preset.
+   * Drift-repair verdict: `healed (<from> → <to>) — …` when the preset was rewritten;
+   * `<status> not repaired — …` or `off (HELMD_AUTO_HEAL=0)` when it was left alone;
+   * `unavailable (…)` / `failed (…)` otherwise.
    */
   autoHeal: string
 }
@@ -103,10 +104,37 @@ function presetName(): string {
   return process.env.HELMD_PRESET_NAME?.trim() || DEFAULT_PRESET_NAME
 }
 
-/** Whether the drift repair may write. Report-only unless explicitly enabled. */
-function autoHealEnabled(): boolean {
+/**
+ * Drift-repair policy:
+ *   unset → repair a deployed preset that carries our fingerprint header (provenance is
+ *           provable: it is an artifact we generated), and only report one without a
+ *           header (it may be hand-written, so overwriting it is the user's call);
+ *   `0`   → never write — escape hatch for a locked-down or hand-managed deployment;
+ *   `1`   → repair every healable status, header or not.
+ * A repair keeps the previous file as `.bak` first. Restarting dsh and asserting the
+ * catalog (MAINTENANCE §8) stays the user's step: this only re-syncs the file.
+ */
+function healPolicy(): 'auto' | 'off' | 'force' {
   const flag = process.env.HELMD_AUTO_HEAL?.trim().toLowerCase()
-  return flag === '1' || flag === 'true' || flag === 'yes'
+  if (flag === '0' || flag === 'false' || flag === 'no') return 'off'
+  if (flag === '1' || flag === 'true' || flag === 'yes') return 'force'
+  return 'auto'
+}
+
+/** Statuses whose deployed file carries the gen-preset header, i.e. provably our artifact. */
+const DERIVED_STATUSES = new Set(['STALE', 'HOST_UPGRADED'])
+
+function shouldRepair(status: string, policy: 'auto' | 'off' | 'force'): boolean {
+  if (policy === 'off') return false
+  if (policy === 'force') return true
+  return DERIVED_STATUSES.has(status)
+}
+
+/** Why a healable status was left alone. */
+function reportOnlyVerdict(status: string, policy: 'auto' | 'off' | 'force'): string {
+  if (policy === 'off') return 'off (HELMD_AUTO_HEAL=0)'
+  return `${status} not repaired — no gen-preset fingerprint header, so the file is not provably ours; `
+    + 'regenerate with install / setup-preset, or set HELMD_AUTO_HEAL=1 to overwrite it (a .bak is kept)'
 }
 
 /** Locate the bundled generator that rewrites the deployed preset from the host standard. */
@@ -120,14 +148,11 @@ function resolveGenerator(): string | null {
 }
 
 /**
- * Regenerate the deployed preset when it drifted. Report-only by default: the running
- * host must not rewrite a user-editable composition file without an explicit opt-in —
- * MAINTENANCE §8 requires a restart plus the live catalog assertion after any preset
- * content change, which a boot-time rewrite cannot perform. When enabled, the previous
- * file is preserved as `.bak` first, matching scripts/setup-preset.ps1.
+ * Regenerate the deployed preset from the installed host standard. The caller has already
+ * decided (via {@link shouldRepair}) that writing is allowed; this only performs it and
+ * keeps the previous file as `.bak` first, matching scripts/setup-preset.ps1.
  */
 function autoHealPreset(): { healed: boolean; verdict: string } {
-  if (!autoHealEnabled()) return { healed: false, verdict: 'off (report-only; set HELMD_AUTO_HEAL=1 to repair)' }
   const gen = resolveGenerator()
   if (gen === null) return { healed: false, verdict: 'unavailable (no generator)' }
   const out = join(dshHome(), '.agent-presets', presetName())
@@ -260,6 +285,11 @@ function matchesBundledPreset(deployed: string): boolean {
 function evaluateHealth(): HelmdHealth {
   const first = evaluateHealthCore()
   if (!HEALABLE.has(first.status)) return first
+  const policy = healPolicy()
+  if (!shouldRepair(first.status, policy)) {
+    first.autoHeal = reportOnlyVerdict(first.status, policy)
+    return first
+  }
   const outcome = autoHealPreset()
   if (!outcome.healed) {
     first.autoHeal = outcome.verdict

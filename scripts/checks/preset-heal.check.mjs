@@ -37,14 +37,14 @@ mkdirSync(presetDir, { recursive: true })
 writeFileSync(presetPath, drifted, 'utf8')
 delete process.env.HELMD_AUTO_HEAL
 
-await report.check('default is report-only and the deployed preset is left alone', () => {
+await report.check('a header-less preset is only reported by default (provenance unknown)', () => {
   const base = healthBase()
   assert.equal(base.status, 'LEGACY_PRESET', 'a header-less preset should read as legacy')
-  assert.match(base.autoHeal, /^off \(report-only/)
+  assert.match(base.autoHeal, /^LEGACY_PRESET not repaired/)
   assert.equal(readFileSync(presetPath, 'utf8'), drifted, 'report-only must not rewrite the file')
 })
 
-await report.check('HELMD_AUTO_HEAL=1 rewrites it and keeps the previous file as .bak', () => {
+await report.check('HELMD_AUTO_HEAL=1 rewrites even a header-less preset and keeps .bak', () => {
   process.env.HELMD_AUTO_HEAL = '1'
   const base = healthBase()
   assert.match(base.autoHeal, /^healed \(LEGACY_PRESET → /, `unexpected verdict: ${base.autoHeal}`)
@@ -53,16 +53,34 @@ await report.check('HELMD_AUTO_HEAL=1 rewrites it and keeps the previous file as
 })
 
 // Content drift: same host fingerprint, but the file is not what this package ships (an
-// older deployment, or a hand edit). The header alone cannot see this.
+// older deployment, or a hand edit). The header alone cannot see this, and the header
+// proves the file is our own artifact — so the default policy repairs it.
 const hostHash = createHash('sha256').update(readFileSync(hostStandard, 'utf8'), 'utf8').digest('hex')
 const shipped = readFileSync(join(distDir, '..', 'presets', 'agent.cordis.yml'), 'utf8')
 delete process.env.HELMD_AUTO_HEAL
 
-await report.check('same host fingerprint but different content reads as STALE, untouched by default', () => {
+await report.check('same host fingerprint but different content reads as STALE and is repaired by default', () => {
   writeFileSync(presetPath, `# gen-preset: host=${hostHash}\n\n- id: persona\n  name: 'x'\n`, 'utf8')
   const base = healthBase()
-  assert.equal(base.status, 'STALE', `expected STALE, got ${base.status}: ${base.detail}`)
-  assert.equal(readFileSync(presetPath, 'utf8').includes("name: 'x'"), true, 'report-only must not rewrite it')
+  assert.match(base.autoHeal, /^healed \(STALE → /, `expected a repair, got ${base.autoHeal}`)
+  assert.equal(readFileSync(`${presetPath}.bak`, 'utf8').includes("name: 'x'"), true, 'the drifted content should survive as .bak')
+  assert.equal(readFileSync(presetPath, 'utf8').replace(/\r\n/g, '\n'), shipped.replace(/\r\n/g, '\n'))
+})
+
+await report.check('HELMD_AUTO_HEAL=0 leaves even a provably-ours preset alone', () => {
+  writeFileSync(presetPath, `# gen-preset: host=${hostHash}\n\n- id: persona\n  name: 'x'\n`, 'utf8')
+  process.env.HELMD_AUTO_HEAL = '0'
+  const base = healthBase()
+  assert.match(base.autoHeal, /^off \(HELMD_AUTO_HEAL=0\)/)
+  assert.equal(readFileSync(presetPath, 'utf8').includes("name: 'x'"), true, 'auto-heal is off')
+  delete process.env.HELMD_AUTO_HEAL
+})
+
+await report.check('a preset generated for an older host is repaired by default', () => {
+  writeFileSync(presetPath, `# gen-preset: host=${'f'.repeat(64)}\n\n- id: persona\n  name: 'old host'\n`, 'utf8')
+  const base = healthBase()
+  assert.match(base.autoHeal, /^healed \(HOST_UPGRADED → OK\)/, `expected a repair, got ${base.autoHeal}`)
+  assert.equal(readFileSync(presetPath, 'utf8').replace(/\r\n/g, '\n'), shipped.replace(/\r\n/g, '\n'))
 })
 
 await report.check('the shipped preset itself reads as OK, CRLF included', () => {
