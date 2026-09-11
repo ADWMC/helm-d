@@ -23,14 +23,14 @@
 | 数据 | 唯一编辑点 | 自动流向 |
 |------|-----------|---------|
 | persona 文本 | `packages/helmd/presets/persona.txt` | repack 经 `scripts/gen-preset.mjs` 注入 → `presets/full-reverse/agent.cordis.yml`（生成物）→ 包内镜像 → tgz |
-| preset 平台行 | 宿主内置 `standard` | `gen-preset.mjs` 读取宿主 `<dsh>/config/agent-presets/standard/agent.cordis.yml`，保留平台行并替换 persona；**不**写入由 profile bundle 挂载的 `@dsh-security/helmd` 行。安装/更新脚本在目标机再次生成（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
+| preset 平台行 | 宿主内置 `standard` | `gen-preset.mjs` 读取宿主 `<dsh>/.../dsh-agent-presets/presets/standard/agent.cordis.yml`，保留平台行并整体替换 persona，末尾追加 `@dsh-security/helmd` 行（agent 面主插件由 preset 声明）。安装/更新脚本在目标机再次生成（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
 | 依赖 cohort | `pnpm-workspace.yaml` `overrides`（宿主 dsh 0.1.5-rc.1 全家 + cordis + schemastery） | `pnpm install` → `pnpm-lock.yaml` + node_modules；`pnpm peers check` 必须无问题（跨 cohort peer = 迁移未完成） |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
 
-> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。平台行必须从当前宿主 `standard` 生成，否则 `pwsh`、`read` 等工具会缺失或在升级后漂移；`@dsh-security/helmd` 则只能由 profile bundle 挂载，写入 preset 会重复注册。生成器内建断言：平台行集合与宿主 standard 一致、无重复 id、且没有 helmd bundle 行，违者构建即红。
+> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。平台行必须从当前宿主 `standard` 生成，否则 `pwsh`、`read` 等工具会缺失或在升级后漂移。两面的归属是分开的：host 面 `cordis.patch.yml` 只挂 `@dsh-security/helmd/dist/health.js`，agent 面主插件由 preset 末行的 `@dsh-security/helmd` 声明（2026-08-31 `af177e4` 起如此；再早的"只由 profile bundle 挂载"结论已作废）。生成器内建断言：输出行集合 = 宿主 standard 行 + `helmd`、无重复 id、且 `@dsh-security/helmd` 恰好出现一次，违者构建即红。
 
 ## 2. 发布流程（checklist 式）
 
