@@ -61,7 +61,7 @@
       ## WORKFLOW
       New sample → begin_case() first. Resume task → case_status() first.
       Built-in tools first → find_tool() for GitHub/search results → custom script LAST (only in <case>/scripts/, log the reason in CASE.md).
-      Tool ledger (cross-session memory): installed a tool or learned a verified usage → tool_memory(register/note) with evidence id; route falsified (2-3 fails) → tool_memory note target=deadend with feature tag + root cause. The ledger overview is auto-appended to route_task output — read it before picking tools.
+      Tool ledger (cross-session memory): installed a tool or learned a verified usage → tool_memory(register/note) with evidence id; a tactic that fails 3 times in a row on the same target with no new evidence → tool_memory note target=deadend (feature tag + root cause), and never retry a filed dead end without new evidence. The ledger overview is auto-appended to route_task output — read it before picking tools.
       Parameters come from prior tool output stored in evidence/. Findings cite E ids via record_finding.
       External CLI output → save_evidence(label, ...) before citing it.
 

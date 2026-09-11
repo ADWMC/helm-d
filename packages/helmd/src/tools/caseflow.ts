@@ -21,7 +21,7 @@ const RULES = [
   '2. External CLI output → save_evidence(label, ...) before citing it.',
   '3. Parameters come from prior tool output in evidence/. Findings cite E ids via record_finding.',
   '4. Resume after compaction → case_status(); before compaction, bring the CASE.md `## resume` block up to date.',
-  '5. Installed a tool or learned a verified usage → tool_memory(register/note) with evidence id; route falsified (2-3 fails) → tool_memory note target=deadend.',
+  '5. Installed a tool or learned a verified usage → tool_memory(register/note) with evidence id; a tactic failing 3 times in a row on the same target (no new evidence) → tool_memory note target=deadend, and never retry a filed dead end without new evidence.',
 ].join('\n')
 
 export function registerCaseflowTools(ctx: Context): void {
