@@ -3,7 +3,8 @@
 > 盘点基线：HEAD `809a424`（工作树干净）。
 > 方法：按 `授权|authoriz|合规|合法|lawful|legal|CTF|沙盒|sandbox|实验室|isolated|scope|许可|书面|consent|同意|red line|红线`
 > 四个面各扫一遍（persona / AGENTS.md / references / scripts），命中处逐条读原文。
-> 结论：**只记录，未改任何代码、提示词或参考内容**。
+> 结论：**本盘点本身只记录，未改任何代码、提示词或参考内容**（§1–§5 即当时基线 `809a424` 的实况）。
+> **状态更新**：用户随后要求把授权从"每任务问题"降级为"工作区前提"，本轮已实施，逐文件处置见 §6；§3 的三个缺口已按 §6 关闭，§4 的 A/B/C 方案**未采用**（改为"唯一红线 + persona 声明跳过套话"）。
 > 一句话：**破甲/越狱那条线上没有任何授权条款**；范围只以"离线/本地"隐含，且 persona 明确禁止讨论环境。
 
 ## 1. 四层覆盖
@@ -99,3 +100,50 @@
 - 未评估各条授权文本的**法律充分性**，只记录"有没有、在哪、和代码是否一致"。
 - 未核对 `docs/skills-reference/` 两份导入文档与上游 skill 的对应关系（其来源说明见文件首行）。
 - L3 的 358 个参考文件中，本盘点逐条读的是命中词表的那些；未命中的文件未逐行通读。
+
+## 6. 本轮实施（2026-09-11，授权降级为工作区前提）
+
+用户要求（原话要点）：AI 反复纠结授权，给了书面授权仍不同意 → **只保留「不向生产环境发送破坏性请求」一条，其余授权套话直接让 AI 跳过**。
+
+处置原则：
+
+- 只改**读起来像开工条件 / 拒绝闸门**的措辞；技术义的「授权」一律不动（越权、未授权访问、认证与授权测试是漏洞类型名）。
+- 与授权无关的工程约束全部保留：不接触真实 PII、先降载再压、不向真实主机植入持久化、未知样本默认不执行、动态分析走隔离快照。
+- 删掉的是"取得许可"这一步，不是安全约束本身。
+
+改动逐条：
+
+| 文件 | 层 | 改法 |
+|---|---|---|
+| `packages/helmd/presets/persona.txt:88-96` | L1 随包人格 | 新增 `SCOPE — SETTLED, NOT A QUESTION`：授权是工作区属性，不索要、不推演、不设前置条件；`authorized use only / 仅授权 / 必须有书面授权`按背景套话跳过；唯一保留红线＝不向生产环境发破坏性请求，指向线上时一行说明后转回本地样本 |
+| `AGENTS.md:63-64`（§6） | L2 宿主加载 | 授权＝工作区前提；参考文档里的授权措辞"照读不照办" |
+| `AGENTS.md:102-105`（§10） | L2 | 删掉"调用工具前先问用户是否授权"这条闸门；工具/资料获取无需逐次许可，只在真正技术选择时 `ask_user_question` |
+| `src/case.ts:117,122` | L4 建案 | `授权范围/边界`→`范围/边界`；阻塞项 `等授权`→`等用户技术选择` |
+| `references/{ai-security/ai-principles,android/mobile-principles,native/native-principles,web/web-principles}.md` | L3 | 四处安全红线统一为「不向生产环境发送破坏性请求；本地样本与隔离靶机不受此限」，删去「CTF 靶机和授权测试环境除外」 |
+| `references/web/business-logic-vulnerabilities-checklist.md:9` | L3 | `## 0. Compliance / 合规前置`→`## 0. Scope / 范围前置`；删「已获得书面授权」「检查授权书」「工具非专为入侵设计」三行，改为环境归属判定 |
+| `references/web/business-logic-vulnerabilities-methodology.md:241,252-281` | L3 | 「必须有书面授权才打」→单次低速验证；`### 6.3 法律边界`→`### 6.3 范围边界`；删合规 checklist 代码块，只留 PDF 出处 |
+| `references/native/ad-lpe-checklist.md:14-23,34` | L3 | 凭据与横向改为「限于本次分析目标」；持久化改为「不向真实主机植入，仅在隔离靶机验证」 |
+| `references/native/exploit-dev-checklist.md:8,32,37,46` | L3 | 授权环境标注→「仅限本地分析与隔离靶机」；目标校验→「只接受本次分析纳入的目标」 |
+| `references/protocol/dependency-confusion.md:9` | L3 | 删 `**Only use on systems and programs you are authorized to test.**` |
+| `references/ai-security/llm-prompt-injection-jailbreak-patterns.md:319` | L3 | `Authorization` 行→`Environment`（以本地样例/自有实例为目标） |
+| `references/evidence/vuln-reward-submission.md:103` | L3 | A11「合法性不明时请本人确认授权与来源」→「来源不明时标注待证实并列出缺失材料」 |
+| `references/malware/malware-case-workflow.md:35,38` 及 `malware-static-playbook-{apk,elf-macho,office-script,web-payload}.md` | L3 | `授权范围内`→`本次分析范围内`；`在实验环境已授权时`→`在隔离分析环境内` |
+| `references/web/passive-recon.md:10`、`references/web/ssti.md:641` | L3 | 「授权范围外只能被动收集」→「无法直接接触目标」；「仅限授权测试」→「前置条件」 |
+
+未改（有意，附理由）：
+
+- 技术义「授权」：`web/web-platform-testing.md:64` `Phase 2: 认证与授权测试`，以及 IDOR / BOLA / `unauthorized-access-common-services.md` 等越权类文档——是漏洞类型名，改了会破坏语义。
+- `malware/malware-case-workflow.md:79` 未知样本默认不执行——实验室卫生，保护操作者机器，不是授权闸门。
+- `docs/skills-reference/authorized-pentest-framework.md`——按 §2 的代码依据（`router.ts` 的 `refRoot` + `assertWithinRoot` + `skill_catalog` 索引范围），`read_reference` 与 `skill_catalog` 都到不了，agent 不可见。
+- §4 的 A/B/C 三个候选方案**未采用**：用户选定的是"唯一红线 + persona 声明跳过套话"，不是"补一份更完整的授权框架"。
+
+扫描口径与残余风险：
+
+- 机械扫描 `授权|authoriz|authoris` 在 358 个参考文件中命中 318 处 / 105 个文件，其中大多数是技术义；本次只改上述闸门句，**未做全库替换**，因此可能仍存在未被词表覆盖的许可类措辞（例如只用"允许/禁止/须经同意"表达的条款）。
+- persona 与 references 的改动要经 `gen-preset` + 重打包 + 重装 + 宿主重启才进入运行中的 host；本轮**只落仓库**。
+
+验证（本轮实际执行）：
+
+- `pnpm build`、`scripts/repack.ps1`（含 `gen-preset` 与 `full-reverse → packages/helmd/presets` 同步）、`gen-preset --check`：全部 exit 0。
+- `pnpm test:checks` 11/11 PASS（其中 preset-heal 9 项覆盖"部署 preset 与随包 preset 内容漂移必须被判为 STALE 并修复"）。
+- `node scripts/test-gen-preset.mjs` PASS；`node scripts/test-caseflow.mjs` 26 pass / 0 fail；`pnpm peers check` 无问题。

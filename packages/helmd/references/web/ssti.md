@@ -638,4 +638,4 @@ Werkzeug 调试器暴露但被 PIN 保护时，PIN 由主机特征值推导（�
 5. Machine ID —— `/etc/machine-id`，或 `/proc/sys/kernel/random/boot_id` + `/proc/self/cgroup` 首行（按 Werkzeug 算法）
 6. 用实现了相同算法的开源 PIN 计算器算出 PIN
 
-> 仅限授权测试：拿到这些值本身意味着已有前置访问权或另一个信息泄露点。
+> 前置条件：拿到这些值本身意味着已有前置访问权或另一个信息泄露点。

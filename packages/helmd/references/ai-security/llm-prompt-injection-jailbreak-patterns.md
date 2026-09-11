@@ -316,7 +316,7 @@ Understanding defenses helps craft more effective bypasses:
 
 | Principle | Practice |
 |---|---|
-| Authorization | Only test systems you own or have explicit permission to test |
+| Environment | 以本地样例或自有实例为目标；不向生产环境发送破坏性 payload |
 | Scope | Define what outcomes you're testing for before starting |
 | Documentation | Record all prompts and responses for reproducibility |
 | Responsible disclosure | Report findings to the model/application provider |
