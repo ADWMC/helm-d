@@ -154,3 +154,25 @@ $d="$env:TEMP\helmd-review-check"; New-Item -ItemType Directory -Force $d | Out-
 $env:HELMD_TOOLS_DIR=$d
 node --input-type=module -e "const a=await import('./packages/helmd/dist/advisory.js'); console.log(a.renderAdvisoryStats())"
 ```
+
+## 6. 处理结果（同日整改）
+
+本记录的 F1–F10 已在同一天处理完毕，每项都有回归检查或可复核证据；对应提交见下表
+（`8fea55b` 是本记录本身）。
+
+| 项 | 处置 | 提交 |
+|---|---|---|
+| F1 | 自动修复改为默认只报告，`HELMD_AUTO_HEAL=1` 才写且写前留 `.bak`；preset 名可用 `HELMD_PRESET_NAME` 配 | `18bba57` |
+| F2 | 拒绝正则收窄到"拒绝交付"话术，导出 `isRefusal()`，与"我无法核实"对拍 | `0a4eec6` |
+| F3 | `demotedKeys()` 按账本行的 tier 过滤，mandatory 不再被标"已降频" | `8708ef7` |
+| F4 | 去掉裸 `劫持` 关键词，`dll 劫持` 不再落 hcot | `0a4eec6` |
+| F5 | `evidence` 不再全局必填，`note` 分支仍硬校验 | `8708ef7` |
+| F6 | GUI 卡片补「自动修复 Auto-heal」行；README 如实描述卡片与开关 | `18bba57` |
+| F7 | 版本 0.2.3 → 0.3.0（`50803bc`）；工具表补 `hcot_attack` / `tool_memory`、健康卡片与开关说明（`18bba57`） | `50803bc` `18bba57` |
+| F8 | 3 处断链改指 `packages/helmd/references/` 真实路径，2 处未分发文件改为说明，README 补入口 | `2172012` |
+| F9 | 账本解析按 `mtime+size` 缓存；超 4MB 压到最近 5000 行并保留 `.1` 旁支 | `8708ef7` |
+| F10 | pending 会话表加 64 上限；`hcot_attack` 缺 `goal` 返回可读拒绝；`shelfSummary()` 去写副作用（回流改为显式 `tool_memory sync`）；缩进问题随 F2 重写消失 | `8708ef7` |
+
+> 同批还处理了两项本记录之外的发现：宿主 0.1.5-rc.1 的 `Session.events` 移除导致整套会话
+> hook 静默失效（见 [迁移报告](migration-dsh-0.1.5-rc.1.md)），以及 `.npmrc` 空代理项
+> （`d37d133`）。`.pnpm` 里的跨 cohort 残留用干净重装清除（`node_modules` 未入库）。
