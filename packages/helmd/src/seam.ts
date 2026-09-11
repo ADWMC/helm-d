@@ -102,6 +102,7 @@ export async function runSeam(ctx: Context, argv: string[], cwd: string): Promis
         stderr: { maxBytes: MAX_OUTPUT_BYTES },
       },
       graceMs: GRACE_MS,
+      env: { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
     }) as SubprocessHandleLike
     const outcome = await handle.done
     const out = handle.collected?.stdout?.readFrom(0)?.text ?? ''
@@ -116,6 +117,7 @@ export async function runSeam(ctx: Context, argv: string[], cwd: string): Promis
       cwd,
       maxBuffer: MAX_OUTPUT_BYTES,
       timeout: GRACE_MS,
+      env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
     })
     return stdout
   } catch (error) {

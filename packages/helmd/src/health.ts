@@ -16,9 +16,11 @@
  * to other agents.
  */
 import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 
@@ -45,6 +47,8 @@ export interface HelmdHealth {
   checkedAt: string
   /** Installed helmd package version. */
   version: string
+  /** Auto-heal verdict: off | disabled | unavailable | healed (...) | failed (...). */
+  autoHeal: string
 }
 
 const HelmdHealthSchema = z.object({
@@ -56,6 +60,7 @@ const HelmdHealthSchema = z.object({
   hostPath: z.string().default(''),
   checkedAt: z.string().default(''),
   version: z.string().default(''),
+  autoHeal: z.string().default('off'),
 })
 
 /** Harness home: DSH_HOME wins, else ~/.dsh (matches gen-preset deployment). */
@@ -87,7 +92,40 @@ function locateHostStandard(): string | null {
   return null
 }
 
-function evaluateHealth(): HelmdHealth {
+const PRESET_DIR_NAME = 'helmd'
+const HEALABLE = new Set(['HOST_UPGRADED', 'STALE', 'LEGACY_PRESET'])
+
+/** Locate the bundled generator that rewrites the deployed preset from the host standard. */
+function resolveGenerator(): string | null {
+  try {
+    const p = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', 'scripts', 'gen-preset.mjs')
+    return existsSync(p) ? p : null
+  } catch {
+    return null
+  }
+}
+
+/** Regenerate the deployed preset when it drifted; mirrors dsh-purge autoApplyOnStart. */
+function autoHealPreset(): string {
+  if (process.env.HELMD_AUTO_HEAL === '0') return 'disabled'
+  const gen = resolveGenerator()
+  if (gen === null) return 'unavailable (no generator)'
+  try {
+    const res = spawnSync(process.execPath, [gen, '--out', join(dshHome(), '.agent-presets', PRESET_DIR_NAME)], {
+      encoding: 'utf8',
+      timeout: 60_000,
+    })
+    if (res.status !== 0) {
+      const why = String(res.stderr || res.error?.message || '').trim().split('\n').slice(-1)[0] ?? ''
+      return `failed (exit ${String(res.status)}${why ? `: ${why}` : ''})`
+    }
+    return 'healed'
+  } catch (e) {
+    return `failed (${(e as Error).message})`
+  }
+}
+
+function evaluateHealthCore(): HelmdHealth {
   let version = ''
   try {
     const pkgUrl = new URL('../package.json', import.meta.url)
@@ -103,6 +141,7 @@ function evaluateHealth(): HelmdHealth {
     hostPath: '',
     checkedAt: new Date().toISOString(),
     version,
+    autoHeal: 'off',
   }
 
   const hostPath = locateHostStandard()
@@ -150,6 +189,24 @@ function evaluateHealth(): HelmdHealth {
     base.detail = `preset targets dsh ${base.presetFingerprint} but the host now hashes ${base.hostFingerprint}; regenerate (repack or setup-preset)`
   }
   return base
+}
+
+/**
+ * Evaluate the deployed-preset fingerprint and, when it drifted, regenerate it from the
+ * installed host standard (HELMD_AUTO_HEAL=0 disables the repair).
+ * @returns the health verdict, with the auto-heal outcome folded in.
+ */
+function evaluateHealth(): HelmdHealth {
+  const first = evaluateHealthCore()
+  if (!HEALABLE.has(first.status)) return first
+  const verdict = autoHealPreset()
+  if (verdict !== 'healed') {
+    first.autoHeal = verdict
+    return first
+  }
+  const healed = evaluateHealthCore()
+  healed.autoHeal = `healed (${first.status} → ${healed.status})`
+  return healed
 }
 
 /**

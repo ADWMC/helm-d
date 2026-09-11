@@ -1,5 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { applyBootstrapFilter } from './bootstrap.js'
+import { registerHcotHook } from './hcot-hook.js'
+import { registerAdvisoryHook } from './advisory-hook.js'
 import { applyPersistenceWrap } from './persist.js'
 import { registerRouterTools } from './router.js'
 import { registerCaseflowTools } from './tools/caseflow.js'
@@ -11,6 +13,7 @@ import { registerMalwareTools } from './tools/malware.js'
 import { registerAiSecurityTools } from './tools/ai-security.js'
 import { registerEvidenceTools } from './tools/evidence.js'
 import { registerToolboxTools } from './tools/toolbox.js'
+import { registerLedgerTool } from './ledger.js'
 
 export const name = 'helmd'
 export const inject = ['tools']
@@ -27,8 +30,16 @@ export function apply(ctx: Context): void {
       promoteOn: 'either',
     })
 
+    // Advisory ledger (outer) then H-CoT refusal detector (inner): producers submit
+    // before the advisory renderer runs its post-next render.
+    registerAdvisoryHook(ctx)
+    registerHcotHook(ctx)
+
     // Router tools: skill_catalog + read_reference + route_task + analysis_mode
     registerRouterTools(ctx)
+
+    // Tool Ledger: tool_memory register/note/search — cross-session tool memory
+    registerLedgerTool(ctx)
 
     // Case workflow: begin_case / case_status / record_finding / end_case
     // + find_tool / save_evidence

@@ -12,6 +12,7 @@ import {
   casesRoot, toolsShelfRoot,
 } from '../case.js'
 import { getLevel } from '../mode.js'
+import { renderAdvisoryStats } from '../advisory.js'
 
 interface ExecLike { agent?: { id?: string } }
 
@@ -20,6 +21,7 @@ const RULES = [
   '2. External CLI output → save_evidence(label, ...) before citing it.',
   '3. Parameters come from prior tool output in evidence/. Findings cite E ids via record_finding.',
   '4. Resume after compaction → case_status().',
+  '5. Installed a tool or learned a verified usage → tool_memory(register/note) with evidence id; route falsified (2-3 fails) → tool_memory note target=deadend.',
 ].join('\n')
 
 export function registerCaseflowTools(ctx: Context): void {
@@ -85,6 +87,7 @@ export function registerCaseflowTools(ctx: Context): void {
         timeline || '  (empty)',
         '',
         RULES,
+        ...(renderAdvisoryStats() ? ['', renderAdvisoryStats()] : []),
       ].join('\n')
     },
   }))
@@ -136,7 +139,8 @@ export function registerCaseflowTools(ctx: Context): void {
       }
       await closeCase(active.dir, args.summary)
       unbindCase(exec?.agent?.id)
-      return `case closed: ${active.name}${args.summary ? ` — ${args.summary}` : ''}`
+      const stats = renderAdvisoryStats()
+      return [`case closed: ${active.name}${args.summary ? ` — ${args.summary}` : ''}`, ...(stats ? ['', stats] : [])].join('\n')
     },
   }))
 

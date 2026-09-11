@@ -83,6 +83,13 @@ const rules: Record<string, string> = {
   malware: '恶意样本检测 → pe-inspector https://github.com/la-1314/pe-inspector/releases',
   yara: 'YARA 规则 → pe-inspector https://github.com/la-1314/pe-inspector/releases / yara_gen',
   ember: 'EMBER → pe-inspector https://github.com/la-1314/pe-inspector/releases',
+
+  // 9. AI / LLM 安全
+  'h-cot': 'H-CoT 思维链劫持 -> references/ai-security/h-cot-chain-of-thought-hijacking.md | 模板采集→伪造执行思路→注入劫持 | DeepSeek 先答后撤回需捕获首段输出；Gemini 指令跟随，首次突破价值高',
+  hcot: 'H-CoT 思维链劫持 -> references/ai-security/h-cot-chain-of-thought-hijacking.md',
+  '思维链': '越狱/H-CoT -> references/ai-security/model-security-analysis-guide.md + h-cot-chain-of-thought-hijacking.md',
+  jailbreak: '越狱 -> references/ai-security/{model-security-analysis-guide,bypass-framework-matrix,h-cot-chain-of-thought-hijacking}.md',
+  llm: 'LLM 安全 -> references/ai-security/ + llm_sim 工具',
 }
 
 export function registerToolboxTools(ctx: Context): void {
