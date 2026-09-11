@@ -25,6 +25,7 @@
 | persona 文本 | `packages/helmd/presets/persona.txt` | repack 经 `scripts/gen-preset.mjs` 注入 → `presets/full-reverse/agent.cordis.yml`（生成物）→ 包内镜像 → tgz |
 | preset 平台行 | 宿主内置 `standard` | `gen-preset.mjs` 读取宿主 `<dsh>/config/agent-presets/standard/agent.cordis.yml`，保留平台行并替换 persona；**不**写入由 profile bundle 挂载的 `@dsh-security/helmd` 行。安装/更新脚本在目标机再次生成（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
+| 依赖 cohort | `pnpm-workspace.yaml` `overrides`（宿主 dsh 0.1.5-rc.1 全家 + cordis + schemastery） | `pnpm install` → `pnpm-lock.yaml` + node_modules；`pnpm peers check` 必须无问题（跨 cohort peer = 迁移未完成） |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
@@ -149,6 +150,8 @@ PR #2708        已合并 (2026-08-23)
 ## 8. 改动后必须过的验证
 
 - [ ] `pnpm build` 无错
+- [ ] `pnpm peers check` 无问题（依赖图 cohort 与宿主一致，无跨 cohort peer）
+- [ ] `pnpm test:seam` 三份 host-seam 检查全绿（会话事件访问器 / 装配顺序 / 首轮锚定；宿主换 seam 即红，不必等真机会话才暴露）
 - [ ] mock-ctx 工具数与 README/registry 一致
 - [ ] `repack` 后 tgz 内含 `presets/` + `scripts/setup-preset.*`
 - [ ] setup-preset 从安装位置跑通且与 `presets/full-reverse/` 逐字节一致

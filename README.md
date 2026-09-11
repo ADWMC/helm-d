@@ -400,17 +400,21 @@ pnpm build
 
 ## 依赖
 
-- `@deepseek-ai/cordis` `^4.0.1`
-- `@deepseek-ai/dsh-tools` `>=0.1.0-rc.1 <0.1.0 || >=0.1.0-rc.1 <0.2.0-0`（显式预发布分支，避免静默排除 rc 构建）
+- `@deepseek-ai/cordis` `^4.0.2`
+- `@deepseek-ai/dsh-tools` `>=0.1.5-rc.1 <0.2.0-0`（宿主 cohort：dsh 0.1.5-rc.1 内置的工具版本）
+- `@deepseek-ai/dsh-settings` `>=0.1.5-rc.1 <0.2.0-0`
+- `@deepseek-ai/schemastery` `^3.18.2`
 
-版本通过 `pnpm-workspace.yaml` 的 `overrides` 固定。
+> **预发布范围的坑**：semver 只在范围里点名同一 `major.minor.patch` 的预发布版本时才收预发布版本。`>=0.1.0-rc.1 <0.2.0-0` 因此**不收** `0.1.5-rc.1`（只收 `0.1.0-rc.x`），`^0.1.1-rc.2` 同理。要声明宿主 cohort，必须写成 `>=0.1.5-rc.1 <0.2.0-0`。
+
+版本通过 `pnpm-workspace.yaml` 的 `overrides` 固定到宿主 cohort（`@deepseek-ai/dsh-*` 全家 + cordis + schemastery）；`pnpm install` 后 `pnpm peers check` 必须无问题，否则说明图里混了跨 cohort 的 peer。
 
 ## 发布
 
 - 根包 `private: true`，不发布；发布对象是 `@dsh-security/helmd` 单包。
 - `files` 白名单：`dist`、`client.js`、`references`、`scripts`、`presets`、`cordis.patch.yml`。
 - `prepare` 脚本会在发布前自动执行 `tsc`。
-- 当前版本 `0.2.3`。
+- 当前版本 `0.3.0`。
 - Release 资产：`dsh-security-helmd-<ver>.tgz` + 稳定别名 `helmd.tgz`（供商店 tarball 字段与安装器使用）。
 
 ## 风险与缓解
@@ -419,7 +423,7 @@ pnpm build
 |------|------|
 | DSH 宿主版本升级不兼容 | peer 依赖 cordis / dsh-tools，`overrides` 固定版本；preset 指纹三层防线（见上）自动暴露漂移 |
 | 本机缺 `python` | seam 自动探测 python / py / python3，Windows 兼容 `py -3` |
-| 单包版本错位 | 版本 0.2.3，tarball 与 release 同步发布 |
+| 单包版本错位 | 版本 0.3.0，tarball 与 release 同步发布 |
 | 参考知识过时 | 按需读、模型自主判断，非硬性规则 |
 
 ## 参考项目

@@ -1,6 +1,32 @@
 packages:
   - packages/*
 
+# Dev/test cohort pinned to the running host: dsh 0.1.5-rc.1 vendors every
+# @deepseek-ai/dsh-* package at 0.1.5-rc.1 with cordis 4.0.2 and schemastery 3.18.2
+# (verified against the installed host and the registry manifests).
+#
+# Both halves of this list are required:
+#   * a prerelease peer must name its own tuple — `>=0.1.0-rc.1 <0.2.0-0` silently
+#     excludes 0.1.5-rc.1, because semver admits a prerelease only when the range
+#     names a prerelease of the same major.minor.patch;
+#   * dsh-tools/dsh-settings pull their siblings as auto-installed peers, which pnpm
+#     otherwise resolves across cohorts (a 0.1.0-rc.6 peer beside 0.1.5-rc.1 tools),
+#     so the whole family is nailed down here.
 overrides:
-  "@deepseek-ai/cordis": 4.0.1
-  "@deepseek-ai/dsh-tools": 0.1.0-rc.6
+  "@deepseek-ai/cordis": 4.0.2
+  "@deepseek-ai/schemastery": 3.18.2
+  "@deepseek-ai/dsh-agent": 0.1.5-rc.1
+  "@deepseek-ai/dsh-attachment": 0.1.5-rc.1
+  "@deepseek-ai/dsh-brand": 0.1.5-rc.1
+  "@deepseek-ai/dsh-code-runtime": 0.1.5-rc.1
+  "@deepseek-ai/dsh-invariants": 0.1.5-rc.1
+  "@deepseek-ai/dsh-llm": 0.1.5-rc.1
+  "@deepseek-ai/dsh-scope": 0.1.5-rc.1
+  "@deepseek-ai/dsh-session": 0.1.5-rc.1
+  "@deepseek-ai/dsh-settings": 0.1.5-rc.1
+  "@deepseek-ai/dsh-system-prompt": 0.1.5-rc.1
+  "@deepseek-ai/dsh-timeout": 0.1.5-rc.1
+  "@deepseek-ai/dsh-tools": 0.1.5-rc.1
+  "@deepseek-ai/dsh-typert-protocol": 0.1.5-rc.1
+  "@deepseek-ai/dsh-user-approval": 0.1.5-rc.1
+  "@deepseek-ai/dsh-util-values": 0.1.5-rc.1

@@ -398,17 +398,21 @@ The root `pnpm build` builds `@dsh-security/helmd`; `pnpm typecheck` runs the `t
 
 ## Dependencies
 
-- `@deepseek-ai/cordis` `^4.0.1`
-- `@deepseek-ai/dsh-tools` `>=0.1.0-rc.1 <0.1.0 || >=0.1.0-rc.1 <0.2.0-0` (explicit prerelease branch so rc builds are never silently excluded)
+- `@deepseek-ai/cordis` `^4.0.2`
+- `@deepseek-ai/dsh-tools` `>=0.1.5-rc.1 <0.2.0-0` (the cohort shipped by host dsh 0.1.5-rc.1)
+- `@deepseek-ai/dsh-settings` `>=0.1.5-rc.1 <0.2.0-0`
+- `@deepseek-ai/schemastery` `^3.18.2`
 
-Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
+> **The prerelease-range trap**: semver admits a prerelease only when the range names a prerelease of the same `major.minor.patch`. `>=0.1.0-rc.1 <0.2.0-0` therefore does **not** admit `0.1.5-rc.1` (only `0.1.0-rc.x`), and neither does `^0.1.1-rc.2`. Declaring the host cohort requires `>=0.1.5-rc.1 <0.2.0-0`.
+
+Versions are pinned to the host cohort via `overrides` in `pnpm-workspace.yaml` (the whole `@deepseek-ai/dsh-*` family plus cordis and schemastery); after `pnpm install`, `pnpm peers check` must be clean — otherwise the graph carries cross-cohort peers.
 
 ## Publishing
 
 - The root package is `private: true` and is not published; `@dsh-security/helmd` is.
 - The `files` whitelist: `dist`, `client.js`, `references`, `scripts`, `presets`, `cordis.patch.yml`.
 - The `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.2.3`.
+- Current version: `0.3.0`.
 - Release assets: `dsh-security-helmd-<ver>.tgz` plus the stable alias `helmd.tgz` (used by the store's tarball field and the installers).
 
 ## Risks & mitigations
@@ -417,7 +421,7 @@ Versions are pinned via `overrides` in `pnpm-workspace.yaml`.
 |------|------------|
 | DSH host upgrade breaks compat | peer deps on cordis / dsh-tools, pinned via `overrides`; three-layer preset fingerprint defense above exposes drift automatically |
 | Missing `python` on the host | seam auto-probes python / py / python3, falls back to the `py` launcher |
-| Bundle/preset version drift | version 0.2.3, tarball and release published together |
+| Bundle/preset version drift | version 0.3.0, tarball and release published together |
 | Reference knowledge goes stale | read on demand, model's own judgment, non-binding |
 
 ## Acknowledgements
