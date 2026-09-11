@@ -6,6 +6,7 @@ import { readTextSeam, assertWithinRoot } from './seam.js'
 import { getLevel, setLevel, normalizeLevel, renderContract } from './mode.js'
 import { shelfSummary } from './ledger.js'
 import { submitAdvisory, renderAdvisoryStats } from './advisory.js'
+import { sessionEvents, type AgentLike } from './session-log.js'
 
 // 目录：领域 -> 触发信号与去向（可发现性元数据，不下结论）
 const catalog: Record<string, string> = {
@@ -171,13 +172,12 @@ export function registerRouterTools(ctx: Context): void {
       hint: { type: 'string', required: true, description: 'Short task description or sample filename.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: { hint: string }, exec?: { agent?: { id?: string; session?: { events?: readonly unknown[] } } }) {
+    async execute(args: { hint: string }, exec?: { agent?: AgentLike }) {
       const card = renderRoute(args.hint ?? '')
       const primary = matchRoute(args.hint ?? '')[0]?.key
       const tool = primary ? ROUTE_TOOL[primary] : undefined
       const sessionId = exec?.agent?.id
       if (sessionId && primary && tool) {
-        const events = exec?.agent?.session?.events
         submitAdvisory(sessionId, {
           key: `route:${primary}`,
           tier: 'recommended',
@@ -185,7 +185,7 @@ export function registerRouterTools(ctx: Context): void {
           proof: { kind: 'tool_called', tools: [tool] },
           withinTurns: 2,
           trackOnly: true,
-        }, Array.isArray(events) ? events.length : 0)
+        }, sessionEvents(exec?.agent, 'route_task').length)
       }
       return card
     },

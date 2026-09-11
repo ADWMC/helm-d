@@ -5,6 +5,8 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import { hasPending, reckonAdvisories, renderAdvisories, submitAdvisory } from './advisory.js'
+import { USER_MESSAGE, latestEventText, sessionEvents } from './session-log.js'
+import { agentSessionId, registerAssemblyListener, type AssemblyLike } from './prompt-assembly.js'
 
 export const name = 'helmd-advisory'
 
@@ -51,22 +53,10 @@ const OBJECTION_MARKERS = [
   'premise', 'incorrect', 'not necessarily', 'unverified', "that's not",
 ]
 
-function latestUserText(events: readonly unknown[]): string {
-  for (let i = events.length - 1; i >= 0; i--) {
-    const e = events[i] as { type?: string; data?: { message?: { content?: unknown } } } | undefined
-    if (e?.type !== 'user/message') continue
-    const content = e.data?.message?.content
-    if (typeof content === 'string') return content
-    if (!Array.isArray(content)) return ''
-    return content.map((b) => (typeof b === 'string' ? b : ((b as { text?: unknown } | null)?.text ?? ''))).join('\n')
-  }
-  return ''
-}
-
 /** Arm the challenge metric only for claim-shaped user turns. */
 function armChallengeMetric(sessionId: string, events: readonly unknown[]): void {
   if (hasPending(sessionId, CHALLENGE_KEY)) return
-  const turn = latestUserText(events)
+  const turn = latestEventText(events, USER_MESSAGE) ?? ''
   if (!turn || !CLAIM_RE.test(turn)) return
   submitAdvisory(sessionId, {
     key: CHALLENGE_KEY,
@@ -96,29 +86,31 @@ function armStanceMetric(sessionId: string, events: readonly unknown[]): void {
 }
 
 export function registerAdvisoryHook(ctx: Context): void {
-  ;(ctx as any).on('system-prompt/assemble', async (_assembly: any, context: any, next: any) => {
-    const session = context?.agent?.session
-    const sessionId: string | undefined = context?.agent?.id ?? session?.id
-    const events: unknown[] = Array.isArray(session?.events) ? session.events : []
-    if (sessionId) {
+  registerAssemblyListener(ctx, {
+    before(context) {
+      const sessionId = agentSessionId(context)
+      if (!sessionId) return
       try {
+        const events = sessionEvents(context.agent, name)
         reckonAdvisories(sessionId, events)
         armStanceMetric(sessionId, events)
         armChallengeMetric(sessionId, events)
       } catch {
         // reckoning is bookkeeping — never block the assembly
       }
-    }
-    const assembled = await next()
-    if (!sessionId) return assembled
-    try {
-      const text = renderAdvisories(sessionId)
-      if (!text) return assembled
-      const sections = Array.isArray(assembled?.sections) ? assembled.sections : []
-      const without = sections.filter((section: any) => section?.name !== SECTION)
-      return { ...assembled, sections: [...without, { name: SECTION, text }] }
-    } catch {
-      return assembled
-    }
+    },
+    after(assembled: AssemblyLike, context) {
+      const sessionId = agentSessionId(context)
+      if (!sessionId) return assembled
+      try {
+        const text = renderAdvisories(sessionId)
+        if (!text) return assembled
+        const sections = Array.isArray(assembled.sections) ? assembled.sections : []
+        const without = sections.filter((section) => (section as { name?: unknown } | null)?.name !== SECTION)
+        return { ...assembled, sections: [...without, { name: SECTION, text }] }
+      } catch {
+        return assembled
+      }
+    },
   })
 }

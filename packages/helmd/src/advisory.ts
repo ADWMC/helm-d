@@ -10,6 +10,7 @@
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ledgerDir } from './ledger.js'
+import { ASSISTANT_MESSAGE, eventCount, eventTexts, toolCalls, type ToolCall } from './session-log.js'
 
 /** How binding an advisory is. `mandatory` is never demoted and never truncated. */
 export type AdvisoryTier = 'mandatory' | 'recommended' | 'hint'
@@ -91,18 +92,6 @@ export function advisoryQueue(sessionId: string): Advisory[] {
     .sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier])
 }
 
-interface ToolCall { name: string; args: string }
-
-function toolCalls(events: readonly unknown[]): ToolCall[] {
-  const out: ToolCall[] = []
-  for (const event of events) {
-    const e = event as { type?: string; data?: { name?: unknown; arguments?: unknown } } | undefined
-    if (e?.type !== 'tool/call') continue
-    out.push({ name: String(e.data?.name ?? ''), args: String(e.data?.arguments ?? '') })
-  }
-  return out
-}
-
 function proven(proof: Proof | undefined, calls: ToolCall[], after: readonly unknown[]): boolean {
   if (!proof) return false
   switch (proof.kind) {
@@ -121,36 +110,14 @@ function proven(proof: Proof | undefined, calls: ToolCall[], after: readonly unk
     case 'mode_set':
       return calls.some((c) => c.name === 'analysis_mode')
     case 'reply_avoids': {
-      const text = assistantTexts(after)
+      const text = eventTexts(after, ASSISTANT_MESSAGE)
       return text.length > 0 && !proof.markers.some((m) => text.includes(m))
     }
     case 'reply_shows': {
-      const text = assistantTexts(after)
+      const text = eventTexts(after, ASSISTANT_MESSAGE)
       return proof.markers.some((m) => text.includes(m))
     }
   }
-}
-
-/** Concatenated text of assistant replies inside a window. */
-function assistantTexts(events: readonly unknown[]): string {
-  const chunks: string[] = []
-  for (const event of events) {
-    const e = event as { type?: string; data?: { message?: { content?: unknown } } } | undefined
-    if (e?.type !== 'assistant/message') continue
-    const content = e.data?.message?.content
-    if (typeof content === 'string') chunks.push(content)
-    else if (Array.isArray(content)) {
-      for (const block of content) {
-        const text = typeof block === 'string' ? block : (block as { text?: unknown } | null)?.text
-        if (typeof text === 'string') chunks.push(text)
-      }
-    }
-  }
-  return chunks.join('\n')
-}
-
-function assistantTurns(events: readonly unknown[]): number {
-  return events.filter((event) => (event as { type?: string } | undefined)?.type === 'assistant/message').length
 }
 
 function record(entry: Reckoned): void {
@@ -169,7 +136,7 @@ export function reckonAdvisories(sessionId: string, events: readonly unknown[]):
   const settled: Reckoned[] = []
   for (const entry of list) {
     const after = events.slice(entry.atEventCount)
-    const waited = assistantTurns(after)
+    const waited = eventCount(after, ASSISTANT_MESSAGE)
     const proof = entry.advisory.proof
     let verdict: Verdict | null = null
     if (proofedNow(proof, after)) verdict = 'adopted'

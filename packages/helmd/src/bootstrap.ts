@@ -1,4 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
+import { ASSISTANT_MESSAGE, TOOL_CALL, hasEventType, sessionEvents, type AgentLike, type SessionLike } from './session-log.js'
+import { registerAssemblyListener, type AssemblyLike } from './prompt-assembly.js'
 
 export const name = 'helmd-tool-bootstrap'
 
@@ -14,9 +16,9 @@ export interface BootstrapConfig {
 }
 
 const PROMOTE_EVENTS: Record<PromoteMode, string[]> = {
-  'tool-call': ['tool/call'],
-  'assistant-message': ['assistant/message'],
-  either: ['tool/call', 'assistant/message'],
+  'tool-call': [TOOL_CALL],
+  'assistant-message': [ASSISTANT_MESSAGE],
+  either: [TOOL_CALL, ASSISTANT_MESSAGE],
 }
 
 function stringList(value: unknown, field: string): string[] {
@@ -42,36 +44,42 @@ export function applyBootstrapFilter(ctx: Context, config: BootstrapConfig = {})
   const promoteEvents = parsePromoteOn(config.promoteOn)
 
   const promoted = new Set<string>()
-  let warned = false
-  const warnOnce = (message: string): void => {
-    if (warned) return
-    warned = true
+  let catalogGuardWarned = false
+  const warnCatalogGuard = (message: string): void => {
+    if (catalogGuardWarned) return
+    catalogGuardWarned = true
     try {
-      ;(ctx as any).logger?.warn(message)
+      ;(ctx as { logger?: { warn(message: string): void } }).logger?.warn(message)
     } catch {
       // Logger unavailable — the guard exists only to avoid spamming.
     }
   }
 
-  const isPromoted = (agent: any): boolean => {
+  /**
+   * Whether this agent has earned the full catalog: a subagent child, or a session that
+   * already produced a promotion event. The memo needs a session identity — an
+   * identity-less session must not promote every later session through one shared key.
+   */
+  const isPromoted = (agent: AgentLike | undefined): boolean => {
     if (agent === undefined || agent === null) return true
-    const session = agent.session
+    const session: SessionLike | undefined = agent.session
     if (session === undefined || session === null) return true
     // Subagents keep their full catalog from their very first request.
     if ((session.header?.delegationDepth ?? 0) > 0) return true
-    if (promoted.has(session.id)) return true
-    const hit = Array.isArray(session.events)
-      && session.events.some((event: any) => promoteEvents.includes(event.type))
-    if (hit) promoted.add(session.id)
+    const id = session.id ?? agent.id
+    if (id !== undefined && promoted.has(id)) return true
+    const hit = hasEventType(sessionEvents(agent, name), promoteEvents)
+    if (hit && id !== undefined) promoted.add(id)
     return hit
   }
 
-  const applyBootstrap = (assembled: any): any => {
-    const available = new Set((assembled.tools ?? []).map((tool: any) => tool.name))
+  const applyBootstrap = (assembled: AssemblyLike): AssemblyLike => {
+    const tools = Array.isArray(assembled.tools) ? assembled.tools : []
+    const available = new Set(tools.map((tool) => tool.name))
     const selectedShells = shellTools.filter((toolName) => available.has(toolName))
     const missingCommon = commonTools.filter((toolName) => !available.has(toolName))
     if (selectedShells.length !== 1 || missingCommon.length > 0) {
-      warnOnce(
+      warnCatalogGuard(
         `${name}: expected exactly one bootstrap shell and every common tool; `
         + `shells=${JSON.stringify(selectedShells)}, missing=${JSON.stringify(missingCommon)} — `
         + 'bootstrap disabled, full catalog exposed',
@@ -81,20 +89,21 @@ export function applyBootstrapFilter(ctx: Context, config: BootstrapConfig = {})
     const bootstrap = new Set([...selectedShells, ...commonTools])
     return {
       ...assembled,
-      tools: (assembled.tools ?? []).filter((tool: any) => bootstrap.has(tool.name)),
+      tools: tools.filter((tool) => bootstrap.has(tool.name ?? '')),
     }
   }
 
-  ;(ctx as any).on('system-prompt/assemble', async (_assembly: any, context: any, next: any) => {
+  registerAssemblyListener(ctx, {
     // Downstream errors propagate untouched; only this filter's own logic is guarded.
-    const assembled = await next()
-    try {
-      if (isPromoted(context?.agent)) return assembled
-      return applyBootstrap(assembled)
-    } catch (error) {
-      const message = String((error as any)?.message ?? error)
-      warnOnce(`${name}: bootstrap filter failed, exposing the full catalog: ${message}`)
-      return assembled
-    }
+    after(assembled, context) {
+      try {
+        if (isPromoted(context.agent)) return assembled
+        return applyBootstrap(assembled)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        warnCatalogGuard(`${name}: bootstrap filter failed, exposing the full catalog: ${message}`)
+        return assembled
+      }
+    },
   })
 }
