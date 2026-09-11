@@ -7,7 +7,7 @@
 // This is deliberately not hook-scoped: any producer (tool, hook, preset) can
 // submit, and the same ledger answers "did the agent act on what we told it?".
 
-import { appendFileSync, existsSync, readFileSync } from 'node:fs'
+import { appendFileSync, copyFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ledgerDir } from './ledger.js'
 import { ASSISTANT_MESSAGE, eventCount, eventTexts, toolCalls, type ToolCall } from './session-log.js'
@@ -63,6 +63,13 @@ interface Pending {
 const TIER_ORDER: Record<AdvisoryTier, number> = { mandatory: 0, recommended: 1, hint: 2 }
 const DEMOTE_AFTER = 3
 
+/** Ledger size that triggers compaction, and how many recent rows survive it. */
+const LEDGER_COMPACT_BYTES = 4 * 1024 * 1024
+const LEDGER_KEEP_ROWS = 5000
+
+/** Sessions held in memory; the oldest insertion is evicted (no session-close hook exists). */
+const MAX_PENDING_SESSIONS = 64
+
 const pending = new Map<string, Pending[]>()
 
 /** Advisory ledger path; shares the tool-ledger directory so it survives with it. */
@@ -78,6 +85,10 @@ export function submitAdvisory(sessionId: string, advisory: Advisory, atEventCou
   if (index >= 0) list[index] = next
   else list.push(next)
   pending.set(sessionId, list)
+  if (pending.size > MAX_PENDING_SESSIONS) {
+    const oldest = pending.keys().next().value
+    if (oldest !== undefined && oldest !== sessionId) pending.delete(oldest)
+  }
 }
 
 /** Whether a key already has an un-reckoned advisory in this session. */
@@ -121,11 +132,33 @@ function proven(proof: Proof | undefined, calls: ToolCall[], after: readonly unk
 }
 
 function record(entry: Reckoned): void {
+  const path = advisoryLedgerPath()
   try {
-    appendFileSync(advisoryLedgerPath(), `${JSON.stringify({ ...entry, ts: new Date().toISOString() })}\n`, 'utf8')
+    appendFileSync(path, `${JSON.stringify({ ...entry, ts: new Date().toISOString() })}\n`, 'utf8')
+    compactLedger(path)
   } catch {
     // Ledger write failure must never break prompt assembly.
   }
+}
+
+/**
+ * Keep the ledger bounded: past the size cap the previous file is preserved as
+ * `<ledger>.1` and only the newest rows carry over. Adoption rates are read from the
+ * recent window, so an unbounded file buys nothing but latency.
+ */
+function compactLedger(path: string): void {
+  let size = 0
+  try {
+    size = statSync(path).size
+  } catch {
+    return
+  }
+  if (size <= LEDGER_COMPACT_BYTES) return
+  const rows = readFileSync(path, 'utf8').split('\n').filter((line) => line.trim() !== '')
+  if (rows.length <= LEDGER_KEEP_ROWS) return
+  copyFileSync(path, `${path}.1`)
+  writeFileSync(path, `${rows.slice(-LEDGER_KEEP_ROWS).join('\n')}\n`, 'utf8')
+  ledgerCache = null
 }
 
 /** Reckon pending advisories against the session's events; persist every verdict. */
@@ -159,57 +192,114 @@ function proofedNow(proof: Proof | undefined, after: readonly unknown[]): boolea
   return proven(proof, toolCalls(after), after)
 }
 
-/** Ignored tally per key, read from the persisted ledger. */
-export function ignoredCounts(): Map<string, number> {
-  const counts = new Map<string, number>()
+/** One persisted reckoning row, as much of it as the tally needs. */
+interface LedgerRow {
+  key?: unknown
+  tier?: unknown
+  verdict?: unknown
+}
+
+/** Parsed ledger rows plus the file identity they came from. */
+interface LedgerCache {
+  path: string
+  mtimeMs: number
+  size: number
+  rows: LedgerRow[]
+}
+
+let ledgerCache: LedgerCache | null = null
+
+/**
+ * The ledger's rows, parsed once per file change. The ledger gains a line per assistant
+ * turn, and prompt assembly asks for these tallies every turn, so re-reading the whole
+ * file per question would put a growing file scan on the hot path.
+ */
+function ledgerRows(): LedgerRow[] {
   const path = advisoryLedgerPath()
-  if (!existsSync(path)) return counts
+  if (!existsSync(path)) {
+    ledgerCache = null
+    return []
+  }
+  let mtimeMs = 0
+  let size = 0
+  try {
+    const stat = statSync(path)
+    mtimeMs = stat.mtimeMs
+    size = stat.size
+  } catch {
+    return ledgerCache?.path === path ? ledgerCache.rows : []
+  }
+  if (ledgerCache !== null && ledgerCache.path === path && ledgerCache.mtimeMs === mtimeMs && ledgerCache.size === size) {
+    return ledgerCache.rows
+  }
+  const rows: LedgerRow[] = []
   for (const line of readFileSync(path, 'utf8').split('\n')) {
     const trimmed = line.trim()
     if (!trimmed) continue
     try {
-      const row = JSON.parse(trimmed) as { key?: unknown; verdict?: unknown }
-      if (row.verdict !== 'ignored' || typeof row.key !== 'string') continue
-      counts.set(row.key, (counts.get(row.key) ?? 0) + 1)
+      rows.push(JSON.parse(trimmed) as LedgerRow)
     } catch {
       // malformed ledger line — skip
     }
   }
+  ledgerCache = { path, mtimeMs, size, rows }
+  return rows
+}
+
+interface Tally {
+  adopted: number
+  ignored: number
+  tier: AdvisoryTier
+}
+
+/** Per-key tally from the cached rows; the last row's tier wins. */
+function tally(): Map<string, Tally> {
+  const out = new Map<string, Tally>()
+  for (const row of ledgerRows()) {
+    if (typeof row.key !== 'string') continue
+    if (row.verdict !== 'adopted' && row.verdict !== 'ignored') continue
+    const entry = out.get(row.key) ?? { adopted: 0, ignored: 0, tier: 'hint' }
+    if (row.verdict === 'adopted') entry.adopted += 1
+    else entry.ignored += 1
+    if (isTier(row.tier)) entry.tier = row.tier
+    out.set(row.key, entry)
+  }
+  return out
+}
+
+function isTier(value: unknown): value is AdvisoryTier {
+  return value === 'mandatory' || value === 'recommended' || value === 'hint'
+}
+
+/** Ignored tally per key, read from the persisted ledger. */
+export function ignoredCounts(): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const [key, entry] of tally()) counts.set(key, entry.ignored)
   return counts
 }
 
 /** Adopted / ignored tally per key, for the route card. */
 export function advisoryStats(): Map<string, { adopted: number; ignored: number }> {
   const stats = new Map<string, { adopted: number; ignored: number }>()
-  const path = advisoryLedgerPath()
-  if (!existsSync(path)) return stats
-  for (const line of readFileSync(path, 'utf8').split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
-    try {
-      const row = JSON.parse(trimmed) as { key?: unknown; verdict?: unknown }
-      if (typeof row.key !== 'string' || (row.verdict !== 'adopted' && row.verdict !== 'ignored')) continue
-      const entry = stats.get(row.key) ?? { adopted: 0, ignored: 0 }
-      if (row.verdict === 'adopted') entry.adopted += 1
-      else entry.ignored += 1
-      stats.set(row.key, entry)
-    } catch {
-      // malformed ledger line — skip
-    }
-  }
+  for (const [key, entry] of tally()) stats.set(key, { adopted: entry.adopted, ignored: entry.ignored })
   return stats
 }
 
 /** A non-mandatory advisory that keeps being ignored stops being surfaced. */
 export function isDemoted(key: string, tier: AdvisoryTier): boolean {
   if (tier === 'mandatory') return false
-  return (ignoredCounts().get(key) ?? 0) >= DEMOTE_AFTER
+  return (tally().get(key)?.ignored ?? 0) >= DEMOTE_AFTER
 }
 
-/** Keys whose ignored tally reached the demotion threshold, regardless of tier. */
+/**
+ * Keys whose ignored tally reached the threshold and whose tier may actually be demoted.
+ * Mandatory keys never are, so they must not be labelled as demoted either.
+ */
 export function demotedKeys(threshold = DEMOTE_AFTER): Set<string> {
   const keys = new Set<string>()
-  for (const [key, count] of ignoredCounts()) if (count >= threshold) keys.add(key)
+  for (const [key, entry] of tally()) {
+    if (entry.ignored >= threshold && entry.tier !== 'mandatory') keys.add(key)
+  }
   return keys
 }
 

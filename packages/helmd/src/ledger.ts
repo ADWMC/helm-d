@@ -249,9 +249,13 @@ export function syncHcotLedger(): string {
   return notes.length ? `[H-CoT 账本回流] ${notes.join('; ')}` : ''
 }
 
+/**
+ * Shelf overview + top dead-ends for the route card. Read-only: a routing card must not
+ * write to a ledger, so folding the H-CoT result ledger in is the explicit
+ * `tool_memory sync` path. Silent when the ledgers are absent or empty.
+ */
 export function shelfSummary(): string {
   try {
-    syncHcotLedger()
     const parts: string[] = []
     if (existsSync(TOOLS_MD())) {
       const t = readFileSync(TOOLS_MD(), 'utf8')
@@ -302,7 +306,7 @@ export function registerLedgerTool(ctx: Context): void {
       usage: { type: 'string', description: 'register: verified command template.' },
       version: { type: 'string', description: 'register: version string.' },
       content: { type: 'string', description: 'note: the pitfall/lesson/dead-end root cause.' },
-      evidence: { type: 'string', required: true, description: 'note: evidence id (E-xxx) or case name. Required — no evidence, no write.' },
+      evidence: { type: 'string', description: 'note: evidence id (E-xxx) or case name. Required for note — register/search/sync do not carry one.' },
       kind: { type: 'string', description: 'note(tool): pitfall | template (default pitfall).' },
       target: { type: 'string', description: 'note: tool | deadend (default tool).' },
       query: { type: 'string', description: 'search: keyword.' },

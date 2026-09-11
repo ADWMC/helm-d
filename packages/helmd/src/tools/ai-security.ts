@@ -58,6 +58,9 @@ export function registerAiSecurityTools(ctx: Context): void {
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
+      if (!args.stats && (args.goal == null || String(args.goal).trim() === '')) {
+        return 'REJECTED — 需要 goal（真实目标请求）；只查变体胜率请传 stats: true。'
+      }
       const argv = ['python', resolve(scriptRoot, 'h_cot_attack.py')]
       if (args.stats) {
         argv.push('--stats')
