@@ -2,8 +2,6 @@
 
 > 从 secplan methodology 提取的通用逆向流程与实战案例，去掉工具环境配置与框架引用。读完自行判断，非硬性规则。
 
-## General Reverse Engineering Flow
-
 ## 通用逆向流程
 
 ```
@@ -42,8 +40,6 @@
 
 
 
-## Case Study: GH_Loader (netease_future.exe)
-
 ## 实战案例：GH_Loader (netease_future.exe)
 
 **案例背景**: 网易云 AI 自瞄辅助 loader，64MB PE，.rsrc 节占 64.5MB，注入 cloudmusic.exe。
@@ -72,8 +68,6 @@ def decrypt_byte(i):
 **关键**: 每解密一字节，全部 24 节密钥都变换一次（不是只变换当前使用的字节）。
 
 
-
-## Packer/Protector Decision Tree
 
 ## 加壳二进制分析决策树
 
@@ -108,7 +102,17 @@ def decrypt_byte(i):
      │  → 立即转 Frida 动态脱壳 (hook /dev/shm + write)
      │  → 参考 bypass-case-tusi-netease.md
      │
-     ├─ VMProtect (PE 节含 `.winlice` + `.boot`，或 ELF 含 `.vmp0`/`.vmp1`)\n     │  → **静态分析完全无效** — 字符串/代码/URL 全部加密\n     │  → 立即停止静态分析，不尝试 strings/xrefs/反汇编\n     │  → 2 步内必须做出策略选择，不要在静态分析上反复尝试\n     │  → 策略选择：\n     │    1. 有 GUI 服务器 → Frida spawn + pywinauto UIA 交互（见 vmp-pe-frida-windows.md）\n     │    2. 无 GUI 服务器 → 让用户本地抓包(Fiddler/Charles)或 x64dbg\n     │    3. 判断验证类型：netstat + ipconfig /displaydns → 网络 vs 离线\n     │    4. 离线验证 → Frida 内存扫描找验证字符串 → x64dbg 内存断点追溯\n     │  → **关键**：VMP 用直接系统调用，Frida API hook 全部无效，不要浪费时间换 hook 目标\n     │  → 参考 vmp-pe-frida-windows.md（PE 实战）和 vmp-elf-protection.md（ELF 架构）
+     ├─ VMProtect (PE 节含 `.winlice` + `.boot`，或 ELF 含 `.vmp0`/`.vmp1`)
+     │  → **静态分析完全无效** — 字符串/代码/URL 全部加密
+     │  → 立即停止静态分析，不尝试 strings/xrefs/反汇编
+     │  → 2 步内必须做出策略选择，不要在静态分析上反复尝试
+     │  → 策略选择：
+     │    1. 有 GUI 服务器 → Frida spawn + pywinauto UIA 交互（见 vmp-pe-frida-windows.md）
+     │    2. 无 GUI 服务器 → 让用户本地抓包(Fiddler/Charles)或 x64dbg
+     │    3. 判断验证类型：netstat + ipconfig /displaydns → 网络 vs 离线
+     │    4. 离线验证 → Frida 内存扫描找验证字符串 → x64dbg 内存断点追溯
+     │  → **关键**：VMP 用直接系统调用，Frida API hook 全部无效，不要浪费时间换 hook 目标
+     │  → 参考 vmp-pe-frida-windows.md（PE 实战）和 vmp-elf-protection.md（ELF 架构）
      │
      ├─ Themida / Enigma / Obsidium
      │  → 类似 VMP，转动态分析
@@ -131,8 +135,6 @@ def decrypt_byte(i):
 
 
 
-## Large File Analysis (>10MB)
-
 ## 大文件（>10MB）分析
 
 ```
@@ -146,8 +148,6 @@ def decrypt_byte(i):
 ```
 
 
-
-## Bypass & Patch Priority
 
 ## 绕过与Patch优先级
 

@@ -50,8 +50,8 @@
 │
 ├─ Android/Linux ELF (.so/.elf)?
 │  ├─ Shellcode/RWX？→ native_reference --path android-shellcode-analysis.md
-│  ├─ 反分析？→ native_reference --path android-elf-malware-analysis.md
-│  ├─ 内存 Dump？→ native_reference --path android-arm64-memory-dump.md
+│  ├─ 反分析？→ read_reference --path android/android-elf-malware-analysis.md
+│  ├─ 内存 Dump？→ read_reference --path android/android-arm64-memory-dump.md
 │  └─ VMP 保护？→ native_reference --path vmp-elf-protection.md
 │
 ├─ JVM/JAR (.jar/.class)?
@@ -100,15 +100,10 @@
 
 ## Patch 编码速查
 
-| 架构 | 类型 | 原始 | 修改后 | 字节 |
-|------|------|------|--------|------|
-| ARM64 | `b.eq` → `b` | `B.eq loc` | `B loc` | `0x14000000` |
-| ARM64 | `cbz` → `nop` | `CBZ Xn, loc` | `NOP` | `0x1F2003D5` |
-| ARM64 | `b.ne` → `nop` | `B.ne loc` | `NOP` | `0xD503201F` |
-| x86 | `je` → `jne` | `74 xx` | `75 xx` | — |
-| x86 | `jne` → `je` | `75 xx` | `74 xx` | — |
-| x86 | `call` → `nop` | `E8 xx xx xx xx` | `90 90 90 90 90` | — |
-| x86 | `test` → `xor` | `85 C0` | `31 C0` | 清零 eax |
+Patch 编码速查表单点维护在 [patterns.md](patterns.md) 的「Patch 编码速查」章节，本节不再重复列表；最常用两条：
+
+- ARM64 NOP = `0xD503201F`（内存字节序 `1F 20 03 D5`）
+- x86 `call` → `nop` = `90` 填充
 
 ## 置信度标注
 

@@ -198,40 +198,9 @@ Loader.exe
     └── CreateRemoteThread → 执行 DLL
 ```
 
-### 分析流程
+### 分析流程与实战案例
 
-1. **资源提取**: Python struct 解析 PE 资源目录
-2. **密钥追踪**: 反汇编找 XOR/AES 密钥加载
-3. **解密验证**: 运行解密函数，验证输出
-4. **内存 Dump**: Frida dump 注入的 DLL
-5. **Bypass**: Patch 校验逻辑
-
-### 实战案例: GH_Loader
-
-**背景**: 网易云 AI 自瞄辅助 loader，64MB PE，.rsrc 节占 64.5MB
-
-**反调试**: 任何 Frida attach 后 9090 端口停止监听，循环崩溃
-
-**分析记录**:
-
-| 阶段 | 方向 | 结果 |
-|------|------|------|
-| 资源提取 | Python struct 解析 PE 资源目录 | RCDATA/100 (22MB DLL) + RCDATA/101 (42MB 归档) |
-| 密钥追踪 | 反汇编找 XOR 密钥加载 | `movups` + `movabs` 提取 24 字节密钥 |
-| 解密验证 | XOR-24 有状态变换 | 解密后不是 PE，说明密钥可能被捕获时已过变换 |
-| 归档解析 | Resource 101 结构分析 | 明文归档包含 ONNX 模型 + AES-256 加密模型 |
-
-**XOR-24 有状态算法**:
-
-```python
-key = bytearray(initial_key)  # 24 bytes from .rdata
-def decrypt_byte(i):
-    for j in range(24):
-        key[j] = (0x25 - key[j] * 0x53) & 0xFF
-    return encrypted[i] ^ key[i % 24]
-```
-
-**关键**: 每解密一字节，全部 24 节密钥都变换一次（不是只变换当前使用的字节）
+分析流程、GH_Loader 完整案例与 XOR-24 有状态算法详解单点维护在 [native-casebook.md](../native/native-casebook.md)（「PE Loader/DLL 注入分析」与「实战案例」章节），本节不再重复列表。
 
 ## JVM/JAR 字节码 Patch
 
@@ -259,26 +228,7 @@ def decrypt_byte(i):
 
 ## 加壳二进制分析决策树
 
-```
-拿到加壳二进制后:
-1. 检测保护器类型
-   detect_packer --file target
-   scan_strings --path target --min 4
-
-2. 根据保护器选择策略
-   ├─ UPX → upx -d target
-   ├─ VMProtect → 动态分析 only
-   ├─ Themida → 动态 dump + 修复导入表
-   ├─ TUSI → Frida 动态脱壳
-   ├─ Jiagu (360) → adb shell am start + attach dump
-   ├─ OLLVM → IDA + 脚本去混淆
-   └─ 未知 → 动态分析 + 内存 dump
-
-3. 验证脱壳结果
-   file unpacked_target              # 确认类型
-   strings unpacked_target | head    # 确认有字符串
-   detect_packer --file unpacked_target  # 确认无壳
-```
+完整决策树（含 TUSI/VMProtect 分支、卡密后门检查与脱壳验证）单点维护在 [native-casebook.md](../native/native-casebook.md) 的「加壳二进制分析决策树」章节，本节不再重复。保护器类型识别命令：`detect_packer --file target` + `scan_strings --path target --min 4`。
 
 ## 置信度评估
 
