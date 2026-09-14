@@ -35,7 +35,7 @@ const p = process.argv[2];
 const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
 const stale = new Set(["dsh-find-plugin", "@deepseek-ai/dsh-plugin-console"]);
 const isStale = (name) => stale.has(name) || name.startsWith("@linxin666/") ||
-  (name.startsWith("@dsh-security/") && name !== "helm-d");
+  (name.startsWith("@dsh-security/") && name !== "@adwmc/helm-d");
 let changed = false;
 for (const f of ["dependencies", "devDependencies", "optionalDependencies"]) {
   if (pkg[f] && typeof pkg[f] === "object") {
@@ -84,7 +84,7 @@ if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
     $presetDir = Join-Path $presetRoot $Preset
     New-Item -ItemType Directory -Force $presetDir | Out-Null
 
-    $bundleRoot = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\helm-d")
+    $bundleRoot = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\@adwmc\helm-d")
     $bundlePresets = Join-Path $bundleRoot "presets"
     if (-not (Test-Path (Join-Path $bundlePresets "agent.cordis.yml"))) { throw "bundle presets not found at $bundlePresets" }
 

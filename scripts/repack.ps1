@@ -41,7 +41,7 @@ foreach ($p in $pkgs) {
 }
 
 # Stable-name alias for the latest release asset.
-$versioned = Get-ChildItem -LiteralPath $out -Filter "helm-d-*.tgz" | Select-Object -First 1
+$versioned = Get-ChildItem -LiteralPath $out -Filter "adwmc-helm-d-*.tgz" | Select-Object -First 1
 if ($versioned) {
     Copy-Item -LiteralPath $versioned.FullName (Join-Path $out "helmd.tgz") -Force
 }

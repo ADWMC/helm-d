@@ -17,11 +17,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $Repo = "ADWMC/helm-d"
-$Bundle = "helm-d"
+$Bundle = "@adwmc/helm-d"
 $DSH_HOME = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE ".dsh" }
 
 function Get-InstalledVersion {
-    $pkg = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\helm-d\package.json")
+    $pkg = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\@adwmc\helm-d\package.json")
     if (-not (Test-Path -LiteralPath $pkg)) { return $null }
     try { return ((Get-Content -LiteralPath $pkg -Raw | ConvertFrom-Json).version) } catch { return $null }
 }
@@ -31,7 +31,7 @@ function Normalize([string]$v) {
     return ($v.TrimStart("v") -replace '\s', '')
 }
 
-# Uninstall legacy @dsh-security/* bundles (superseded by the unscoped helm-d package):
+# Uninstall legacy @dsh-security/* bundles (superseded by the @adwmc/helm-d package):
 # strips stale dependency entries from the profile package.json AND deletes
 # their node_modules directories (incl. pnpm tmp leftovers). Safe to run often.
 function Remove-LegacyBundles {
@@ -117,7 +117,7 @@ if ($installed -and $latest) {
     }
 }
 
-$name = "helm-d-$latest.tgz"
+$name = "helmd.tgz"
 $url = "https://github.com/$Repo/releases/download/$latestTag/$name"
 $cacheDir = Join-Path $DSH_HOME ".tgz-cache"
 New-Item -ItemType Directory -Force $cacheDir | Out-Null
@@ -139,5 +139,5 @@ Remove-LegacyBundles
 
 Write-Host "[done] $Bundle -> $latest"
 Write-Host "NOTE: bundle updated. If the release changed the agent preset, run"
-Write-Host "  & `"$DSH_HOME\profiles\$Profile\node_modules\helm-d\scripts\setup-preset.ps1`""
+Write-Host "  & `"$DSH_HOME\profiles\$Profile\node_modules\@adwmc\helm-d\scripts\setup-preset.ps1`""
 Write-Host "to regenerate/refresh .agent-presets/helmd, then restart dsh if it is running."

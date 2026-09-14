@@ -24,7 +24,7 @@ done
 
 REPO="ADWMC/helm-d"
 DSH_HOME="${DSH_HOME:-$HOME/.dsh}"
-PKG="$DSH_HOME/profiles/$PROFILE/node_modules/helm-d/package.json"
+PKG="$DSH_HOME/profiles/$PROFILE/node_modules/@adwmc/helm-d/package.json"
 
 installed=""
 [ -f "$PKG" ] && installed=$(node -p "require('$PKG').version" 2>/dev/null || true)
@@ -92,7 +92,7 @@ if [ -n "$installed" ] && [ "$DOWN" != "1" ]; then
   fi
 fi
 
-name="helm-d-$latest.tgz"
+name="helmd.tgz"
 url="https://github.com/$REPO/releases/download/$latest_tag/$name"
 cache="$DSH_HOME/.tgz-cache"
 mkdir -p "$cache"
@@ -121,5 +121,5 @@ remove_legacy_bundles
 
 echo "[done] helm-d -> $latest"
 echo "NOTE: bundle updated. If the release changed the agent preset, run"
-echo "  \"$DSH_HOME/profiles/$PROFILE/node_modules/helm-d/scripts/setup-preset.sh\""
+echo "  \"$DSH_HOME/profiles/$PROFILE/node_modules/@adwmc/helm-d/scripts/setup-preset.sh\""
 echo "to regenerate/refresh .agent-presets/helmd, then restart dsh if it is running."

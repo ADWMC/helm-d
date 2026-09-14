@@ -43,7 +43,7 @@ v0.2.0 部署（08/26 20:53）改写了 `~/.dsh/.agent-presets/helmd/agent.cordi
 ```
 08/24 18:07  .agent-presets/helmd/agent.cordis.yml.bak 落盘（v0.1.x 单源，17568B）
 08/26 20:53:15  repo dist-tgz/helmd.tgz 打包（v0.2.0）
-08/26 20:53:29  profile node_modules/helm-d 更新（新包落位）
+08/26 20:53:29  profile node_modules/@adwmc/helm-d 更新（新包落位）
 08/26 20:53:29  .agent-presets/helmd/agent.cordis.yml 覆写为 v0.2.0 版（16511B，哈希与 repo 单源一致）
              ↑ 三件事同一分钟：部署换血完成，但正在运行的老服务进程未感知
 ～当晚        旧服务进程内仍持有 20:53 之前建立的 helmd standing mount（v0.1.x 模块+旧 stamp）

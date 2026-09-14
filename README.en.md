@@ -36,7 +36,7 @@ Android · Web · Native · Protocol · Malware · AI-Security converge in a sin
 
 ### One bundle · zero wiring
 
-Everything converges into a single `helm-d` bundle: bootstrap, router, domain tools, the toolbox and the runtime hook layer (description washing / evidence wrap / advisory / H-CoT / stream audit), plus the web workbench. `install.ps1` / `install.sh` fetch a prebuilt tarball from Releases and wire everything in one command.
+Everything converges into a single `@adwmc/helm-d` bundle: bootstrap, router, domain tools, the toolbox and the runtime hook layer (description washing / evidence wrap / advisory / H-CoT / stream audit), plus the web workbench. `install.ps1` / `install.sh` fetch a prebuilt tarball from Releases and wire everything in one command.
 
 </td>
 </tr>
@@ -255,10 +255,10 @@ dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 
 ```bash
 # Windows (PowerShell)
-%USERPROFILE%\.dsh\profiles\web\node_modules\helm-d\scripts\setup-preset.ps1
+%USERPROFILE%\.dsh\profiles\web\node_modules\@adwmc\helm-d\scripts\setup-preset.ps1
 
 # macOS / Linux
-~/.dsh/profiles/web/node_modules/helm-d/scripts/setup-preset.sh
+~/.dsh/profiles/web/node_modules/@adwmc/helm-d/scripts/setup-preset.sh
 ```
 
 The script writes `preset.yml` + `agent.cordis.yml` into `~/.dsh/.agent-presets/helmd/` (existing files are kept as `.bak`); pick the `helmd` preset in the UI when starting a session.
@@ -266,7 +266,7 @@ The script writes `preset.yml` + `agent.cordis.yml` into `~/.dsh/.agent-presets/
 ## Verification
 
 ```bash
-dsh --profile web --dump-config                        # one bare helm-d host row (resolves to dist/health.js)
+dsh --profile web --dump-config                        # the @adwmc/helm-d host row (resolves to dist/health.js)
 node packages/helmd/scripts/gen-preset.mjs --check     # preset check OK (non-zero: follow the fingerprint hint)
 ```
 
@@ -284,7 +284,7 @@ Settings → Plugins → Plugin configuration should show the helmd card with a 
 
 | Package | Injects | Responsibility | Tools |
 | --- | --- | --- | --- |
-| `helm-d` | tools + systemPrompt | All-domain security analysis in one bundle | see below |
+| `@adwmc/helm-d` | tools + systemPrompt | All-domain security analysis in one bundle | see below |
 
 | Domain | Tool | Purpose |
 | --- | --- | --- |
@@ -357,12 +357,12 @@ Self-update (compares against the latest GitHub Release; downloads and reinstall
 
 ## Deployment
 
-One-command install is above under Quick start; the manual steps are below. Prerequisites: the `helm-d` package published (see Publishing).
+One-command install is above under Quick start; the manual steps are below. Prerequisites: the `@adwmc/helm-d` package published (see Publishing).
 
 ### 1. Install the bundle into a profile
 
 ```bash
-dsh plugin --profile web add helm-d
+dsh plugin --profile web add @adwmc/helm-d
 ```
 
 `dsh plugin` forwards to pnpm inside the profile directory; the package lands in `$DSH_HOME/profiles/node_modules/`.
@@ -445,7 +445,7 @@ pnpm install
 pnpm build
 ```
 
-The root `pnpm build` builds `helm-d`; `pnpm typecheck` runs the `tsc --noEmit` type gate on a clean tree.
+The root `pnpm build` builds `@adwmc/helm-d`; `pnpm typecheck` runs the `tsc --noEmit` type gate on a clean tree.
 
 ## Dependencies
 
@@ -460,11 +460,11 @@ Versions are pinned to the host cohort via `overrides` in `pnpm-workspace.yaml` 
 
 ## Publishing
 
-- The root package is `private: true` and is not published; `helm-d` is.
+- The root package is `private: true` and is not published; `@adwmc/helm-d` is.
 - The `files` whitelist: `dist`, `client.js`, `references`, `scripts`, `presets`, `cordis.patch.yml`.
 - The `prepare` script runs `tsc` automatically before publishing.
 - Current version: `0.3.1`.
-- Release assets: `helm-d-<ver>.tgz` plus the stable alias `helmd.tgz` (used by the store's tarball field and the installers).
+- Release assets: `adwmc-helm-d-<ver>.tgz` plus the stable alias `helmd.tgz` (used by the store's tarball field and the installers).
 
 ## Risks & mitigations
 

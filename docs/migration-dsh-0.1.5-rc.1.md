@@ -78,7 +78,7 @@
 
 ## 8. 未验证与残余风险
 
-- **真机会话未做（唯一缺口）**：需要把 0.3.0 装进 profile → 重启 dsh → 开 helmd 会话 → 断言首请求 `[pwsh, read]`、晋升后 ≥60 工具（MAINTENANCE §8），并确认 advisory section / H-CoT hook 真的产出。**当前 GUI 里跑的仍是旧安装副本**（`~/.dsh/profiles/web/node_modules/helm-d/dist` 早于本次改动），重装前修复不生效。`verify-runtime.mjs` 是 POSIX-only，Windows 走事故复盘 §7 的手工 `session.create` 路线。
+- **真机会话未做（唯一缺口）**：需要把 0.3.0 装进 profile → 重启 dsh → 开 helmd 会话 → 断言首请求 `[pwsh, read]`、晋升后 ≥60 工具（MAINTENANCE §8），并确认 advisory section / H-CoT hook 真的产出。**当前 GUI 里跑的仍是旧安装副本**（`~/.dsh/profiles/web/node_modules/@adwmc/helm-d/dist` 早于本次改动），重装前修复不生效。`verify-runtime.mjs` 是 POSIX-only，Windows 走事故复盘 §7 的手工 `session.create` 路线。
 - **走廊缺口**：`alpha.2 → 0.1.5-rc.1` 无卡可依，该段结论全部来自宿主一手源；可能漏掉其他插件面变化（已核的 7 类之外未穷尽）。
 - **`AssembleContext` 类型缺 `agent`**：运行时有、类型里没有，属上游类型面问题；helm-d 用本地窄类型收口，未上报上游。
 - **peer 下限上移**（`>=0.1.5-rc.1`）是**声明层面的破坏性变更**：0.1.5 之前的宿主不再被声明支持（运行时仍留 `events` 回退，实际仍能跑）；覆盖全部已发布预发布线需要逐 tuple 枚举，未做。

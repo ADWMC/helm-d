@@ -140,7 +140,7 @@ function generate(hostText, personaText) {
     hostText.slice(0, startIndex)
     + renderPersonaRow(personaText) + '\n\n'
     + hostText.slice(endIndex).replace(/^\r?\n+/, '').trimEnd()
-    + "\n\n- id: helmd\n  name: 'helm-d/agent'\n"
+    + "\n\n- id: helmd\n  name: '@adwmc/helm-d/agent'\n"
   assertShape(hostText, out, personaText)
   return out
 }
@@ -159,7 +159,7 @@ function assertShape(hostText, out, personaText) {
     const count = outIds.filter((candidate) => candidate === id).length
     if (count !== 1 && id !== '_') throw new Error(`duplicated row id: ${id} (x${count})`)
   }
-  if ((out.match(/helm-d/g) ?? []).length !== 1) throw new Error('preset must declare helmd exactly once')
+  if ((out.match(/@adwmc\/helm-d/g) ?? []).length !== 1) throw new Error('preset must declare helmd exactly once')
 
   const pBlock = out.slice(out.indexOf('- id: persona'), out.indexOf('- id: ', out.indexOf('- id: persona') + 1))
   for (const probe of ['complete: false', 'includeRuntimeContext: false']) {

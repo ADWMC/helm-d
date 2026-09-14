@@ -1,7 +1,7 @@
 - insert:
     - id: helmd-health
-      name: 'helm-d'
+      name: '@adwmc/helm-d'
     # H-CoT settings namespace + UI data plane. Its own Entry so two namespaces
     # never share one apply (and one registration cannot shadow the other).
     - id: helmd-hcot-settings
-      name: 'helm-d/hcot-settings'
+      name: '@adwmc/helm-d/hcot-settings'

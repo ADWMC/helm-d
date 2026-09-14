@@ -1,5 +1,5 @@
 {
-  "name": "helm-d",
+  "name": "@adwmc/helm-d",
   "version": "0.3.1",
   "type": "module",
   "main": "dist/health.js",

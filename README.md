@@ -36,7 +36,7 @@ Android · Web · Native · Protocol · Malware · AI-Security 六大安全领�
 
 ### 单包聚合 · 一条命令
 
-全部能力收敛进一个 `helm-d` 包。profile 只加载健康检查，preset 在 Agent 隔离上下文中加载 bootstrap、router、领域工具、toolbox 与运行时钩子层（描述清洗 / 证据链包装 / advisory / H-CoT / 流式审计），Web 端附带安全分析工作台。`install.ps1` / `install.sh` 下载 Release 预构建 tarball并自动写入 preset。
+全部能力收敛进一个 `@adwmc/helm-d` 包。profile 只加载健康检查，preset 在 Agent 隔离上下文中加载 bootstrap、router、领域工具、toolbox 与运行时钩子层（描述清洗 / 证据链包装 / advisory / H-CoT / 流式审计），Web 端附带安全分析工作台。`install.ps1` / `install.sh` 下载 Release 预构建 tarball并自动写入 preset。
 
 </td>
 </tr>
@@ -254,10 +254,10 @@ dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 
 ```bash
 # Windows (PowerShell)
-%USERPROFILE%\.dsh\profiles\web\node_modules\helm-d\scripts\setup-preset.ps1
+%USERPROFILE%\.dsh\profiles\web\node_modules\@adwmc\helm-d\scripts\setup-preset.ps1
 
 # macOS / Linux
-~/.dsh/profiles/web/node_modules/helm-d/scripts/setup-preset.sh
+~/.dsh/profiles/web/node_modules/@adwmc/helm-d/scripts/setup-preset.sh
 ```
 
 脚本会把 `preset.yml` + `agent.cordis.yml` 写到 `~/.dsh/.agent-presets/helmd/`（已有则留 .bak），会话启动时在 UI 里选 `helmd` preset 即可。
@@ -265,7 +265,7 @@ dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 ## 验证
 
 ```bash
-dsh --profile web --dump-config   # 应看到裸包名 helm-d 的 host 行（解析到 dist/health.js）
+dsh --profile web --dump-config   # 应看到 @adwmc/helm-d 的 host 行（解析到 dist/health.js）
 node packages/helmd/scripts/gen-preset.mjs --check   # preset check OK（红了按指纹提示处理）
 ```
 
@@ -358,12 +358,12 @@ dsh plugin --profile web add .\dist-tgz\helmd.tgz       # 装进 web profile
 
 ## 部署
 
-一键安装见上「快速上手」；手动分步如下。前置：`helm-d` 包已发布到 npm（见「发布」）。
+一键安装见上「快速上手」；手动分步如下。前置：`@adwmc/helm-d` 包已发布到 npm（见「发布」）。
 
 ### 1. 安装包依赖与健康检查到 profile
 
 ```bash
-dsh plugin --profile web add helm-d
+dsh plugin --profile web add @adwmc/helm-d
 ```
 
 `dsh plugin` 会把参数转发给 profile 目录里的 pnpm，包落到 `$DSH_HOME/profiles/node_modules/`；全局 patch 只注册只读健康检查，不注册安全工具。
@@ -446,7 +446,7 @@ pnpm install
 pnpm build
 ```
 
-根 `pnpm build` 构建 `helm-d` 包；`pnpm typecheck` 在干净树上执行 `tsc --noEmit` 类型门禁。
+根 `pnpm build` 构建 `@adwmc/helm-d` 包；`pnpm typecheck` 在干净树上执行 `tsc --noEmit` 类型门禁。
 
 ## 依赖
 
@@ -461,11 +461,11 @@ pnpm build
 
 ## 发布
 
-- 根包 `private: true`，不发布；发布对象是 `helm-d` 单包。
+- 根包 `private: true`，不发布；发布对象是 `@adwmc/helm-d` 单包。
 - `files` 白名单：`dist`、`client.js`、`references`、`scripts`、`presets`、`cordis.patch.yml`。
 - `prepare` 脚本会在发布前自动执行 `tsc`。
 - 当前版本 `0.3.1`。
-- Release 资产：`helm-d-<ver>.tgz` + 稳定别名 `helmd.tgz`（供商店 tarball 字段与安装器使用）。
+- Release 资产：`adwmc-helm-d-<ver>.tgz` + 稳定别名 `helmd.tgz`（供商店 tarball 字段与安装器使用）。
 
 ## 风险与缓解
 

@@ -292,4 +292,4 @@
   name: '@deepseek-ai/dsh-tool-present'
 
 - id: helmd
-  name: 'helm-d/agent'
+  name: '@adwmc/helm-d/agent'
