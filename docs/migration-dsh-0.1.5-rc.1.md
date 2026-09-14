@@ -17,7 +17,7 @@
 | 项 | 值 |
 |---|---|
 | 源码身份 | git 仓库 `helm-d`，迁移前 HEAD `8fea55b`，工作树干净 |
-| 插件包 | `@dsh-security/helmd` 0.2.4（`file:dist-tgz/helmd.tgz` 装进 profile `web`） |
+| 插件包 | `helm-d` 0.2.4（`file:dist-tgz/helmd.tgz` 装进 profile `web`） |
 | 宿主 | `@deepseek-ai/dsh` **0.1.5-rc.1**（npm `latest`；`next`=0.1.5-rc.2，`alpha`=0.1.5-alpha.2） |
 | 宿主内置 cohort | `@deepseek-ai/dsh-*` 全族 0.1.5-rc.1、cordis 4.0.2、schemastery 3.18.2 |
 | 仓库原 cohort | overrides 钉 cordis 4.0.1 / dsh-tools 0.1.0-rc.6；lock 里 dsh-settings 0.1.1-rc.2、schemastery 3.18.1 |
@@ -63,7 +63,7 @@
 ## 6. 验证（skill 的六层）
 
 1. **依赖解析**：`pnpm install` 后 `pnpm peers check` → *No peer dependency issues found*；lockfile 无 `0.1.0-rc.6` / `0.1.1-rc.2` / `cordis@4.0.1` / `schemastery@3.18.1` 引用；`pnpm why -r @deepseek-ai/dsh-tools` 只剩 0.1.5-rc.1；干净重装后虚拟 store 内 @deepseek-ai 全族均为 0.1.5-rc.1。
-2. **启用解析**：`dsh.profile.bundles` 指向 `@dsh-security/helmd`，`cordis.patch.yml` 只挂 `dist/health.js`（host 面），agent 面由 preset 末行声明；`gen-preset --check` 绿。
+2. **启用解析**：`dsh.profile.bundles` 指向 `helm-d`，`cordis.patch.yml` 只挂 `dist/health.js`（host 面），agent 面由 preset 末行声明；`gen-preset --check` 绿。
 3. **静态**：`pnpm typecheck` / `pnpm build` 通过；`pnpm test:checks` 8 份全绿；`test-gen-preset` PASS；`test-caseflow` 26/0；与基线豁免清单（空）对比无新增失败。
 4. **运行时契约**：三份 host-seam 检查直接跑在**宿主真实 `dsh-session` 包**上——断言宿主 `Session` 无 `events`、`snapshotEvents()` 能读到真实日志、旧读法读不到、装配顺序 before/after 成立、bootstrap 在"只有 `snapshotEvents`"的宿主形态下冷启动仍锚定 `[pwsh, read]` 且晋升后恢复全量目录。
 5. **行为**：`preset-heal` 在隔离 `DSH_HOME` 用真实 `gen-preset.mjs` 跑双模式（默认不改盘 / 开启后重写并留 `.bak`）；`hcot-refusal`、`route-signals`、`advisory-stats`、`tool-memory-schema` 覆盖本次修掉的行为回归。
@@ -78,7 +78,7 @@
 
 ## 8. 未验证与残余风险
 
-- **真机会话未做（唯一缺口）**：需要把 0.3.0 装进 profile → 重启 dsh → 开 helmd 会话 → 断言首请求 `[pwsh, read]`、晋升后 ≥60 工具（MAINTENANCE §8），并确认 advisory section / H-CoT hook 真的产出。**当前 GUI 里跑的仍是旧安装副本**（`~/.dsh/profiles/web/node_modules/@dsh-security/helmd/dist` 早于本次改动），重装前修复不生效。`verify-runtime.mjs` 是 POSIX-only，Windows 走事故复盘 §7 的手工 `session.create` 路线。
+- **真机会话未做（唯一缺口）**：需要把 0.3.0 装进 profile → 重启 dsh → 开 helmd 会话 → 断言首请求 `[pwsh, read]`、晋升后 ≥60 工具（MAINTENANCE §8），并确认 advisory section / H-CoT hook 真的产出。**当前 GUI 里跑的仍是旧安装副本**（`~/.dsh/profiles/web/node_modules/helm-d/dist` 早于本次改动），重装前修复不生效。`verify-runtime.mjs` 是 POSIX-only，Windows 走事故复盘 §7 的手工 `session.create` 路线。
 - **走廊缺口**：`alpha.2 → 0.1.5-rc.1` 无卡可依，该段结论全部来自宿主一手源；可能漏掉其他插件面变化（已核的 7 类之外未穷尽）。
 - **`AssembleContext` 类型缺 `agent`**：运行时有、类型里没有，属上游类型面问题；helm-d 用本地窄类型收口，未上报上游。
 - **peer 下限上移**（`>=0.1.5-rc.1`）是**声明层面的破坏性变更**：0.1.5 之前的宿主不再被声明支持（运行时仍留 `events` 回退，实际仍能跑）；覆盖全部已发布预发布线需要逐 tuple 枚举，未做。

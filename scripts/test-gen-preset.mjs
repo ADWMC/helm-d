@@ -46,10 +46,10 @@ try {
   // exactly `@scope/name`, so a deep-path host row silently loses the browser half (the
   // settings card never enters the module graph). The host plane must therefore never
   // resolve to the tool entry: the root export carries the health surface only.
-  assert.equal((generated.match(/@dsh-security\/helmd/g) ?? []).length, 1)
-  assert.match(generated, /name: '@dsh-security\/helmd\/agent'$/m, 'the agent row must be the /agent subpath')
+  assert.equal((generated.match(/helm-d/g) ?? []).length, 1)
+  assert.match(generated, /name: 'helm-d\/agent'$/m, 'the agent row must be the /agent subpath')
   const bundlePatch = readFileSync(join(import.meta.dirname, '..', 'packages', 'helmd', 'cordis.patch.yml'), 'utf8')
-  assert.match(bundlePatch, /name: '@dsh-security\/helmd'$/m, 'the host row must be the bare package name')
+  assert.match(bundlePatch, /name: 'helm-d'$/m, 'the host row must be the bare package name')
   const pkg = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'packages', 'helmd', 'package.json'), 'utf8'))
   assert.equal(pkg.exports['.'].default, './dist/health.js', 'the bare name must resolve to the host-plane health entry, never the tool entry')
   assert.equal(pkg.exports['./agent'].default, './dist/index.js', 'the tool entry is reached through the /agent subpath only')

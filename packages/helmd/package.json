@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-security/helmd",
+  "name": "helm-d",
   "version": "0.3.1",
   "type": "module",
   "main": "dist/health.js",

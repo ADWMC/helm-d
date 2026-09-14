@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-security/bootstrap",
+  "name": "@helm-d/bootstrap",
   "version": "0.1.2",
   "type": "module",
   "main": "dist/index.js",

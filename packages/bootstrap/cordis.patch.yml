@@ -1,6 +1,6 @@
 - insert:
     - id: helmd-tool-bootstrap
-      name: '@dsh-security/bootstrap'
+      name: '@helm-d/bootstrap'
       config:
         shellTools: [bash, pwsh]
         commonTools: [read]

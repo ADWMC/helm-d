@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-security/skill-ai-security",
+  "name": "@helm-d/skill-ai-security",
   "version": "0.1.2",
   "type": "module",
   "main": "dist/index.js",

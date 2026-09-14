@@ -97,7 +97,7 @@ await report.check('the artifact assertion accepts host rows + helmd', () => {
 await report.check('it rejects a preset missing one of the host rows', () => {
   const hostRows = [...hostText.matchAll(/^- id: (.+)$/gm)].map((m) => m[1].trim())
   const withoutOne = hostText.replace(new RegExp(`^- id: ${hostRows[0]}\\n`, 'm'), '')
-  const bad = assertPresetArtifact(`${withoutOne}\n\n- id: helmd\n  name: '@dsh-security/helmd/agent'\n`, hostText)
+  const bad = assertPresetArtifact(`${withoutOne}\n\n- id: helmd\n  name: 'helm-d/agent'\n`, hostText)
   assert.equal(bad.ok, false, 'a dropped platform row must fail the assertion')
   assert.match(bad.detail, /row ids differ/)
 })

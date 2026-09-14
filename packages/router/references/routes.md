@@ -6,12 +6,12 @@
 
 | 信号 | 领域 bundle |
 |---|---|
-| APK / AAB / DEX / smali | @dsh-security/skill-android |
-| JS / fetch / XHR / WebSocket / sign | @dsh-security/skill-web |
-| PE / ELF / Mach-O / shellcode | @dsh-security/skill-native |
-| PCAP / TCP / UDP / gRPC / Protobuf | @dsh-security/skill-protocol |
-| C2 / persistence / IOC / sample | @dsh-security/skill-malware |
-| prompt / model / injection | @dsh-security/skill-ai-security |
+| APK / AAB / DEX / smali | @helm-d/skill-android |
+| JS / fetch / XHR / WebSocket / sign | @helm-d/skill-web |
+| PE / ELF / Mach-O / shellcode | @helm-d/skill-native |
+| PCAP / TCP / UDP / gRPC / Protobuf | @helm-d/skill-protocol |
+| C2 / persistence / IOC / sample | @helm-d/skill-malware |
+| prompt / model / injection | @helm-d/skill-ai-security |
 
 ## 证据契约
 

@@ -1,4 +1,4 @@
-# scripts/update.ps1 -- self-update the installed @dsh-security/helmd bundle.
+# scripts/update.ps1 -- self-update the installed helm-d bundle.
 # Compares the profile's installed version against the latest GitHub release;
 # if newer, downloads the prebuilt tarball and reinstalls into the profile.
 #
@@ -17,11 +17,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $Repo = "ADWMC/helm-d"
-$Bundle = "@dsh-security/helmd"
+$Bundle = "helm-d"
 $DSH_HOME = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE ".dsh" }
 
 function Get-InstalledVersion {
-    $pkg = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\@dsh-security\helmd\package.json")
+    $pkg = Join-Path $DSH_HOME ("profiles\" + $Profile + "\node_modules\helm-d\package.json")
     if (-not (Test-Path -LiteralPath $pkg)) { return $null }
     try { return ((Get-Content -LiteralPath $pkg -Raw | ConvertFrom-Json).version) } catch { return $null }
 }
@@ -31,7 +31,7 @@ function Normalize([string]$v) {
     return ($v.TrimStart("v") -replace '\s', '')
 }
 
-# Uninstall everything @dsh-security/* except the unified helmd bundle:
+# Uninstall legacy @dsh-security/* bundles (superseded by the unscoped helm-d package):
 # strips stale dependency entries from the profile package.json AND deletes
 # their node_modules directories (incl. pnpm tmp leftovers). Safe to run often.
 function Remove-LegacyBundles {
@@ -48,7 +48,7 @@ for (const sec of ["dependencies", "devDependencies", "optionalDependencies"]) {
   const m = pkg[sec];
   if (!m || typeof m !== "object") continue;
   for (const k of Object.keys(m)) {
-    if (k.startsWith("@dsh-security/") && k !== "@dsh-security/helmd") { delete m[k]; changed = true; }
+    if (k.startsWith("@dsh-security/")) { delete m[k]; changed = true; }
   }
 }
 if (changed) fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
@@ -62,7 +62,7 @@ console.log(changed ? "deps-stripped" : "deps-clean");
     }
     $sec = Join-Path $profDir "node_modules\@dsh-security"
     if (Test-Path $sec) {
-        Get-ChildItem $sec -Directory | Where-Object { $_.Name -ne "helmd" } | ForEach-Object {
+        Get-ChildItem $sec -Directory | ForEach-Object {
             Remove-Item $_.FullName -Recurse -Force
             Write-Host ("  [removed] " + $_.Name)
         }
@@ -117,7 +117,7 @@ if ($installed -and $latest) {
     }
 }
 
-$name = "dsh-security-helmd-$latest.tgz"
+$name = "helm-d-$latest.tgz"
 $url = "https://github.com/$Repo/releases/download/$latestTag/$name"
 $cacheDir = Join-Path $DSH_HOME ".tgz-cache"
 New-Item -ItemType Directory -Force $cacheDir | Out-Null
@@ -139,5 +139,5 @@ Remove-LegacyBundles
 
 Write-Host "[done] $Bundle -> $latest"
 Write-Host "NOTE: bundle updated. If the release changed the agent preset, run"
-Write-Host "  & `"$DSH_HOME\profiles\$Profile\node_modules\@dsh-security\helmd\scripts\setup-preset.ps1`""
+Write-Host "  & `"$DSH_HOME\profiles\$Profile\node_modules\helm-d\scripts\setup-preset.ps1`""
 Write-Host "to regenerate/refresh .agent-presets/helmd, then restart dsh if it is running."

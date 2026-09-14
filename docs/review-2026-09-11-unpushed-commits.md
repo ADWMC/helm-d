@@ -32,7 +32,7 @@ agent 实际被注入的指令、`route_task`/`case_status` 卡片这类用户�
 | skills-reference 链接 | 同上，针对 `docs/skills-reference/*.md` | **5/5 断链** |
 | 发布件比对 | `tar -xzf dist-tgz/helmd.tgz` 后逐文件 `Get-FileHash` 与 `packages/helmd/` 比 | `presets/agent.cordis.yml`、`presets/persona.txt`、`dist/{advisory,hcot-hook,health,router,ledger}.js`、`scripts/ai-security/h_cot_attack.py` 八项 **SAME** |
 | 凭据 | `git log --all -- cookie.txt`；`git ls-files` | `cookie.txt` **从未进入任何提交**；`_refs/`、`cookie.txt` 均未被跟踪且已入 `.gitignore` |
-| 运行时是否在跑被审代码 | 列 `~/.dsh/profiles/web/node_modules/@dsh-security/helmd/dist` | 安装副本（9/10）**没有** `advisory.js` / `advisory-hook.js` / `hcot-hook.js` → 被审运行时尚未在当前 GUI 中运行 |
+| 运行时是否在跑被审代码 | 列 `~/.dsh/profiles/web/node_modules/helm-d/dist` | 安装副本（9/10）**没有** `advisory.js` / `advisory-hook.js` / `hcot-hook.js` → 被审运行时尚未在当前 GUI 中运行 |
 
 ## 2. 问题清单（按用户影响排序）
 
@@ -126,7 +126,7 @@ agent 实际被注入的指令、`route_task`/`case_status` 卡片这类用户�
 
 ## 4. 未验证 / 残余风险
 
-- **未做 live 会话验证**：当前 profile 安装副本（`~/.dsh/profiles/web/node_modules/@dsh-security/helmd/dist`，9/10）不含 `advisory.js`/`hcot-hook.js`，被审运行时尚未在当前 GUI 中运行。要活体验证须先重装 tgz，再按 `MAINTENANCE.md` §8 断言首轮 `[pwsh,read]`、晋升后 ≥60 工具。
+- **未做 live 会话验证**：当前 profile 安装副本（`~/.dsh/profiles/web/node_modules/helm-d/dist`，9/10）不含 `advisory.js`/`hcot-hook.js`，被审运行时尚未在当前 GUI 中运行。要活体验证须先重装 tgz，再按 `MAINTENANCE.md` §8 断言首轮 `[pwsh,read]`、晋升后 ≥60 工具。
 - 仓库自带测试（`scripts/test-*.mjs`）本次未运行。
 - F1 的运行时后果（standing mount 撞车 / 残废目录）仅做代码与文档比对，未在活体宿主上复现（不做破坏性实验）。
 - `dist-tgz/helmd.tgz` 未入库（`*.tgz` 被 ignore）：本次核到它与 HEAD 逐字节一致，但"提交的代码 = 发布件"只能靠重新构建复现，不能靠 git 追溯。

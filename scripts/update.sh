@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/update.sh -- self-update the installed @dsh-security/helmd bundle.
+# scripts/update.sh -- self-update the installed helm-d bundle.
 # Compares the profile's installed version against the latest GitHub release;
 # if newer, downloads the prebuilt tarball and reinstalls into the profile.
 #
@@ -24,12 +24,12 @@ done
 
 REPO="ADWMC/helm-d"
 DSH_HOME="${DSH_HOME:-$HOME/.dsh}"
-PKG="$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security/helmd/package.json"
+PKG="$DSH_HOME/profiles/$PROFILE/node_modules/helm-d/package.json"
 
 installed=""
 [ -f "$PKG" ] && installed=$(node -p "require('$PKG').version" 2>/dev/null || true)
 
-# Uninstall everything @dsh-security/* except the unified helmd bundle:
+# Uninstall everything @helm-d/* except the unified helmd bundle:
 # strips stale dependency entries AND deletes their node_modules dirs.
 remove_legacy_bundles() {
   prof="$DSH_HOME/profiles/$PROFILE"
@@ -40,7 +40,7 @@ const fs=require("fs");
 const p=process.argv[1];
 const pkg=JSON.parse(fs.readFileSync(p,"utf8"));
 let changed=false;
-for(const sec of ["dependencies","devDependencies","optionalDependencies"]){const m=pkg[sec];if(!m||typeof m!=="object")continue;for(const k of Object.keys(m)){if(k.startsWith("@dsh-security/")&&k!=="@dsh-security/helmd"){delete m[k];changed=true;}}}
+for(const sec of ["dependencies","devDependencies","optionalDependencies"]){const m=pkg[sec];if(!m||typeof m!=="object")continue;for(const k of Object.keys(m)){if(k.startsWith("@dsh-security/")){delete m[k];changed=true;}}}
 if(changed)fs.writeFileSync(p,JSON.stringify(pkg,null,2)+"\n");
 console.log(changed?"deps-stripped":"deps-clean");
 ' "$pkgf" 2>/dev/null || true)
@@ -50,7 +50,7 @@ console.log(changed?"deps-stripped":"deps-clean");
   if [ -d "$secdir" ]; then
     for d in "$secdir"/*/; do
       b=$(basename "$d")
-      if [ "$b" != "helmd" ]; then rm -rf "$d"; echo "  [removed] $b"; fi
+      rm -rf "$d"; echo "  [removed] $b"
     done
   fi
 }
@@ -92,7 +92,7 @@ if [ -n "$installed" ] && [ "$DOWN" != "1" ]; then
   fi
 fi
 
-name="dsh-security-helmd-$latest.tgz"
+name="helm-d-$latest.tgz"
 url="https://github.com/$REPO/releases/download/$latest_tag/$name"
 cache="$DSH_HOME/.tgz-cache"
 mkdir -p "$cache"
@@ -112,14 +112,14 @@ sec="$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security"
 if [ -d "$sec" ]; then
   for d in "$sec"/*/; do
     b=$(basename "$d")
-    if [ "$b" != "helmd" ]; then rm -rf "$d"; echo "  [CLEAN] $b"; fi
+    rm -rf "$d"; echo "  [CLEAN] $b"
   done
 fi
 
 # pnpm's atomic swap can leave tmp dirs behind; sweep once more post-install
 remove_legacy_bundles
 
-echo "[done] @dsh-security/helmd -> $latest"
+echo "[done] helm-d -> $latest"
 echo "NOTE: bundle updated. If the release changed the agent preset, run"
-echo "  \"$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security/helmd/scripts/setup-preset.sh\""
+echo "  \"$DSH_HOME/profiles/$PROFILE/node_modules/helm-d/scripts/setup-preset.sh\""
 echo "to regenerate/refresh .agent-presets/helmd, then restart dsh if it is running."

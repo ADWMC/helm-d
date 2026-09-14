@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-security/skill-web",
+  "name": "@helm-d/skill-web",
   "version": "0.1.2",
   "type": "module",
   "main": "dist/index.js",

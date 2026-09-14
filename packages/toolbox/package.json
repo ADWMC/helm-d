@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-security/toolbox",
+  "name": "@helm-d/toolbox",
   "version": "0.1.2",
   "type": "module",
   "main": "dist/index.js",

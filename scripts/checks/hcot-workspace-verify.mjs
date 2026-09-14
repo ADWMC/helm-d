@@ -14,7 +14,7 @@ const clientPath = join(here, '..', '..', 'packages', 'helmd', 'client.js')
 let captured = null
 globalThis.window = { __ModuleLoader__: { load: (m) => { captured = m } } }
 require(clientPath)
-if (!captured || captured.id !== '@dsh-security/helmd') throw new Error('bundle id mismatch')
+if (!captured || captured.id !== 'helm-d') throw new Error('bundle id mismatch')
 
 const React = {
   // Real React flattens array children; mirror that so the walk is simple.

@@ -9,7 +9,7 @@
 ```
 用户会话
    └── Preset (~/.dsh/.agent-presets/helmd/)     ← 人格 + 工具配置（激活层）
-          └── 引用 @dsh-security/helmd bundle
+          └── 引用 helm-d bundle
                  └── Profile (~/.dsh/profiles/web/node_modules/)  ← 包（能力层）
 ```
 
@@ -23,7 +23,7 @@
 | 数据 | 唯一编辑点 | 自动流向 |
 |------|-----------|---------|
 | persona 文本 | `packages/helmd/presets/persona.txt` | repack 经 `scripts/gen-preset.mjs` 注入 → `presets/full-reverse/agent.cordis.yml`（生成物）→ 包内镜像 → tgz |
-| preset 平台行 | 宿主内置 `standard` | `gen-preset.mjs` 读取宿主 `<dsh>/.../dsh-agent-presets/presets/standard/agent.cordis.yml`，保留平台行并整体替换 persona，末尾追加 `@dsh-security/helmd` 行（agent 面主插件由 preset 声明）。安装/更新脚本在目标机再次生成（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
+| preset 平台行 | 宿主内置 `standard` | `gen-preset.mjs` 读取宿主 `<dsh>/.../dsh-agent-presets/presets/standard/agent.cordis.yml`，保留平台行并整体替换 persona，末尾追加 `helm-d` 行（agent 面主插件由 preset 声明）。安装/更新脚本在目标机再次生成（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
 | 依赖 cohort | `pnpm-workspace.yaml` `overrides`（宿主 dsh 0.1.5-rc.2 全家 + cordis + schemastery） | `pnpm install` → `pnpm-lock.yaml` + node_modules；`pnpm peers check` 必须无问题（跨 cohort peer = 迁移未完成） |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
@@ -32,7 +32,7 @@
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
 
-> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。平台行必须从当前宿主 `standard` 生成，否则 `pwsh`、`read` 等工具会缺失或在升级后漂移。两面的归属是分开的：host 面 `cordis.patch.yml` 挂**裸包名** `@dsh-security/helmd`（导出解析到 `dist/health.js`，只注册设置命名空间），agent 面主插件由 preset 末行的 `@dsh-security/helmd/agent` 声明（2026-09-11 起如此。此前 host 行写深路径 `@dsh-security/helmd/dist/health.js`，宿主 `client-modules` 的 `exactPackageSpecifier` 只认 `@scope/name` 两段，于是包的 `dsh.client` 从未被发现、设置卡片永远不出现——浏览器半边不是没跑，是没进模块图）。生成器内建断言：输出行集合 = 宿主 standard 行 + `helmd`、无重复 id、且 `@dsh-security/helmd` 恰好出现一次，违者构建即红。
+> ⚠️ **禁止手改任何位置的 `agent.cordis.yml`**。平台行必须从当前宿主 `standard` 生成，否则 `pwsh`、`read` 等工具会缺失或在升级后漂移。两面的归属是分开的：host 面 `cordis.patch.yml` 挂**裸包名** `helm-d`（导出解析到 `dist/health.js`，只注册设置命名空间），agent 面主插件由 preset 末行的 `helm-d/agent` 声明（2026-09-11 起如此。此前 host 行写深路径 `helm-d/dist/health.js`，宿主 `client-modules` 的 `exactPackageSpecifier` 只认 `@scope/name` 两段，于是包的 `dsh.client` 从未被发现、设置卡片永远不出现——浏览器半边不是没跑，是没进模块图）。生成器内建断言：输出行集合 = 宿主 standard 行 + `helmd`、无重复 id、且 `helm-d` 恰好出现一次，违者构建即红。
 
 ## 2. 发布流程（checklist 式）
 
@@ -44,7 +44,7 @@ git status --porcelain            # 必须干净
 node -e "const fs=require('fs');const p='packages/helmd/package.json';const pkg=JSON.parse(fs.readFileSync(p,'utf8'));pkg.version='X.Y.Z';fs.writeFileSync(p,JSON.stringify(pkg,null,2)+'\n')"
 
 # 2. 打包（自动同步 preset 源）
-.\scripts\repack.ps1              # 输出 dsh-security-helmd-X.Y.Z.tgz + helmd.tgz 别名
+.\scripts\repack.ps1              # 输出 helm-d-X.Y.Z.tgz + helmd.tgz 别名
 
 # 3. 本地验证安装（见 §5 坑位表——同版本会被 pnpm 跳过！）
 dsh plugin --profile web add "<绝对路径>\dist-tgz\helmd.tgz"
@@ -55,7 +55,7 @@ git push && git push origin vX.Y.Z
 
 # 5. release —— 资产五件套缺一不可：
 gh release create vX.Y.Z `
-  "dist-tgz\dsh-security-helmd-X.Y.Z.tgz" `
+  "dist-tgz\helm-d-X.Y.Z.tgz" `
   "dist-tgz\helmd.tgz" `
   "install.ps1" "install.sh" "install.bat" `
   --title "..." --notes-file "release-notes-X.Y.Z.md"
@@ -68,6 +68,10 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 ```
 
 > ⚠️ **历史事故**：v0.1.6 创建时漏传了 installer 三件套。第 5 步的五件资产是硬性清单。
+>
+> ⚠️ **改名过渡（@dsh-security/helmd → helm-d，2026-09）**：下一次 release 必须同时附上
+> 新名 `helm-d-X.Y.Z.tgz` 与旧名 `dsh-security-helmd-X.Y.Z.tgz` 各一份（六件资产），
+> 让旧版 update 脚本的用户也能完成最后一次升级；之后的 release 恢复五件。
 
 ## 3. 改人格 / preset 的流程
 
@@ -76,7 +80,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 3. 本机生效二选一：
    ```powershell
    # 方式 A：重装 bundle 后跑 setup（模拟商店用户路径）
-   & "$env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-security\helmd\scripts\setup-preset.ps1"
+   & "$env:USERPROFILE\.dsh\profiles\web\node_modules\helm-d\scripts\setup-preset.ps1"
    # 方式 B：直接把生成物覆盖到现役 preset 目录（stamp 变化 ⇒ 下个会话重建 mount）
    Copy-Item .\presets\full-reverse\agent.cordis.yml "$env:USERPROFILE\.dsh\.agent-presets\helmd\agent.cordis.yml" -Force
    ```
@@ -101,7 +105,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 
 | 坑 | 症状 | 对策 |
 |----|------|------|
-| pnpm 同版本跳装 | add 显示 Done 但内容没换 | bump 版本，或删 `profiles\web\node_modules\@dsh-security\helmd` + 删 deps 条目再 add |
+| pnpm 同版本跳装 | add 显示 Done 但内容没换 | bump 版本，或删 `profiles\web\node_modules\helm-d` + 删 deps 条目再 add |
 | 相对路径 ENOENT | `dsh plugin add ..\x.tgz` 找不到文件 | dsh 在 profile 目录里解析路径，**永远绝对路径** |
 | `node -e` argv 索引 | 内联脚本报 bad-path/静默失败 | `-e` 模式参数从 `process.argv[1]` 起；脚本文件模式才是 `[2]` |
 | PowerShell `(if ...)` 表达式 | PS5 运行时报 "'if' is not recognized" | if 结果赋变量再拼接；发布前用 Parser::ParseFile 验语法 |
@@ -131,7 +135,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 PROFILE=headless ./scripts/update.sh   # 非 web profile
 ```
 
-update 每次运行都执行旧包清扫：剥 deps 里非 helmd 的 `@dsh-security/*` 条目 + 删 node_modules 残留（含 pnpm tmp 目录）。
+update 每次运行都执行旧包清扫：剥 deps 里非 helmd 的 `@helm-d/*` 条目 + 删 node_modules 残留（含 pnpm tmp 目录）。
 
 ## 7. 本机环境速查
 

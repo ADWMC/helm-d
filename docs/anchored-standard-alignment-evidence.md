@@ -26,14 +26,14 @@
 ## 3. 与参考仓库的有意差异
 
 - persona 文本从英文固定句改为 helmd 中文工程规范（`packages/router/prompt.md` 内容），保留 `complete: true`。
-- bootstrap 插件从 `./tool-bootstrap.mjs` 改为 `@dsh-security/bootstrap` TS 包，逻辑对齐。
-- 末尾追加 `@dsh-security/router` 与领域 bundle 行。
+- bootstrap 插件从 `./tool-bootstrap.mjs` 改为 `@helm-d/bootstrap` TS 包，逻辑对齐。
+- 末尾追加 `@helm-d/router` 与领域 bundle 行。
 - 暂未实现 `zero-anchored-standard` 的 `anchor-turn` / 零工具锚定模式。
 
 ## 4. 未验证项 / 残余风险
 
 - **启动兼容性**：参考仓库基于 rc.5 / commit `47f9438`；本机为 rc.6。三个 preset 的行 id/config 尚未实际挂载验证。置信度：中。
-- **bundle 解析**：`@dsh-security/*` 在 preset 中以 `name:` 行解析，要求这些包已安装到 host 可解析的 `node_modules`（profile 或宿主）。本工作区未安装依赖，未做 `pnpm install` 后的解析验证。置信度：中。
+- **bundle 解析**：`@helm-d/*` 在 preset 中以 `name:` 行解析，要求这些包已安装到 host 可解析的 `node_modules`（profile 或宿主）。本工作区未安装依赖，未做 `pnpm install` 后的解析验证。置信度：中。
 - **工具过滤范围**：bootstrap 只过滤 `assembled.tools`，未调用 `ToolRuntime.restrict()`；这与参考仓库一致，但 rc.6 文档建议跨呈现/查找/执行保持一致时用 `restrict()`。置信度：中。
 
 ## 5. 验证命令建议

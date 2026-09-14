@@ -1,4 +1,4 @@
-window.__ModuleLoader__.load({ id: "@dsh-security/helmd", factory: (require) => {
+window.__ModuleLoader__.load({ id: "helm-d", factory: (require) => {
 var module = { exports: {} }; var exports = module.exports;
 Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 /**
@@ -815,7 +815,7 @@ exports.apply = function apply(ctx) {
 	if (ctx.sidebarRightTabs && typeof ctx.sidebarRightTabs.register === "function") {
 		ctx.effect(() => {
 			return ctx.sidebarRightTabs.register({
-				id: "@dsh-security/helmd:hcot",
+				id: "helm-d:hcot",
 				kind: "hcot",
 				title: () => "helmd 安全分析",
 				guide: [{
@@ -831,7 +831,7 @@ exports.apply = function apply(ctx) {
 	ctx.slots.inject("sidebar.right.pane.tab", function* () {
 		yield ctx.slots.register({
 			name: "sidebar.right.pane.tab",
-			key: "@dsh-security/helmd:hcot",
+			key: "helm-d:hcot",
 		}, HelmdWorkbenchPanel);
 		yield ctx.slots.register({
 			name: "sidebar.right.pane.tab",
@@ -843,7 +843,7 @@ exports.apply = function apply(ctx) {
 	ctx.slots.inject("sidebar.right.pane.tab.title", function* () {
 		yield ctx.slots.register({
 			name: "sidebar.right.pane.tab.title",
-			key: "@dsh-security/helmd:hcot",
+			key: "helm-d:hcot",
 		}, HelmdTabTitle);
 		yield ctx.slots.register({
 			name: "sidebar.right.pane.tab.title",

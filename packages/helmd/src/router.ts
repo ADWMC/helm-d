@@ -150,7 +150,7 @@ export function resolveReferenceFile(root: string, userPath?: string): string | 
   if (!cleaned || cleaned === '.') {
     cleaned = 'index.md'
   }
-  cleaned = cleaned.replace(/^(@dsh-security\/)?skill-([a-z0-9_-]+)/, '$2')
+  cleaned = cleaned.replace(/^(@dsh-security\/|@helm-d\/)?skill-([a-z0-9_-]+)/, '$2')
 
   const candidate = resolve(root, cleaned)
   try {

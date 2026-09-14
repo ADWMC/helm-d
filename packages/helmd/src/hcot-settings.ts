@@ -663,7 +663,7 @@ export const name = 'helmd-hcot-settings'
 /** The settings service is required. */
 export const inject = ['settings']
 
-/** Bundle-row entry (`@dsh-security/helmd/hcot-settings`). */
+/** Bundle-row entry (`helm-d/hcot-settings`). */
 export function apply(ctx: Context): void {
   registerHcotSettings(ctx)
 }

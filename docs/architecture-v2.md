@@ -4,7 +4,7 @@
 
 - 第一注入 = 每个 preset 的 persona：`# 安全分析工程代理工作规范`，`complete: true`、`includeRuntimeContext: false`。
 - 领域 skill 只存在于 `references/`，通过 `read_reference` 按需读取；skill 内不保留激活词、强制开场白或隐藏启动协议。
-- 工具目录由 `@dsh-security/bootstrap` 首轮收窄，晋升后放开。
+- 工具目录由 `@helm-d/bootstrap` 首轮收窄，晋升后放开。
 - 每个结论必须带置信度，并注明依据。
 
 ## 1. 设计目标

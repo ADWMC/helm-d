@@ -6,7 +6,7 @@
 ## 1. 项目定位
 
 `helm-d`（helmd）是 DeepSeek Harness（dsh）的**单包安全分析 preset 插件**
-（`@dsh-security/helmd`，v0.3.1）。一次安装聚合七大领域工具 + 证据链 +
+（`helm-d`，v0.3.1）。一次安装聚合七大领域工具 + 证据链 +
 首轮工具锚定（bootstrap）+ 工具箱，共 31 个工具。README 自定位即「破甲一体化」。
 
 三层扩展机制（docs/architecture.md）：
@@ -14,7 +14,7 @@
 | 层 | 机制 | 内容 | 注入 prompt? |
 |---|---|---|---|
 | 身份/纪律 | `@deepseek-ai/dsh-persona` `complete:true` | 工程代理规范（persona.txt，唯一系统提示） | 是 |
-| 工具锚定 | `@dsh-security/bootstrap` | 首轮仅 shell+read，晋升后放开 | 否，只改工具目录 |
+| 工具锚定 | `@helm-d/bootstrap` | 首轮仅 shell+read，晋升后放开 | 否，只改工具目录 |
 | 按需知识 | router + 领域 bundle | 209 个 references/ 按需读取 | 否 |
 
 ## 2. 破甲子系统全景

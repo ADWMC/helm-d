@@ -34,7 +34,7 @@ const fs=require("fs");
 const p=process.argv[1];
 const pkg=JSON.parse(fs.readFileSync(p,"utf8"));
 const stale=new Set(["dsh-find-plugin","@deepseek-ai/dsh-plugin-console"]);
-const isStale=(n)=>stale.has(n)||n.startsWith("@linxin666/")||(n.startsWith("@dsh-security/")&&n!=="@dsh-security/helmd");
+const isStale=(n)=>stale.has(n)||n.startsWith("@linxin666/")||(n.startsWith("@dsh-security/")&&n!=="helm-d");
 let changed=false;
 for(const f of ["dependencies","devDependencies","optionalDependencies"]){if(pkg[f]&&typeof pkg[f]==="object"){for(const k of Object.keys(pkg[f])){if(isStale(k)){delete pkg[f][k];changed=true;}}}}
 if(changed)fs.writeFileSync(p,JSON.stringify(pkg,null,2)+"\n");
@@ -53,7 +53,7 @@ SEC_DIR="$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security"
 if [ -d "$SEC_DIR" ]; then
   for d in "$SEC_DIR"/*/; do
     b=$(basename "$d")
-    if [ "$b" != "helmd" ]; then rm -rf "$d"; echo "  uninstalled legacy bundle: $b"; fi
+    rm -rf "$d"; echo "  uninstalled legacy bundle: $b"
   done
 fi
 
@@ -61,7 +61,7 @@ echo "[3/4] writing preset ..."
 PRESET_DIR="$DSH_HOME/.agent-presets/$PRESET"
 mkdir -p "$PRESET_DIR"
 
-BUNDLE_ROOT="$DSH_HOME/profiles/$PROFILE/node_modules/@dsh-security/helmd"
+BUNDLE_ROOT="$DSH_HOME/profiles/$PROFILE/node_modules/helm-d"
 BUNDLE_PRESETS="$BUNDLE_ROOT/presets"
 if [ ! -f "$BUNDLE_PRESETS/agent.cordis.yml" ]; then
   echo "bundle presets not found at $BUNDLE_PRESETS"; exit 1

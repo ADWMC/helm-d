@@ -19,7 +19,7 @@ v0.2.0 部署（08/26 20:53）改写了 `~/.dsh/.agent-presets/helmd/agent.cordi
 
 两个 `request/header`（seq10、seq21，模型 deepseek-v4-flash）工具目录完全相同：
 
-- 总数 **44** = **31 个 @dsh-security/helmd v0.2.0 域工具** + **13 个 dsh-mnemon 工具**
+- 总数 **44** = **31 个 helm-d v0.2.0 域工具** + **13 个 dsh-mnemon 工具**
 - 宿主平台工具全部缺失：`bash/pwsh/read/glob/grep/edit/write/todo_write/web_search/jobs/goals/subagent/workflow/ralph/skill/plan-mode/compaction…`
 - **bootstrap 锚定从未触发**（健康形态首轮应为 `[pwsh, read]` 两件套）
 - persona 正常：system = 2369B 的 luna 全文（`complete:true` 生效）
@@ -43,7 +43,7 @@ v0.2.0 部署（08/26 20:53）改写了 `~/.dsh/.agent-presets/helmd/agent.cordi
 ```
 08/24 18:07  .agent-presets/helmd/agent.cordis.yml.bak 落盘（v0.1.x 单源，17568B）
 08/26 20:53:15  repo dist-tgz/helmd.tgz 打包（v0.2.0）
-08/26 20:53:29  profile node_modules/@dsh-security/helmd 更新（新包落位）
+08/26 20:53:29  profile node_modules/helm-d 更新（新包落位）
 08/26 20:53:29  .agent-presets/helmd/agent.cordis.yml 覆写为 v0.2.0 版（16511B，哈希与 repo 单源一致）
              ↑ 三件事同一分钟：部署换血完成，但正在运行的老服务进程未感知
 ～当晚        旧服务进程内仍持有 20:53 之前建立的 helmd standing mount（v0.1.x 模块+旧 stamp）
@@ -67,7 +67,7 @@ v0.2.0 部署（08/26 20:53）改写了 `~/.dsh/.agent-presets/helmd/agent.cordi
 
 **暴露的四项工程缺陷**（本次要修的对象）：
 
-1. 【高】`@dsh-security/helmd` 不在 profile `package.json` 的 `dsh.profile.bundles` 列表里，靠 preset 文件末行拉起 —— 包换血与 yml 换血分属两条链路，可以只同步一半；
+1. 【高】`helm-d` 不在 profile `package.json` 的 `dsh.profile.bundles` 列表里，靠 preset 文件末行拉起 —— 包换血与 yml 换血分属两条链路，可以只同步一半；
 2. 【高】preset 手抄宿主 standard 全文（连注释逐字复制，已逐字核对）。宿主/rc 版本一变即漂移；仓库自己的对齐证据文档（`docs/anchored-standard-alignment-evidence.md` §4）早就预警过跨版本未验证；
 3. 【高】组装残废零告警：inactiveRows 只校验「插件激活」，不校验「产出基准」；44 个工具照样静默开席；
 4. 【中】rc.2 fail-loud 语义下仍存在可用却零产出的组装路径 —— 可作为宿主侧行为反馈上报。
@@ -146,7 +146,7 @@ v0.2.0 部署（08/26 20:53）改写了 `~/.dsh/.agent-presets/helmd/agent.cordi
 ### 问题是什么
 
 上一版方案 C 把宿主 `standard` 的平台工具行和
-`@dsh-security/helmd` 行都写进用户 preset。实测确认 profile 的
+`helm-d` 行都写进用户 preset。实测确认 profile 的
 `dsh.profile.bundles` 已挂载 helmd bundle；再次写入该行会向同一注册表
 重复注册。
 
@@ -163,9 +163,9 @@ standard 工具行属于 agent preset，不能由 profile 自动替代。
 
 1. 将 `scripts/gen-preset.mjs` 和包内镜像
    `packages/helmd/scripts/gen-preset.mjs` 改为复制当前宿主 standard 的
-   全部平台行，仅替换 persona；不输出 `@dsh-security/helmd` 行。
+   全部平台行，仅替换 persona；不输出 `helm-d` 行。
 2. 生成器断言：输出行集合与宿主 standard 一致、无重复 id，且不能包含
-   `@dsh-security/helmd`。这保留 `pwsh`、`bash`、`read` 等平台工具，同时
+   `helm-d`。这保留 `pwsh`、`bash`、`read` 等平台工具，同时
    让 helmd 仅由 profile bundle 挂载一次。
 3. 对字节相同的生成结果不重写文件，避免无意义变更 mtime 而触发
    standing mount 重建。内容发生变化后，安装脚本明确提示先重启 dsh。

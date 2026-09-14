@@ -9,13 +9,13 @@ export const inject = ['tools']
 
 // 目录：领域 -> 触发信号与去向（可发现性元数据，不下结论）
 const catalog: Record<string, string> = {
-  android: 'APK/AAB/DEX/smali -> @dsh-security/skill-android',
-  web: 'JS/fetch/XHR/WebSocket/sign -> @dsh-security/skill-web',
-  native: 'PE/ELF/Mach-O/shellcode -> @dsh-security/skill-native',
-  protocol: 'PCAP/TCP/UDP/gRPC/Protobuf -> @dsh-security/skill-protocol',
-  malware: 'C2/persistence/IOC/sample -> @dsh-security/skill-malware',
-  ai: 'prompt/model/injection -> @dsh-security/skill-ai-security',
-  evidence: 'case/report/hash/triage -> @dsh-security/skill-evidence',
+  android: 'APK/AAB/DEX/smali -> @helm-d/skill-android',
+  web: 'JS/fetch/XHR/WebSocket/sign -> @helm-d/skill-web',
+  native: 'PE/ELF/Mach-O/shellcode -> @helm-d/skill-native',
+  protocol: 'PCAP/TCP/UDP/gRPC/Protobuf -> @helm-d/skill-protocol',
+  malware: 'C2/persistence/IOC/sample -> @helm-d/skill-malware',
+  ai: 'prompt/model/injection -> @helm-d/skill-ai-security',
+  evidence: 'case/report/hash/triage -> @helm-d/skill-evidence',
   // 信号级路由 (signal -> tool -> bundle)
   apk: 'APK/AAB/DEX -> apk_fingerprint -> skill-android',
   shell: 'packer/UPX/VMP/Themida/OLLVM -> detect_packer -> skill-native',
@@ -64,7 +64,7 @@ export function apply(ctx: Context): void {
       if (!cleaned || cleaned === '.') {
         cleaned = 'index.md'
       }
-      cleaned = cleaned.replace(/^(@dsh-security\/)?skill-([a-z0-9_-]+)/, '$2')
+      cleaned = cleaned.replace(/^(@dsh-security\/|@helm-d\/)?skill-([a-z0-9_-]+)/, '$2')
 
       let target = resolve(refRoot, cleaned)
       if (target !== refRoot && !target.startsWith(refRoot + sep)) throw new Error('path out of scope')

@@ -14,7 +14,7 @@
 
 ## 本地打包与安装
 
-这里的每个子包都是 **bundle**，不是 profile。bundle 通过 `dsh.bundle.patch` 声明自己贡献的 host patch；profile 由 dsh 在 `$DSH_HOME/profiles/<name>` 下维护。`@dsh-security/helmd` 的安全工具是例外：包作为依赖安装，全局 patch 只挂**裸包名** `@dsh-security/helmd`（导出指向 `dist/health.js`，只注册设置命名空间，不暴露工具），工具主入口是子路径 `@dsh-security/helmd/agent`（`dist/index.js`），由 helmd Agent preset 挂载。裸包名是硬要求：宿主 `client-modules` 只从"行名恰为 `@scope/name`"的 Loader 行发现 `dsh.client`，深路径行会让设置卡片永远不进模块图。
+这里的每个子包都是 **bundle**，不是 profile。bundle 通过 `dsh.bundle.patch` 声明自己贡献的 host patch；profile 由 dsh 在 `$DSH_HOME/profiles/<name>` 下维护。`helm-d` 的安全工具是例外：包作为依赖安装，全局 patch 只挂**裸包名** `helm-d`（导出指向 `dist/health.js`，只注册设置命名空间，不暴露工具），工具主入口是子路径 `helm-d/agent`（`dist/index.js`），由 helmd Agent preset 挂载。裸包名是硬要求：宿主 `client-modules` 只从"行名恰为 `@scope/name`"的 Loader 行发现 `dsh.client`，深路径行会让设置卡片永远不进模块图。
 
 本地交付使用已构建的 tarball：
 

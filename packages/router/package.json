@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-security/router",
+  "name": "@helm-d/router",
   "version": "0.1.2",
   "type": "module",
   "main": "dist/index.js",

@@ -174,7 +174,7 @@ export function assertPresetArtifact(deployed: string, hostStandardText: string)
   }
   const duplicated = [...new Set(deployedIds.filter((id, i) => deployedIds.indexOf(id) !== i))]
   if (duplicated.length > 0) return { ok: false, detail: `duplicated row ids: ${duplicated.join(', ')}` }
-  if ((deployed.match(/@dsh-security\/helmd/g) ?? []).length !== 1) {
+  if ((deployed.match(/helm-d/g) ?? []).length !== 1) {
     return { ok: false, detail: 'the helmd row is not declared exactly once' }
   }
   if (!deployed.includes('helmd online')) return { ok: false, detail: 'activation line missing — this is not luna persona' }

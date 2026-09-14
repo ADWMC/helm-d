@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-security/skill-native",
+  "name": "@helm-d/skill-native",
   "version": "0.1.2",
   "type": "module",
   "main": "dist/index.js",
