@@ -15,7 +15,7 @@
 
 | 层 | 谁写入 | 内容 |
 |----|--------|------|
-| Profile | `dsh plugin add` / install.ps1 / update.ps1 | 33 个工具（router 4 + 账本 1 + 案件生命周期 5 + 工具发现 1 + 领域 22）、bootstrap 收窄、references、scripts |
+| Profile | `dsh plugin add` / install.ps1 / update.ps1 | 33 个工具（router 4 + 账本 1 + 案件生命周期 5 + 工具发现 1 + 领域 22）、`/hcot` 内部命令、bootstrap 收窄、运行时钩子层（tool-wash / persist / advisory / hcot / llm-stream）、references、scripts、工作台 UI |
 | Preset | `setup-preset` 脚本 / install.ps1 [3/4] | luna persona、激活词 `helmd`、全套工具 section |
 
 **单一事实源表**
@@ -25,8 +25,10 @@
 | persona 文本 | `packages/helmd/presets/persona.txt` | repack 经 `scripts/gen-preset.mjs` 注入 → `presets/full-reverse/agent.cordis.yml`（生成物）→ 包内镜像 → tgz |
 | preset 平台行 | 宿主内置 `standard` | `gen-preset.mjs` 读取宿主 `<dsh>/.../dsh-agent-presets/presets/standard/agent.cordis.yml`，保留平台行并整体替换 persona，末尾追加 `@dsh-security/helmd` 行（agent 面主插件由 preset 声明）。安装/更新脚本在目标机再次生成（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才退回 tgz 快照 |
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
-| 依赖 cohort | `pnpm-workspace.yaml` `overrides`（宿主 dsh 0.1.5-rc.1 全家 + cordis + schemastery） | `pnpm install` → `pnpm-lock.yaml` + node_modules；`pnpm peers check` 必须无问题（跨 cohort peer = 迁移未完成） |
+| 依赖 cohort | `pnpm-workspace.yaml` `overrides`（宿主 dsh 0.1.5-rc.2 全家 + cordis + schemastery） | `pnpm install` → `pnpm-lock.yaml` + node_modules；`pnpm peers check` 必须无问题（跨 cohort peer = 迁移未完成） |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
+| H-CoT 语料与账本 | 语料 `packages/helmd/scripts/ai-security/h_cot_variants.json`（纯数据）；结果账本 `~/.dsh/helmd-tools/h_cot_results.jsonl`（`HELMD_TOOLS_DIR` 可重定向） | 引擎直接读写；账本经工作台或 `/hcot` 清理/分组删除 |
+| 工作台 UI | `packages/helmd/client.js`（浏览器半，免构建）+ `src/hcot-settings.ts`（host 半，`pnpm build`）+ `cordis.patch.yml` 的 `dsh.client.inject` | settings `hcot` 命名空间是唯一通道：UI 写配置/动作请求，宿主消费并回写运行态 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
 
@@ -150,6 +152,7 @@ PR #2708        已合并 (2026-08-23)
 - [ ] `pnpm build` 无错
 - [ ] `pnpm peers check` 无问题（依赖图 cohort 与宿主一致，无跨 cohort peer）
 - [ ] `pnpm test:checks` 全部绿（自动跑 `scripts/checks/*.check.mjs`；host seam 那几份直接跑在宿主真实 `dsh-session` 包上，宿主换访问器即红，不必等真机会话才暴露）
+- [ ] 手工验收脚本（不进 run-all，按需跑）：`node scripts/checks/hcot-engine-verify.mjs`（Node 引擎 SSE 端到端：mock /chat/completions，拒绝→突破）、`node scripts/checks/hcot-workspace-verify.mjs`（client.js 契约 + 工作台插槽渲染）、`node scripts/checks/hcot-perf-bench.mjs`（evidence/advisory 热点性能基准）、`node scripts/checks/session-timing.mjs`（解压 session.v3.jsonl.zstd 做 step/turn 耗时归因）
 - [ ] mock-ctx 工具数与 README/registry 一致（由 `pnpm test:checks` 的 `tool-catalog` 机械核对，无需手数）
 - [ ] `repack` 后 tgz 内含 `presets/` + `scripts/setup-preset.*`
 - [ ] setup-preset 从安装位置跑通且与 `presets/full-reverse/` 逐字节一致

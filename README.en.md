@@ -45,14 +45,14 @@ Everything converges into a single `@dsh-security/helmd` bundle: bootstrap, rout
 
 ### Knowledge on demand
 
-Domain knowledge, rules, workflows and cases live in `references/` (209 docs) and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
+Domain knowledge, rules, workflows and cases live in `references/` (361 docs) and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
 
 </td>
 <td width="50%">
 
 ### First-turn tool anchoring
 
-The first top-level request only exposes shell + `read`; the full catalog of 31 tools opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
+The first top-level request only exposes shell + `read`; the full catalog of 33 tools opens after promotion. A text-only first reply can't trap the session — request two always sees the full catalog.
 
 On Windows, the native terminal tool is `pwsh`. To use WSL, call `wsl.exe` through
 `pwsh`, for example `wsl.exe -- bash -lc 'command'` (or
@@ -69,7 +69,7 @@ DSH security-analysis capability used to be scattered across domain bundles: `ad
 
 helmd packs seven domains + evidence tooling + first-turn bootstrap + toolbox into one bundle:
 
-`one preset` &ensp; `one bundle` &ensp; `31 tools` &ensp; `zero manual wiring`
+`one preset` &ensp; `one bundle` &ensp; `33 tools` &ensp; `zero manual wiring`
 
 Install once, send `helmd` in a session, and every domain's tools are ready.
 
@@ -101,6 +101,29 @@ flowchart LR
 - **First-turn narrowing**: the first top-level request only exposes shell + `read`; the full catalog opens after promotion
 - **Domain routing**: `router` routes problems via `skill_catalog` / `read_reference`
 - **On-demand references**: `references/` is a knowledge base, not an injection; the model reads and decides
+- **Runtime hook layer**: tool-description washing, advisory ledger injection, H-CoT refusal response, LLM stream audit (see below)
+
+## Runtime hook layer (0.3.x)
+
+`apply()` in `packages/helmd/src/index.ts` assembles five runtime mechanisms in a fixed order, all riding the host cordis waterfalls with zero standalone processes:
+
+```text
+tool-wash description washing → persist evidence wrap → bootstrap first-turn narrowing
+  → advisory-hook (outer) + hcot-hook (inner) + llm-stream-hook
+  → /hcot command + router + ledger + caseflow + tool discovery + domain tools
+```
+
+| Component | Mount point | Responsibility |
+|-----------|-------------|----------------|
+| `tool-wash.ts` | `tools.register` wrap | Rewrites "a denial is final / do not retry" tool-description phrasing into continuable wording (defensive layer, dsh-purge wash table); hits are logged (verbose) |
+| `persist.ts` | `tools.register` wrap | All later-registered domain tools auto-persist output to `evidence/` (soft gate, no per-tool edits) |
+| `advisory-hook.ts` | `system-prompt/assemble` (outer) | Reckons the previous turn's advisories against the session log; detects delivery refusal / hedging phrasing and injects stance metrics (no-hedge / challenged / report-prefix / normalizer); sensitive input passes `input-normalizer.ts` first |
+| `hcot-hook.ts` | `system-prompt/assemble` (inner) | When the newest assistant turn matches a delivery-refusal signature → submits a mandatory advisory (requiring `hcot_attack { stats: true }` first) + schedules an attack in the background; `HELMD_HCOT_AUTOHOOK=0` disables entirely, `HELMD_HCOT_AUTOSCHEDULE=0` injects without scheduling |
+| `hcot-attack-scheduler.ts` | orchestration | Log extraction → context reconstruction (refusal wording never enters the subagent prompt, only a trigger label) → subagent main path → defense-line-3 retry (≤2) → engine fallback |
+| `hcot-engine.ts` | Node-native executor | Zero Python/subprocess; global fetch against an OpenAI-compatible SSE endpoint to capture first_fragment; corpus `scripts/ai-security/h_cot_variants.json`, results ledger `~/.dsh/helmd-tools/h_cot_results.jsonl` |
+| `command-hcot.ts` | `ctx.commands` | `/hcot <goal>` single-shot engine (`--semantic-auto` semantic routing), `/hcot breach <goal>` via the unified scheduler |
+| `hcot-settings.ts` | settings `hcot` namespace | Read/write face of the workbench UI: config (model/provider/maxRounds/autoSchedule) + action requests + runtime state |
+| `llm-stream-hook.ts` | `llm/stream` | Refusal signature in the first text window is dropped in memory and replaced with a technical-deliverable prefix; interception counts and excerpts go to `~/.dsh/helmd-stream-intercept.log` |
 
 ## Runtime rules
 
@@ -114,13 +137,17 @@ A helmd session follows these fixed rules:
 | First-turn anchoring | Only shell + `read` on the first top-level request; after the first tool call or assistant message the session promotes and every tool opens |
 | Subagent exemption | Sessions with delegationDepth > 0 always see the full catalog |
 | Analysis ladder | Ponytail-style: `analysis_mode` sets lite (quick triage) / full (standard flow, default) / deep (full evidence chain); per-session persistence, pick the shallowest rung that answers the task |
-| Deterministic routing | `route_task(hint)` keyword-matches a PRIMARY route plus a one-line rationale (route before you act); falls back to the decision tree || Case workspace | `begin_case` creates an on-disk workspace (sample/evidence/scripts/CASE.md); tool outputs auto-persist to the evidence chain; `record_finding` enforces E-id citations; after compaction `case_status()` restores state from disk |
+| Deterministic routing | `route_task(hint)` keyword-matches a PRIMARY route plus a one-line rationale (route before you act); falls back to the decision tree |
+| Case workspace | `begin_case` creates an on-disk workspace (sample/evidence/scripts/CASE.md); tool outputs auto-persist to the evidence chain; `record_finding` enforces E-id citations; after compaction `case_status()` restores state from disk |
+| H-CoT auto response | When an assistant turn matches a delivery-refusal signature, the next turn injects a mandatory advisory and schedules `hcot_attack` in the background (subagent main path → defense line 3 → engine fallback); switches: `HELMD_HCOT_AUTOHOOK` / `HELMD_HCOT_AUTOSCHEDULE` |
+| Internal command | `/hcot <goal>` single-shot H-CoT engine, `/hcot breach <goal>` via the unified scheduler; results append to `~/.dsh/helmd-tools/h_cot_results.jsonl` |
+| Stream audit | The `llm/stream` interceptor bypass-replaces refusal signatures in the first window; counts and excerpts go to `~/.dsh/helmd-stream-intercept.log`, surfaced in the workbench "stream audit" panel |
 
 ### Knowledge & routing
 
 | Rule | Behavior |
 |------|----------|
-| Knowledge on demand | All 209 reference docs live in `references/`, read via `read_reference`, never injected into the system prompt |
+| Knowledge on demand | All 361 reference docs live in `references/`, read via `read_reference`, never injected into the system prompt |
 | Catalog = metadata | `skill_catalog` only routes domains/signals and draws no conclusions: `tree` triage, `methodology`, `patterns`, `install` tool setup, `jvm` JVM decryption, etc. |
 | References ≠ hard rules | Docs inform the model's judgment; they are never binding constraints |
 
@@ -198,6 +225,19 @@ Each dsh boot evaluates the deployed `.agent-presets/<preset>/agent.cordis.yml` 
 Expanding the card shows both fingerprints (12 chars), version, the **drift-repair verdict**, evaluation time, and both paths for fast diagnosis.
 
 **Drift repair policy**: on drift the card repairs automatically, but **only files it can prove are its own artifact** — a deployed preset carrying the `gen-preset` fingerprint header (`STALE` content drift / `HOST_UPGRADED` host upgraded) is regenerated from the current host standard; one without a header (`LEGACY_PRESET`, possibly hand-written) is only reported and left alone. Every write keeps the previous file as `.bak` first, runs a **structural artifact assertion** right after (row set = host standard + `helmd`, no duplicate ids, `@dsh-security/helmd` declared once, persona is ours) and reports `artifact check OK (N rows …)` before reminding you to restart dsh and assert the first request is `[pwsh, read]` (MAINTENANCE §8) — that live half needs a session and stays with you. Switches: `HELMD_AUTO_HEAL=0` reports everything (hand-managed deployments), `=1` overwrites even a header-less file.
+
+## Security Workbench & Dynamic Tool Shelf
+
+Since 0.3.1, helmd upgrades the session header with an interactive **`[helmd 工作台 ▾]` Capsule Action Button** and provides dual-track workbench access:
+
+- **Dual-Track Interaction**: Clicking the capsule button immediately opens an anchored popover workbench drawer and simultaneously unfolds the right sidebar (Sidebar Right) into the `helmd 安全分析` workbench tab.
+- **H-CoT Console**: Real-time monitoring of the chain-of-thought scheduling engine, teaching mode, and arming state.
+- **Dynamic Tool Shelf (100% Ledger-Driven)**:
+  - Completely eliminates hardcoded local paths.
+  - Dynamically parses the target machine's local ledger (`~/.dsh/helmd-tools/TOOLS.md`).
+  - Tools registered by users or agents via `tool_memory register(...)` are automatically synced and reflected in real-time in the web UI.
+  - Gracefully falls back to cross-platform standard paths (`~/.dsh/...` and system `PATH`) when the ledger is empty, ensuring seamless out-of-the-box operation across Windows, macOS, and Linux.
+- **Stream Intercept Audit Log**: Inspects front-end LLM stream interception status and audit logs.
 
 ## Install from the plugin store
 
@@ -373,13 +413,20 @@ helmd/
 │   └── helmd/                 the shipped package (single bundle)
 │       ├── src/
 │       │   ├── bootstrap.ts   first-turn tool-narrowing filter
+│       │   ├── tool-wash.ts   tool-description washing (refusal-terminal phrasing → continuable, defensive)
+│       │   ├── persist.ts     evidence-chain persistence wrap for all tools
+│       │   ├── advisory*.ts   advisory ledger + prompt-assembly injection (refusal / hedge detection)
+│       │   ├── hcot-*.ts      H-CoT engine / semantic routing / scheduler / settings / subagent persona
+│       │   ├── command-hcot.ts     /hcot internal command
+│       │   ├── llm-stream-hook.ts  llm/stream refusal bypass & audit
+│       │   ├── input-normalizer.ts sensitive input → engineering-term normalization
 │       │   ├── router.ts      skill_catalog / read_reference routing
 │       │   ├── health.ts      settings-page health face (boot-time fingerprint eval → settings namespace)
 │       │   ├── seam.ts        shared IO seam (fs / subprocess / cmd resolve / path guard)
-│       │   └── tools/         9 tool modules (31 tools)
-│       ├── client.js          browser half: settings-page health card (lazy-CJS factory, no build chain)
-│       ├── references/        209 on-demand reference docs (8 domains + toolbox)
-│       ├── scripts/           analysis scripts + gen-preset.mjs (install-time preset generator)
+│       │   └── tools/         10 tool modules (33 tools)
+│       ├── client.js          browser half: settings-page health card + workbench (lazy-CJS factory, no build chain)
+│       ├── references/        361 on-demand reference docs (8 domains + toolbox)
+│       ├── scripts/           analysis scripts + ai-security corpus/ledger + gen-preset.mjs
 │       ├── presets/           persona single source + generated mirror
 │       └── cordis.patch.yml   bundle mount manifest (helmd tools row + helmd-health row)
 ├── presets/full-reverse/      preset definition (generated; persona + every tool row)
@@ -403,7 +450,7 @@ The root `pnpm build` builds `@dsh-security/helmd`; `pnpm typecheck` runs the `t
 ## Dependencies
 
 - `@deepseek-ai/cordis` `^4.0.2`
-- `@deepseek-ai/dsh-tools` `>=0.1.5-rc.1 <0.2.0-0` (the cohort shipped by host dsh 0.1.5-rc.1)
+- `@deepseek-ai/dsh-tools` `>=0.1.5-rc.1 <0.2.0-0` (host cohort: the full dsh 0.1.5-rc.2 family is pinned in `pnpm-workspace.yaml` overrides)
 - `@deepseek-ai/dsh-settings` `>=0.1.5-rc.1 <0.2.0-0`
 - `@deepseek-ai/schemastery` `^3.18.2`
 

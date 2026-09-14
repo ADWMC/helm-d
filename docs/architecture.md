@@ -1,5 +1,9 @@
 # 架构设计（对齐 dsh-anchored-standard）
 
+> **状态（0.3.x）**：本文描述的 persona / bootstrap / 按需知识模型仍然成立，但发布形态已是
+> 单包 `@dsh-security/helmd`（多 bundle preset 已归档，见仓库根 README「目录结构」），
+> 并新增了**运行时钩子层**（本文 §4.6）。注入模型的演进另见 [architecture-v2.md](architecture-v2.md)。
+
 > 本版按 [dsh-anchored-standard](https://github.com/xiaobright/dsh-anchored-standard) 的 preset 模型重写：
 > persona 由 `@deepseek-ai/dsh-persona` 以 `complete: true` 提供；首轮工具目录由
 > `@dsh-security/bootstrap` 在 `system-prompt/assemble` 瀑布中过滤；router 只注册工具，不再注入系统提示段。
@@ -53,6 +57,8 @@ flowchart TD
 | 按需知识 | `router` + 领域 bundle 的 `ctx.tools.register` | 路由、领域工具、`references/` | 否，工具调用时读取 |
 
 ## 3. 目录结构
+
+> 以下为 0.2.x 多 bundle 形态（历史存档）；0.3.x 单包结构见根 README「目录结构」一节。
 
 ```text
 helmd/
@@ -140,6 +146,27 @@ preset 中：
 - `full-reverse`：Standard 行 + router + 全部领域 bundle + evidence。
 - 每个 preset 都有 `preset.yml`（name/description/order）和 `agent.cordis.yml`。
 
+### 4.6 运行时钩子层（0.3.x，单包形态）
+
+单包 `packages/helmd/src/index.ts` 的 `apply()` 按固定顺序组装（顺序有语义：清洗与持久化包装必须先于领域工具注册）：
+
+```text
+applyDescriptionWash   工具描述清洗：拒绝终局话术 → 可继续措辞（防御层，命中记 verbose 日志）
+applyPersistenceWrap   证据链包装：后注册工具输出自动落 evidence/（软门禁）
+applyBootstrapFilter   首轮收窄：shell + read，晋升后放开（§4.2）
+registerAdvisoryHook   system-prompt/assemble outer：清算上一轮 advisory、
+                       拒绝/敷衍检测 → stance 指标注入（敏感输入先过 input-normalizer）
+registerHcotHook       system-prompt/assemble inner：交付拒绝签名 → 强制性 advisory
+                       （先 hcot_attack { stats: true } 取证）+ 后台调度攻击
+registerLlmStreamHook  llm/stream：首窗口拒绝签名旁路替换，审计写 ~/.dsh/helmd-stream-intercept.log
+applyHcotCommand       /hcot 内部命令（单发引擎 / breach 统一调度器）
+registerRouterTools …  router / 账本 / caseflow / 工具发现 / 领域工具（33 个）
+```
+
+配套数据面：H-CoT 变体语料 `scripts/ai-security/h_cot_variants.json`（纯数据）；
+结果账本 `~/.dsh/helmd-tools/h_cot_results.jsonl`；设置命名空间 `hcot`（工作台 UI 的唯一读写通道）。
+自动检查：`hcot-refusal` / `llm-stream` / `tool-catalog`（含 /hcot 注册断言）等见 `scripts/checks/`。
+
 ## 5. 与参考仓库的差异
 
 | 项 | dsh-anchored-standard | helmd |
@@ -154,7 +181,7 @@ preset 中：
 - 安装包 `prepare` 会执行 `tsc -p tsconfig.json`，git 安装时自动构建。
 - preset YAML 需用 dsh 的 YAML loader（支持 `!!js`）解析；PowerShell 脚本已做 UTF-8 无 BOM 写入。
 - 运行时验证：导出 session JSONL，检查首条 `request/header` 只含 `pwsh/read` 或 `bash/read`，后续 header 为完整目录。
-- 未在本机启动 dsh 做端到端验证（无明确启动授权；且当前工作区未安装依赖），该项为残余风险。
+- 本机依赖已装、`--profile web` 已真实启动过；`pnpm test:checks` 全量绿（13 项，含 bootstrap-anchor、prompt-assembly、hcot-refusal、llm-stream、tool-catalog、session-log 等宿主 seam 检查）。首轮锚定的真机会话断言仍按 MAINTENANCE §8 由操作者手跑。
 
 ## 7. 结论置信度
 

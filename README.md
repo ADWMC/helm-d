@@ -68,7 +68,7 @@ DSH 的安全分析能力原本分散在多个领域 bundle：装 Android 要 ad
 
 helmd 把七大领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）+ 工具箱（toolbox）打包成一个 Agent 专属包：
 
-`一个 preset` &ensp; `一个 bundle` &ensp; `31 个工具` &ensp; `零手动拼装`
+`一个 preset` &ensp; `一个 bundle` &ensp; `33 个工具` &ensp; `零手动拼装`
 
 装一次，会话里发 `helmd`，全领域工具就绪。
 
@@ -100,6 +100,29 @@ flowchart LR
 - **首轮收窄**：首个顶层请求只暴露 shell + `read`，晋升后放开完整工具目录
 - **领域路由**：`router` 用 `skill_catalog` / `read_reference` 把问题路由到对应领域
 - **按需参考**：`references/` 是知识库，不是注入物；模型读完后自主判断
+- **运行时钩子层**：工具描述清洗、advisory 账本注入、H-CoT 拒绝响应、LLM 流式审计（见下节）
+
+## 运行时钩子层（0.3.x）
+
+`packages/helmd/src/index.ts` 的 `apply()` 按固定顺序组装五层运行时机制，全部寄生宿主 cordis 瀑布，零独立进程：
+
+```text
+tool-wash 描述清洗 → persist 证据链包装 → bootstrap 首轮收窄
+  → advisory-hook（outer）+ hcot-hook（inner）+ llm-stream-hook
+  → /hcot 内部命令 + router + 账本 + caseflow + 工具发现 + 领域工具
+```
+
+| 组件 | 挂载点 | 职责 |
+|------|--------|------|
+| `tool-wash.ts` | `tools.register` 包装 | 把「拒绝是终局/不要重试」类工具描述话术归一化为可继续措辞（防御层，借鉴 dsh-purge 清洗表），命中记 verbose 日志 |
+| `persist.ts` | `tools.register` 包装 | 所有后注册的领域工具输出自动落 `evidence/`（软门禁，免逐工具改造） |
+| `advisory-hook.ts` | `system-prompt/assemble`（outer） | 对照会话日志清算上一轮 advisory；检测交付拒绝/敷衍措辞，注入 stance 指标（no-hedge / challenged / report-prefix / normalizer）；敏感输入先经 `input-normalizer.ts` 归一化 |
+| `hcot-hook.ts` | `system-prompt/assemble`（inner） | 最新助手轮命中交付拒绝签名 → 提交强制性 advisory（要求先 `hcot_attack { stats: true }` 取证再执行）+ 后台调度攻击；`HELMD_HCOT_AUTOHOOK=0` 整体关闭，`HELMD_HCOT_AUTOSCHEDULE=0` 只注入不调度 |
+| `hcot-attack-scheduler.ts` | 编排层 | 日志提取 → 上下文重构（拒绝原文不进子代理 prompt，只传触发点标签）→ 子代理主路 → 防线3 重试（≤2 次）→ 引擎降级 |
+| `hcot-engine.ts` | Node 原生执行器 | 零 Python/子进程，全局 fetch 打 OpenAI-compatible SSE 端点捕获 first_fragment；语料 `scripts/ai-security/h_cot_variants.json`，结果账本 `~/.dsh/helmd-tools/h_cot_results.jsonl` |
+| `command-hcot.ts` | `ctx.commands` | `/hcot <goal>` 单发引擎（`--semantic-auto` 语义路由）、`/hcot breach <goal>` 走统一调度器 |
+| `hcot-settings.ts` | settings `hcot` 命名空间 | 工作台 UI 的读写面：配置（model/provider/maxRounds/autoSchedule）+ 动作请求 + 运行态 |
+| `llm-stream-hook.ts` | `llm/stream` | 首窗口命中拒绝签名即在内存丢弃并替换为技术交付前缀，旁路计数与摘录写 `~/.dsh/helmd-stream-intercept.log` |
 
 ## 运行规则
 
@@ -115,12 +138,15 @@ helmd 会话遵循以下固定规则：
 | 分析档位 | Ponytail 式阶梯：`analysis_mode` 设 lite（快速分诊）/ full（标准流程，默认）/ deep（完整证据链），会话内持久，选能回答任务的最浅档 |
 | 确定性路由 | `route_task(hint) 关键词匹配出 PRIMARY 路由 + 一句依据（先路由后动手），未命中回落决策树 |
 | Case 工作区 | `begin_case` 建立磁盘工作区（sample/evidence/scripts/CASE.md），工具输出自动入证据链；`record_finding` 强制引用 E 编号；上下文压缩后 `case_status()` 从磁盘恢复状态 |
+| H-CoT 自动响应 | 助手轮命中交付拒绝签名时，下一轮注入强制性 advisory 并后台调度 `hcot_attack`（子代理主路 → 防线3 → 引擎降级）；开关 `HELMD_HCOT_AUTOHOOK` / `HELMD_HCOT_AUTOSCHEDULE` |
+| 内部命令 | `/hcot <goal>` 单发 H-CoT 引擎，`/hcot breach <goal>` 走统一调度器；结果回写 `~/.dsh/helmd-tools/h_cot_results.jsonl` |
+| 流式审计 | `llm/stream` 拦截器对首窗口拒绝签名旁路替换；计数与摘录写 `~/.dsh/helmd-stream-intercept.log`，工作台「流式审计日志」面板展示状态 |
 
 ### 知识与路由
 
 | 规则 | 行为 |
 |------|------|
-| 知识按需读 | 209 个参考文档全放 `references/`，经 `read_reference` 读取，绝不注入 system prompt |
+| 知识按需读 | 361 个参考文档全放 `references/`，经 `read_reference` 读取，绝不注入 system prompt |
 | 目录即元数据 | `skill_catalog` 只做领域/信号路由，不下结论：`tree` 分诊、`methodology` 方法论、`patterns` 模式、`install` 工具安装、`jvm` JVM 解密等 |
 | 参考非硬规则 | 文档供模型自主判断，不作为强制约束 |
 
@@ -198,6 +224,19 @@ helmd 0.2.1 起在 **dsh 网页设置页**常驻一块健康卡片：设置 → 
 展开可见双指纹（12 位）、版本、**自动修复结论**、评估时间与两条路径，方便定位问题。
 
 **漂移修复策略**：卡片判到漂移时会自动修复，但**只修能证明是本包产物的文件**——部署位带 `gen-preset` 指纹头（`STALE` 内容漂移 / `HOST_UPGRADED` 宿主已升级）就自动按当前宿主 standard 重生成；没有指纹头（`LEGACY_PRESET`，可能是你手写的）只报告、不动它。写盘前一律先留 `.bak`；修复后当场跑一次**产物结构断言**（行集合 = 宿主 standard + `helmd`、无重复 id、`@dsh-security/helmd` 恰好一次、persona 是本包的），结论里会写明 `artifact check OK (N rows …)`，然后提示"必须重启 dsh 并按 MAINTENANCE §8 断言首轮 `[pwsh, read]`"——那半需要真机会话，只能由你跑。开关：`HELMD_AUTO_HEAL=0` 全部只报告（手工管理部署用），`=1` 连无指纹头的也重写。
+
+## 安全分析工作台与动态工具货架
+
+helmd 0.3.1 起升级了会话顶部的 **`[helmd 工作台 ▾]` 胶囊动作按钮**，并实现了原地工作台抽屉与右侧栏（Sidebar Right）的双轨联动：
+
+- **双轨交互入口**：在会话头部点击 `[helmd 工作台 ▾]` 胶囊按钮，可立即就地弹出安全分析工作台抽屉；同时自动触发右侧边栏展开并激活 `helmd 安全分析` 专属工作台标签。
+- **H-CoT 控制台**：实时监控破甲思维链调度引擎状态、教学模式与武装状态。
+- **逆向工具货架（纯动态账本驱动）**：
+  - 彻底摆脱写死绝对路径的伪静态展示。
+  - 宿主端直接实时动态解析目标机用户目录下的 `~/.dsh/helmd-tools/TOOLS.md` 账本。
+  - 用户或 Agent 通过 `tool_memory register(...)` 登记的逆向工具（如反编译、脱壳、动态断点工具）均会自动同步并在 Web 界面上动态实时呈现。
+  - 当本地账本尚无记录时，自动回退到跨平台标准通用路径（`~/.dsh/...` 与系统 `PATH`），保证分发到任何用户的 Windows / macOS / Linux 机器均立即可用且绝无坏死路径。
+- **流式审计日志**：展示 LLM 输出流拦截器在前端的旁路状态与审计日志指引。
 
 ## 从插件商店安装
 
@@ -375,13 +414,20 @@ helmd/
 │   └── helmd/                 发布包（单 bundle）
 │       ├── src/
 │       │   ├── bootstrap.ts   首轮工具收窄过滤器
+│       │   ├── tool-wash.ts   工具描述清洗（拒绝终局话术归一化，防御层）
+│       │   ├── persist.ts     全工具证据链持久化包装
+│       │   ├── advisory*.ts   advisory 账本 + prompt-assembly 注入（拒绝/敷衍检测）
+│       │   ├── hcot-*.ts      H-CoT 引擎 / 语义路由 / 调度器 / 设置 / 子代理人格
+│       │   ├── command-hcot.ts     /hcot 内部命令
+│       │   ├── llm-stream-hook.ts  llm/stream 拒绝旁路与审计
+│       │   ├── input-normalizer.ts 敏感输入 → 工程术语归一化
 │       │   ├── router.ts      skill_catalog / read_reference 路由
 │       │   ├── health.ts      设置页健康面（boot 时指纹评估 → settings namespace）
 │       │   ├── seam.ts        共享 IO seam（fs / subprocess / 命令解析 / 路径校验）
-│       │   └── tools/         8 个工具模块（31 个工具）
-│       ├── client.js          浏览器半：设置页健康卡片（lazy-CJS factory，免构建）
-│       ├── references/        209 个参考文档，按需读取（8 大域 + toolbox）
-│       ├── scripts/           分析脚本 + gen-preset.mjs（安装时派生 preset 生成器）
+│       │   └── tools/         10 个工具模块（33 个工具）
+│       ├── client.js          浏览器半：设置页健康卡片 + 工作台（lazy-CJS factory，免构建）
+│       ├── references/        361 个参考文档，按需读取（8 大域 + toolbox）
+│       ├── scripts/           分析脚本 + ai-security 语料/账本 + gen-preset.mjs
 │       ├── presets/           persona 单源 + 生成物镜像
 │       └── cordis.patch.yml   bundle 挂载清单（helmd 工具行 + helmd-health 行）
 ├── presets/full-reverse/      preset 定义（生成物；persona + 全部工具行）
@@ -405,7 +451,7 @@ pnpm build
 ## 依赖
 
 - `@deepseek-ai/cordis` `^4.0.2`
-- `@deepseek-ai/dsh-tools` `>=0.1.5-rc.1 <0.2.0-0`（宿主 cohort：dsh 0.1.5-rc.1 内置的工具版本）
+- `@deepseek-ai/dsh-tools` `>=0.1.5-rc.1 <0.2.0-0`（宿主 cohort：dsh 0.1.5-rc.2 全家 pin 见 `pnpm-workspace.yaml` overrides）
 - `@deepseek-ai/dsh-settings` `>=0.1.5-rc.1 <0.2.0-0`
 - `@deepseek-ai/schemastery` `^3.18.2`
 
