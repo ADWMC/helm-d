@@ -183,11 +183,10 @@ macOS / Linux：
 ./install.sh
 ```
 
-也可以走 **npm 渠道**（包已发布为 [`@adwmc/helm-d`](https://www.npmjs.com/package/@adwmc/helm-d)）：
+也可以走 **npm 渠道**（包已发布为 [`@adwmc/helm-d`](https://www.npmjs.com/package/@adwmc/helm-d)）——`plugin add` 是 pnpm 转发器，registry 包名直接可用：
 
 ```bash
-npm pack @adwmc/helm-d          # 下载 tgz（或从 npmjs.com 页面手动下载）
-dsh plugin --profile web add ./adwmc-helm-d-<版本>.tgz
+dsh plugin --profile web add @adwmc/helm-d
 ```
 
 安装器会下载最新 Release 的 `helmd.tgz`、装入 profile、写入 preset。**preset 平台行不靠快照复制——安装器在本机上直接读取你已装的 dsh 宿主 `standard` 预设实时派生生成**（`gen-preset.mjs --out`），只在生成器不可用时才退回包内快照。这意味着平台工具行永远匹配你自己装的 dsh 版本，不会因宿主升级而漂移。然后启动：

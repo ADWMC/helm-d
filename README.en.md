@@ -184,11 +184,10 @@ macOS / Linux:
 ./install.sh
 ```
 
-Or via the **npm channel** (published as [`@adwmc/helm-d`](https://www.npmjs.com/package/@adwmc/helm-d)):
+Or via the **npm channel** (published as [`@adwmc/helm-d`](https://www.npmjs.com/package/@adwmc/helm-d)) — `plugin add` is a pnpm forwarder, so registry names pass straight through:
 
 ```bash
-npm pack @adwmc/helm-d          # fetch the tgz (or download it from the npmjs.com page)
-dsh plugin --profile web add ./adwmc-helm-d-<version>.tgz
+dsh plugin --profile web add @adwmc/helm-d
 ```
 
 The installer downloads the latest Release `helmd.tgz`, installs it into the profile, and writes the preset. **The preset's platform rows are not snapshot-copied — the installer derives them live on your machine from the dsh host `standard` preset you actually have installed** (`gen-preset.mjs --out`), falling back to the bundled snapshot only when the generator is unavailable. Platform rows therefore always match your own dsh version and never drift on host upgrades. Then boot:
