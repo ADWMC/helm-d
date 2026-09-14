@@ -3,6 +3,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readTextSeam, runSeam, assertWithinRoot } from '../seam.js'
+import { renderStats, runHcotAttack } from '../hcot-engine.js'
 
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../references/ai-security')
 const scriptRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../scripts/ai-security')
@@ -55,29 +56,38 @@ export function registerAiSecurityTools(ctx: Context): void {
       transfer_probe: { type: 'string', description: 'Follow-up question asked after injection to measure cross-turn transfer.' },
       ledger: { type: 'string', description: 'Result ledger JSONL path (default HELMD_HCOT_LEDGER or ~/.dsh/helmd-tools/h_cot_results.jsonl).' },
       dry_run: { type: 'boolean', description: 'Print the three payloads without calling the API.' },
+      semantic_auto: { type: 'boolean', description: 'Auto-pick strategy: classify(model,goal) + propose from ledger/instance library. Instances and ledger are references, not limits.' },
+      frame: { type: 'string', description: 'Explicit frame instance id (see scripts/ai-security/h_cot_variants.json).' },
+      enabler: { type: 'string', description: 'Explicit enabler instance id.' },
+      continuation: { type: 'string', description: 'Explicit continuation instance id.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
       if (!args.stats && (args.goal == null || String(args.goal).trim() === '')) {
         return 'REJECTED — 需要 goal（真实目标请求）；只查变体胜率请传 stats: true。'
       }
-      const argv = ['python', resolve(scriptRoot, 'h_cot_attack.py')]
       if (args.stats) {
-        argv.push('--stats')
-      } else {
-        if (args.goal != null) argv.push('--goal', args.goal)
-        if (args.variant != null) argv.push('--variant', args.variant)
-        if (args.auto) argv.push('--auto')
-        if (args.probe != null) argv.push('--probe', args.probe)
-        if (args.forge_file != null) argv.push('--forge-file', args.forge_file)
-        if (args.base_url != null) argv.push('--base-url', args.base_url)
-        if (args.model != null) argv.push('--model', args.model)
-        if (args.first_chars != null) argv.push('--first-chars', String(args.first_chars))
-        if (args.transfer_probe != null) argv.push('--transfer-probe', args.transfer_probe)
-        argv.push(args.dry_run ? '--dry-run' : '--json')
+        return await renderStats({ model: args.model, ledger: args.ledger })
       }
-      if (args.ledger != null) argv.push('--ledger', args.ledger)
-      return await runSeam(ctx, argv, packageRoot)
+      const hasSlots = args.frame != null || args.enabler != null || args.continuation != null
+      return (await runHcotAttack({
+        goal: String(args.goal),
+        model: args.model,
+        baseUrl: args.base_url,
+        apiKey: undefined,
+        ctx,
+        variant: args.variant,
+        probe: args.probe,
+        forgeFile: args.forge_file,
+        firstChars: args.first_chars,
+        transferProbe: args.transfer_probe,
+        ledger: args.ledger,
+        dryRun: Boolean(args.dry_run),
+        // Explicit slots win; otherwise semantic_auto lets the engine route.
+        ...(hasSlots
+          ? { strategy: { frame: args.frame, enabler: args.enabler, continuation: args.continuation } }
+          : args.semantic_auto ? { autoStrategy: true } : {}),
+      })).text
     },
   }))
 }

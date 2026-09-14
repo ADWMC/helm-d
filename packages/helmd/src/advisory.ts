@@ -137,6 +137,25 @@ function proven(proof: Proof | undefined, calls: ToolCall[], after: readonly unk
   }
 }
 
+/**
+ * Directories already known to exist in this process. `mkdirSync` runs on every
+ * advisory settlement otherwise, and settlement happens inside prompt assembly —
+ * three synchronous syscalls per settlement on the hot path. One Set lookup replaces
+ * the first of them.
+ */
+const ensuredDirs = new Set<string>()
+
+/** How many settlements to append between size checks (keeps statSync off the hot path). */
+const COMPACT_CHECK_EVERY = 64
+let writesSinceCompactCheck = 0
+
+function ensureDir(path: string): void {
+  const dir = dirname(path)
+  if (ensuredDirs.has(dir)) return
+  mkdirSync(dir, { recursive: true })
+  ensuredDirs.add(dir)
+}
+
 function record(entry: Reckoned): void {
   const path = advisoryLedgerPath()
   try {
@@ -144,9 +163,13 @@ function record(entry: Reckoned): void {
     // can be reckoned before any tool_memory call ever ran, and a bare appendFileSync into
     // a missing directory throws ENOENT — swallowed below, so the row would be lost with
     // no signal while the tally stays empty and every adaptive reminder keeps teaching.
-    mkdirSync(dirname(path), { recursive: true })
+    ensureDir(path)
     appendFileSync(path, `${JSON.stringify({ ...entry, ts: new Date().toISOString() })}\n`, 'utf8')
-    compactLedger(path)
+    // The size check is amortized: an append is cheap, a statSync per settlement is not.
+    if (++writesSinceCompactCheck >= COMPACT_CHECK_EVERY) {
+      writesSinceCompactCheck = 0
+      compactLedger(path)
+    }
   } catch {
     // Ledger write failure must never break prompt assembly.
   }
@@ -222,15 +245,15 @@ let ledgerCache: LedgerCache | null = null
 
 /**
  * The ledger's rows, parsed once per file change. The ledger gains a line per assistant
- * turn, and prompt assembly asks for these tallies every turn, so re-reading the whole
- * file per question would put a growing file scan on the hot path.
+ * turn, and prompt assembly asks for these tallies several times per turn, so the parse
+ * is cached against the file's (mtime, size) — re-reading a growing file per question
+ * would put a file scan on the hot path.
+ *
+ * Deliberately NOT throttled: an external writer (another process, a test) must be
+ * visible on the next read. One statSync is the price of that guarantee.
  */
 function ledgerRows(): LedgerRow[] {
   const path = advisoryLedgerPath()
-  if (!existsSync(path)) {
-    ledgerCache = null
-    return []
-  }
   let mtimeMs = 0
   let size = 0
   try {
@@ -238,7 +261,9 @@ function ledgerRows(): LedgerRow[] {
     mtimeMs = stat.mtimeMs
     size = stat.size
   } catch {
-    return ledgerCache?.path === path ? ledgerCache.rows : []
+    // Missing or unreadable: no rows.
+    ledgerCache = null
+    return []
   }
   if (ledgerCache !== null && ledgerCache.path === path && ledgerCache.mtimeMs === mtimeMs && ledgerCache.size === size) {
     return ledgerCache.rows

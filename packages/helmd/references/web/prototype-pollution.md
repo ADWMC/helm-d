@@ -144,7 +144,7 @@ The payloads below assume body/query is deeply parsed into objects by **qs** or 
 | **portswigger/server-side-prototype-pollution** | Burp ecosystem extension / supporting material |
 | **msrkp/PPScan** | Scanning/verification helper |
 
-Prioritize use on **authorized** targets; automated tools can cause side effects on stateful applications.
+Prioritize use; automated tools can cause side effects on stateful applications.
 
 ---
 

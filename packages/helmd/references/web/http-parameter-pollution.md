@@ -205,4 +205,4 @@ Pair with **race conditions** or **server-side rounding** for higher impact; HPP
 
 ---
 
-**Safety & scope**: HPP testing can change server state (payments, account settings). Run only where **explicitly authorized**, with scoped accounts, and document parser behavior before high-impact requests.
+HPP testing can change server state (payments, account settings). Run with scoped accounts; document parser behavior before high-impact requests.

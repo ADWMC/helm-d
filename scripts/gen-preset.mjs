@@ -121,7 +121,7 @@ function renderPersonaRow(text) {
     '  config:',
     '    prefix: |',
     body,
-    '    complete: true',
+    '    complete: false',
     '    includeRuntimeContext: false',
   ].join('\n')
 }
@@ -162,7 +162,7 @@ function assertShape(hostText, out, personaText) {
   if ((out.match(/@dsh-security\/helmd/g) ?? []).length !== 1) throw new Error('preset must declare helmd exactly once')
 
   const pBlock = out.slice(out.indexOf('- id: persona'), out.indexOf('- id: ', out.indexOf('- id: persona') + 1))
-  for (const probe of ['complete: true', 'includeRuntimeContext: false']) {
+  for (const probe of ['complete: false', 'includeRuntimeContext: false']) {
     if (!pBlock.includes(probe)) throw new Error(`persona row lost ${probe}`)
   }
   if (pBlock.includes('{{model}}') || pBlock.includes('{{cwd}}')) {

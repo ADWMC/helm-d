@@ -8,7 +8,7 @@ description: >-
 
 # SKILL: RSA Attack Techniques — Expert Cryptanalysis Playbook
 
-> **AI LOAD INSTRUCTION**: Expert RSA attack techniques for CTF and authorized security assessments. Covers factorization attacks, small exponent exploits, lattice-based approaches (Wiener/Boneh-Durfee/Coppersmith), broadcast attacks, common modulus, padding oracles, and fault attacks. Base models often suggest attacks that don't match the given parameters or miss the correct attack selection based on what's known.
+> **AI LOAD INSTRUCTION**: Expert RSA attack techniques for CTF. Covers factorization attacks, small exponent exploits, lattice-based approaches (Wiener/Boneh-Durfee/Coppersmith), broadcast attacks, common modulus, padding oracles, and fault attacks. Base models often suggest attacks that don't match the given parameters or miss the correct attack selection based on what's known.
 
 ## 0. RELATED ROUTING
 

@@ -4,7 +4,7 @@
 
 import { createHash } from 'node:crypto'
 import { createReadStream, existsSync } from 'node:fs'
-import { mkdir, copyFile, writeFile, appendFile, readFile, readdir } from 'node:fs/promises'
+import { mkdir, copyFile, writeFile, appendFile, readFile, readdir, rename } from 'node:fs/promises'
 import { join, resolve, basename } from 'node:path'
 
 export interface CaseInfo {
@@ -38,9 +38,15 @@ export function casesRoot(root?: string): string {
   return resolve(base, 'helmd-cases')
 }
 
-function slugify(text: string, max = 40): string {
-  const slug = text.toLowerCase().replace(/[^a-z0-9-_]+/g, '-').replace(/^-+|-+$/g, '')
-  return (slug || 'case').slice(0, max)
+export function slugify(text: string, max = 48): string {
+  const clean = text
+    .replace(/[\\/:\*\?"<>\|]+/g, ' ')
+    .trim()
+    .replace(/[^\p{L}\p{N}_-]+/gu, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, max)
+    .replace(/-+$/g, '')
+  return clean || 'case'
 }
 
 function today(): string {
@@ -129,15 +135,38 @@ export async function countEvidence(caseDir: string): Promise<number> {
   return files.filter((f) => /^E-\d{3}/.test(f)).length
 }
 
-/** Next E-number = max existing + 1 (survives restarts; no in-memory counter). */
+/**
+ * Next evidence id for one case directory.
+ *
+ * The directory is scanned once per case, not once per save: this runs on the
+ * tool-call path for EVERY domain tool while a case is open, and a readdir grows
+ * with the evidence count. After the first scan the counter is process-local —
+ * the case directory is created and owned by this process, so no external writer
+ * can invalidate it. Restart safety is preserved by the initial scan.
+ */
+const evidenceCounters = new Map<string, number>()
+
+/** Next E-number = max existing + 1; the scan happens once per case directory. */
 export async function nextEvidenceId(caseDir: string): Promise<string> {
+  const cached = evidenceCounters.get(caseDir)
+  if (cached !== undefined) {
+    const next = cached + 1
+    evidenceCounters.set(caseDir, next)
+    return `E-${String(next).padStart(3, '0')}`
+  }
   const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
   let max = 0
   for (const f of files) {
     const m = /^E-(\d{3})-/.exec(f)
     if (m) max = Math.max(max, parseInt(m[1], 10))
   }
+  evidenceCounters.set(caseDir, max + 1)
   return `E-${String(max + 1).padStart(3, '0')}`
+}
+
+/** Drop a case directory's counter (called when its case closes). */
+export function resetEvidenceCounter(caseDir: string): void {
+  evidenceCounters.delete(caseDir)
 }
 
 export async function saveEvidence(
@@ -192,8 +221,158 @@ export async function appendFinding(
 }
 
 export async function closeCase(caseDir: string, summary?: string): Promise<void> {
+  // 1. Auto-sweep any loose files left in case root to evidence/
+  const swept = await sweepCaseRootFiles(caseDir)
+  if (swept.length > 0) {
+    await appendTimeline(caseDir, `SWEEP — auto-archived loose files to evidence/: ${swept.join(', ')}`)
+  }
+
+  // 2. Mark completed
   const md = await loadCaseMd(caseDir)
   await writeFile(join(caseDir, 'CASE.md'), md.replace(/^status: open/m, 'status: completed'), 'utf8')
   if (summary) await appendTimeline(caseDir, `END — ${summary.slice(0, 120)}`)
   else await appendTimeline(caseDir, 'END — closed by end_case')
+}
+
+export interface CaseSummary {
+  name: string
+  dir: string
+  status: 'open' | 'completed' | 'unknown'
+  goal: string
+  mode: string
+  route: string
+  evidenceCount: number
+  looseFiles: string[]
+}
+
+/** List all case directories under casesRoot with metadata. */
+export async function listCasesOnDisk(root?: string): Promise<CaseSummary[]> {
+  const base = casesRoot(root)
+  if (!existsSync(base)) return []
+  try {
+    const entries = await readdir(base, { withFileTypes: true })
+    const results: CaseSummary[] = []
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      const dirPath = join(base, entry.name)
+      const caseMdPath = join(dirPath, 'CASE.md')
+      if (existsSync(caseMdPath)) {
+        try {
+          const md = await readFile(caseMdPath, 'utf8')
+          const statusMatch = /^status:\s*(open|completed)\b/m.exec(md)
+          const goalMatch = /^goal:\s*(.*)$/m.exec(md)
+          const modeMatch = /^mode:\s*(.*)$/m.exec(md)
+          const routeMatch = /^route:\s*(.*)$/m.exec(md)
+          const evidenceCount = await countEvidence(dirPath)
+          const looseFiles = await listLooseFilesInCase(dirPath)
+          results.push({
+            name: entry.name,
+            dir: dirPath,
+            status: (statusMatch?.[1] as any) ?? 'unknown',
+            goal: goalMatch?.[1]?.trim() ?? 'unspecified',
+            mode: modeMatch?.[1]?.trim() ?? 'full',
+            route: routeMatch?.[1]?.trim() ?? 'pending (route_task)',
+            evidenceCount,
+            looseFiles,
+          })
+        } catch {}
+      }
+    }
+    results.sort((a, b) => b.name.localeCompare(a.name))
+    return results
+  } catch {
+    return []
+  }
+}
+
+/** Check for non-case stray directories or files sitting directly in helmd-cases/. */
+export async function auditCasesRoot(root?: string): Promise<{ cases: CaseSummary[]; strays: string[] }> {
+  const base = casesRoot(root)
+  const cases = await listCasesOnDisk(root)
+  const strays: string[] = []
+  if (!existsSync(base)) return { cases, strays }
+  try {
+    const entries = await readdir(base, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.isFile()) {
+        strays.push(`file:${entry.name}`)
+      } else if (entry.isDirectory()) {
+        const caseMdPath = join(base, entry.name, 'CASE.md')
+        if (!existsSync(caseMdPath)) {
+          strays.push(`dir:${entry.name}`)
+        }
+      }
+    }
+  } catch {}
+  return { cases, strays }
+}
+
+/** Find the most recently created case marked status: open. */
+export async function findOpenCaseOnDisk(root?: string): Promise<CaseInfo | undefined> {
+  const all = await listCasesOnDisk(root)
+  const open = all.find((c) => c.status === 'open')
+  if (!open) return undefined
+  return {
+    dir: open.dir,
+    name: open.name,
+    goal: open.goal,
+    mode: open.mode,
+    route: open.route,
+  }
+}
+
+/** Load a specific case by directory or folder name. */
+export async function loadCaseInfoFromDisk(caseDirOrName: string, root?: string): Promise<CaseInfo | undefined> {
+  const base = casesRoot(root)
+  const dirPath = caseDirOrName.includes('/') || caseDirOrName.includes('\\')
+    ? resolve(caseDirOrName)
+    : join(base, caseDirOrName)
+  const caseMdPath = join(dirPath, 'CASE.md')
+  if (!existsSync(caseMdPath)) return undefined
+  try {
+    const md = await readFile(caseMdPath, 'utf8')
+    const goalMatch = /^goal:\s*(.*)$/m.exec(md)
+    const modeMatch = /^mode:\s*(.*)$/m.exec(md)
+    const routeMatch = /^route:\s*(.*)$/m.exec(md)
+    return {
+      dir: dirPath,
+      name: basename(dirPath),
+      goal: goalMatch?.[1]?.trim() ?? 'unspecified',
+      mode: modeMatch?.[1]?.trim() ?? 'full',
+      route: routeMatch?.[1]?.trim() ?? 'pending (route_task)',
+    }
+  } catch {
+    return undefined
+  }
+}
+
+/** List any loose unorganized files directly in the case root. */
+export async function listLooseFilesInCase(caseDir: string): Promise<string[]> {
+  const loose: string[] = []
+  try {
+    const entries = await readdir(caseDir, { withFileTypes: true })
+    for (const e of entries) {
+      if (e.isFile() && e.name !== 'CASE.md' && e.name !== 'findings.md') {
+        loose.push(e.name)
+      }
+    }
+  } catch {}
+  return loose
+}
+
+/** Auto-sweep unorganized files from case root into evidence/. */
+export async function sweepCaseRootFiles(caseDir: string): Promise<string[]> {
+  const swept: string[] = []
+  try {
+    const loose = await listLooseFilesInCase(caseDir)
+    for (const name of loose) {
+      const src = join(caseDir, name)
+      const dest = join(caseDir, 'evidence', name)
+      if (!existsSync(dest)) {
+        await rename(src, dest)
+        swept.push(name)
+      }
+    }
+  } catch {}
+  return swept
 }

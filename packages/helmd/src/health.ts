@@ -23,6 +23,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import { readShelfTools } from './ledger.js'
 
 /** The settings namespace this module serves. Also the client card key. */
 export const HELMD_HEALTH_NS = 'helmd'
@@ -53,6 +54,8 @@ export interface HelmdHealth {
    * `unavailable (…)` / `failed (…)` otherwise.
    */
   autoHeal: string
+  /** Dynamic shelf tools loaded from TOOLS.md (JSON stringified). */
+  tools: string
 }
 
 const HelmdHealthSchema = z.object({
@@ -65,6 +68,7 @@ const HelmdHealthSchema = z.object({
   checkedAt: z.string().default(''),
   version: z.string().default(''),
   autoHeal: z.string().default('off'),
+  tools: z.string().default('[]'),
 })
 
 /** Harness home: DSH_HOME wins, else ~/.dsh (matches gen-preset deployment). */
@@ -238,6 +242,7 @@ function evaluateHealthCore(): HelmdHealth {
     checkedAt: new Date().toISOString(),
     version,
     autoHeal: 'off',
+    tools: JSON.stringify(readShelfTools()),
   }
 
   const hostPath = locateHostStandard()
@@ -326,7 +331,7 @@ function matchesBundledPreset(deployed: string): boolean {
  * from the installed host standard (`HELMD_AUTO_HEAL=1` opts in; default is report-only).
  * @returns the health verdict, with the auto-heal outcome folded in.
  */
-function evaluateHealth(): HelmdHealth {
+export function evaluateHealth(): HelmdHealth {
   const first = evaluateHealthCore()
   if (!HEALABLE.has(first.status)) return first
   const policy = healPolicy()

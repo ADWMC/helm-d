@@ -214,7 +214,7 @@ RSA 公钥偏移: 0x4A230 (PEM 格式, BEGIN PUBLIC KEY)
 8. **⚠️ 不要替换验证函数，改 patch 调用者的分支**：当验证函数有复杂内部逻辑（stack canary、多层调用、结构体初始化）时，替换函数体极其脆弱。正确做法是找到调用者中的条件分支（`tbnz`/`tbz`/`cbz`/`cbnz`），将其改为无条件跳转（`b`），跳过验证函数调用。这比修改验证函数本身安全得多，因为不需要理解函数内部的调用约定和结构体布局。实例：v3 补丁替换 `fcn.00eb0254` 导致 Segfault（x8 被 canary 覆盖不是结构体指针），v4 改为 patch 调用者的 2 条 `tbnz`/`tbz` 分支为 `b`，完美绕过。
 
 9. **⚠️ ARM64 条件分支转无条件跳转编码**：将 `tbnz`/`tbz` 改为无条件 `b` 时，需要计算正确的 imm26 偏移。编码公式：`encoding = (0x5 << 26) | ((target - addr) // 4 & 0x3FFFFFF)`。验证方法：用 Python 读取补丁字节，解码 imm26，计算目标地址确认等于预期。不要凭直觉计算偏移——差 1 条指令就会崩溃。
-8. **⚠️ Windows Python 路径陷阱**：`execute_code` 用 Windows Python（`C:/` 路径），`terminal` 用 git-bash（`/tmp/` 路径）。在 `execute_code` 中读取文件时，用 Windows 绝对路径（如 `C:/Users/Administrator/Downloads/target.exe`），不要用 `/tmp/`。验证补丁时，在 `terminal` 中用 `r2 -q -c "pd N @ ADDR" patched_file` 确认反汇编结果。
+8. **⚠️ Windows Python 路径陷阱**：`execute_code` 用 Windows Python（`C:/` 路径），`terminal` 用 git-bash（`/tmp/` 路径）。在 `execute_code` 中读取文件时，用 Windows 绝对路径（如 `C:/Users/<username>/Downloads/target.exe`），不要用 `/tmp/`。验证补丁时，在 `terminal` 中用 `r2 -q -c "pd N @ ADDR" patched_file` 确认反汇编结果。
 
 ## 补丁验证清单
 

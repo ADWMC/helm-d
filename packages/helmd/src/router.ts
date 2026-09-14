@@ -1,7 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import { existsSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
 import { readTextSeam, assertWithinRoot } from './seam.js'
 import { getLevel, setLevel, normalizeLevel, renderContract } from './mode.js'
 import { shelfSummary } from './ledger.js'
@@ -17,6 +19,8 @@ const catalog: Record<string, string> = {
   patterns: '模式速查 -> references/toolbox/patterns.md — 保护器签名、反分析技术、Patch 编码',
   report: '报告模板 -> references/evidence/reporting.md — 标准化输出模板',
   install: '工具安装 -> references/toolbox/tool-install.md — 下载、安装、验证',
+  tools: '工具货架 -> 19+ 内置逆向与安全分析工具，输入 /tools 或查看右侧栏工作台',
+  status: '状态看板 -> 输入 /status 查看引擎健康与流式拦截审计日志',
   jvm: 'JVM/Java mod 常量加密 -> references/native/jvm-mod-deobf-workflow.md — Forge mod、jar 混淆、DES 解密器模板、oracle 重放；脚本 scripts/native/jvm/',
   // 领域路由
   android: 'APK/AAB/DEX/smali -> apk_fingerprint + references/android/',
@@ -63,6 +67,8 @@ const ROUTE_TABLE: Route[] = [
   { key: 'native', kw: ['exploit', 'pwn', '提权', 'privesc', 'kerberos', 'ntlm', '内网', '横向', 'rop', '堆溢出', 'heap'], why: '主机/二进制攻击特征 -> references/native/（含 hs-* 攻击 playbook）' },
   { key: 'evidence', kw: ['报告', 'report', '存证', '证据', 'case'], why: '取证与报告' },
   { key: 'install', kw: ['安装', '下载', 'install', 'download', '环境', 'setup', '装'], why: '工具获取' },
+  { key: 'tools', kw: ['tools', '工具列表', '查看工具', '工具箱', '有哪些工具', '所有工具', '工具货架', '逆向工具'], why: '查询 19+ 逆向与安全分析工具货架及调用示例' },
+  { key: 'status', kw: ['status', '状态看板', '拦截状态', '健康状态', '检查状态'], why: '查询 helmd 引擎健康、流式拦截审计与 H-CoT 状态' },
   { key: 'tree', kw: ['分析', 'analyze', '看看', '这个文件', 'unknown', '分诊'], why: '未定型样本走决策树' },
 ]
 
@@ -71,6 +77,7 @@ const ROUTE_TOOL: Record<string, string> = {
   apk: 'apk_fingerprint', shell: 'detect_packer', strings: 'scan_strings', crypto: 'encoding_detect',
   pcap: 'pcap_parse', har: 'parse_har', ioc: 'ioc_extract', malware: 'yara_gen',
   hcot: 'hcot_attack', llm: 'llm_sim', tree: 'triage_artifact', evidence: 'begin_case',
+  tools: 'skill_catalog', status: 'case_status',
 }
 
 export interface RouteHit {
@@ -129,6 +136,64 @@ export function renderRoute(hint: string): string {
   return card
 }
 
+const DOMAINS = ['toolbox', 'native', 'android', 'web', 'ai-security', 'malware', 'protocol', 'evidence']
+
+
+export function resolveReferenceFile(root: string, userPath?: string): string | null {
+  let cleaned = (userPath ?? '').trim().replace(/\\/g, '/')
+  cleaned = cleaned.replace(/^(\.\/|\/)+/, '')
+  if (cleaned.startsWith('references/')) {
+    cleaned = cleaned.slice('references/'.length)
+  } else if (cleaned === 'references') {
+    cleaned = ''
+  }
+  if (!cleaned || cleaned === '.') {
+    cleaned = 'index.md'
+  }
+  cleaned = cleaned.replace(/^(@dsh-security\/)?skill-([a-z0-9_-]+)/, '$2')
+
+  const candidate = resolve(root, cleaned)
+  try {
+    assertWithinRoot(candidate, root)
+  } catch {
+    return null
+  }
+
+  // Exact file or directory with index.md
+  if (existsSync(candidate)) {
+    try {
+      if (statSync(candidate).isDirectory()) {
+        const idx = resolve(candidate, 'index.md')
+        if (existsSync(idx)) return idx
+      } else {
+        return candidate
+      }
+    } catch {
+      return candidate
+    }
+  }
+
+  // Without .md extension
+  if (!cleaned.endsWith('.md')) {
+    const withMd = resolve(root, cleaned + '.md')
+    if (existsSync(withMd)) return withMd
+  }
+
+  // Flat filename fallback across domains
+  if (!cleaned.includes('/')) {
+    for (const d of DOMAINS) {
+      const sub = resolve(root, d, cleaned)
+      if (existsSync(sub)) return sub
+      if (!cleaned.endsWith('.md')) {
+        const subMd = resolve(root, d, cleaned + '.md')
+        if (existsSync(subMd)) return subMd
+      }
+    }
+  }
+
+  return null
+}
+
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../references')
 
 export function registerRouterTools(ctx: Context): void {
@@ -150,17 +215,39 @@ export function registerRouterTools(ctx: Context): void {
 
   ctx.tools.register(defineTool({
     name: 'read_reference',
-    description: 'Read a reference doc on demand; apply your own judgment.',
+    description: 'Read a reference doc on demand; apply your own judgment. Use "index.md" for master index.',
     parameters: {
-      path: { type: 'string', required: true, description: 'Path relative to references/.' },
+      path: { type: 'string', required: true, description: 'Path relative to references/ (e.g. "index.md", "android/index.md", "native/license-bypass-workflow.md").' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: { path: string }) {
-      const abs = resolve(refRoot, args.path)
-      assertWithinRoot(abs, refRoot)
-      return await readTextSeam(ctx, abs)
+      const target = resolveReferenceFile(refRoot, args.path)
+      if (target) {
+        assertWithinRoot(target, refRoot)
+        return await readTextSeam(ctx, target)
+      }
+      const raw = resolve(refRoot, args.path ?? '')
+      assertWithinRoot(raw, refRoot)
+      try {
+        return await readTextSeam(ctx, raw)
+      } catch {
+        return [
+          `参考文档未找到: "${args.path}"`,
+          '可用领域索引:',
+          '- android/index.md (Android 逆向)',
+          '- native/index.md (Native/二进制与脱壳)',
+          '- web/index.md (Web 安全与渗透)',
+          '- ai-security/index.md (AI 安全与越狱防御)',
+          '- malware/index.md (恶意代码与威胁分析)',
+          '- protocol/index.md (网络协议与抓包分析)',
+          '- evidence/index.md (证据链与报告规范)',
+          '- toolbox/index.md (决策树与通用工具箱)',
+          '调用 read_reference(path: "index.md") 可查看总索引。',
+        ].join('\n')
+      }
     },
   }))
+
 
   ctx.tools.register(defineTool({
     name: 'route_task',

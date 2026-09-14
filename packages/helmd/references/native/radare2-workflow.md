@@ -91,4 +91,4 @@ for s in data:
 3. **r2 的 xref 需要先 `aaa`**：如果 `aaa` 超时，可以手动 `s addr; /x` 搜索 ADRL/ADD 指令模式
 4. **Windows 上 r2 通过 scoop 安装**：shim 自动处理 PATH
 5. **IDA 和 r2 可以互补**：IDA 做深度分析，r2 做快速验证和字符串搜索
-6. **⚠️ `execute_code` vs `terminal` 路径差异**：`execute_code` 用 Windows Python（`C:/` 路径），`terminal` 用 git-bash（`/tmp/`、MSYS 路径）。在 `execute_code` 中用 `r2` 或读取二进制文件时，必须用 Windows 绝对路径（如 `C:/Users/Administrator/Downloads/target.exe`），不要用 `/tmp/`。在 `terminal` 中两种路径都可以。
+6. **⚠️ `execute_code` vs `terminal` 路径差异**：`execute_code` 用 Windows Python（`C:/` 路径），`terminal` 用 git-bash（`/tmp/`、MSYS 路径）。在 `execute_code` 中用 `r2` 或读取二进制文件时，必须用 Windows 绝对路径（如 `C:/Users/<username>/Downloads/target.exe`），不要用 `/tmp/`。在 `terminal` 中两种路径都可以。

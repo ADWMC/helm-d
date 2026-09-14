@@ -3,7 +3,7 @@ import { accessSync, constants } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { delimiter, join, normalize, resolve } from 'node:path'
+import { delimiter, join, normalize, resolve, sep } from 'node:path'
 
 const execFileAsync = promisify(execFile)
 const MAX_OUTPUT_BYTES = 256 * 1024
@@ -40,7 +40,7 @@ function findOnPath(cmd: string): string | null {
 
 /** Resolve an interpreter/command through the subprocess seam, then the local PATH. */
 export async function resolveCommand(_ctx: Context, command: string): Promise<string> {
-  const subprocess = _ctx.get('subprocess')
+  const subprocess = safeService<any>(_ctx, 'subprocess')
   if (subprocess != null && typeof subprocess.resolveExecutable === 'function') {
     try {
       const resolved = await subprocess.resolveExecutable(command)
@@ -65,11 +65,13 @@ export async function resolveCommand(_ctx: Context, command: string): Promise<st
 export function assertWithinRoot(absPath: string, root: string): string {
   const normalized = normalize(absPath)
   const normalizedRoot = normalize(root)
-  if (normalized !== normalizedRoot && !normalized.startsWith(normalizedRoot + (normalizedRoot.endsWith('\\') || normalizedRoot.endsWith('/') ? '' : '\\'))) {
+  const prefix = normalizedRoot.endsWith(sep) ? normalizedRoot : normalizedRoot + sep
+  if (normalized !== normalizedRoot && !normalized.startsWith(prefix)) {
     throw new Error('path out of scope')
   }
   return normalized
 }
+
 
 /**
  * Prefer the ctx.fs capability seam; fall back to the local Node fs
@@ -124,4 +126,40 @@ export async function runSeam(ctx: Context, argv: string[], cwd: string): Promis
     const e = error as any
     throw new Error(`${program} failed: ${e?.stderr ?? e?.message ?? String(e)}`)
   }
+}
+
+/**
+ * Safely look up an optional service from a Cordis context without triggering
+ * the "cannot get property <name> without inject" proxy error.
+ */
+export function safeService<T = unknown>(ctx: unknown, name: string): T | undefined {
+  if (!ctx || typeof ctx !== 'object') return undefined
+  const c = ctx as any
+  try {
+    if (typeof c.get === 'function') {
+      const s = c.get(name)
+      if (s != null) return s
+    }
+  } catch {}
+  try {
+    const root = c.root
+    if (root && root !== c && typeof root.get === 'function') {
+      const s = root.get(name)
+      if (s != null) return s
+    }
+  } catch {}
+  try {
+    if (c.reflect && typeof c.reflect.get === 'function') {
+      const s = c.reflect.get(name, false)
+      if (s != null) return s
+    }
+  } catch {}
+  try {
+    const root = c.root
+    if (root && root !== c && root.reflect && typeof root.reflect.get === 'function') {
+      const s = root.reflect.get(name, false)
+      if (s != null) return s
+    }
+  } catch {}
+  return undefined
 }

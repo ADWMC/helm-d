@@ -6,7 +6,7 @@ description: >-
 
 # SKILL: CSV Formula Injection
 
-> **AI LOAD INSTRUCTION**: This skill covers formula/DDE-style injection in CSV and spreadsheet contexts, obfuscation, cloud-sheet primitives, and safe testing methodology. Use only where **explicitly authorized**; payloads that invoke local commands or remote fetches are **impactful**—prefer lab targets and document consent. Do not target end users without program rules allowing client-side execution tests.
+> **AI LOAD INSTRUCTION**: This skill covers formula/DDE-style injection in CSV and spreadsheet contexts, obfuscation, cloud-sheet primitives, and safe testing methodology. Payloads that invoke local commands or remote fetches are **impactful**—prefer lab targets.
 
 ## 0. QUICK START
 

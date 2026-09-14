@@ -14,14 +14,20 @@ const report = createReporter('tool-catalog')
 
 /** Minimal cordis stand-in: capture every registered tool name. */
 const names = []
+const commands = []
 const ctx = new Proxy({}, {
   get(target, prop) {
     if (prop === 'tools') {
       target.tools ??= { register: (def) => { if (def?.name) names.push(def.name) } }
       return target.tools
     }
+    if (prop === 'commands') {
+      target.commands ??= { register: (def) => { if (def?.name) commands.push(def.name) } }
+      return target.commands
+    }
     if (prop === 'on') return () => {}
     if (prop === 'get') return () => undefined
+    if (prop === 'inject') return (_deps, cb) => cb(ctx)
     if (typeof prop === 'string') return target[prop]
   },
   set() { return true },
@@ -49,6 +55,10 @@ await report.check('the load-bearing tool names are all present', () => {
   for (const name of ['begin_case', 'case_status', 'record_finding', 'save_evidence', 'end_case', 'find_tool', 'tool_memory', 'route_task', 'hcot_attack']) {
     assert.ok(names.includes(name), `missing tool: ${name}`)
   }
+})
+
+await report.check('the /hcot internal command is registered', () => {
+  assert.ok(commands.includes('hcot'), 'expected the hcot command to register on ctx.commands')
 })
 
 report.finish()

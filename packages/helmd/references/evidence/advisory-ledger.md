@@ -79,3 +79,6 @@ submitAdvisory(sessionId, {
 露出点：`route_task` 卡片、`case_status`、`end_case` 三处都带 `[建议采纳率]`，不依赖单一路径。
 
 > **marker 要窄**：`无法核实来源` 是"质疑前提"纪律**要求**的表达，所以裸 `无法/不能` 不能算 hedge，只有 `我无法协助 / 抱歉，我 / 建议改用 / I cannot assist` 这类**拒绝交付**话术才算。
+> REFUSAL HARDENING 后扩充了部分拒绝变体（`我无法满足 / 请理解我不能 / 这超出了我的能力 /
+> 出于伦理 / 需要授权 / i must refuse / against my policy / out of my scope …）——全部是纯交付拒绝
+> 措辞，与"质疑前提"要求的验证声明（无法核实/证据不足）刻意不相交。

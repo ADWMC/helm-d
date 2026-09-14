@@ -6,7 +6,7 @@ description: >-
 
 # SKILL: WebSocket Security
 
-> **AI LOAD INSTRUCTION**: This skill covers WebSocket protocol basics, cross-site WebSocket hijacking (CSWSH), practical tooling bridges, and common vulnerability classes. Apply only in **authorized** tests; treat tokens and message content as sensitive. For REST/GraphQL companion testing, cross-load **[api-sec](../web/api-sec.md)** when present in the workspace.
+> **AI LOAD INSTRUCTION**: This skill covers WebSocket protocol basics, cross-site WebSocket hijacking (CSWSH), practical tooling bridges, and common vulnerability classes. Treat tokens and message content as sensitive. For REST/GraphQL companion testing, cross-load **[api-sec](../web/api-sec.md)** when present in the workspace.
 
 ## 0. QUICK START
 

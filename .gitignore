@@ -10,5 +10,8 @@ __pycache__/
 # 本地参考克隆（嵌套 git 仓库，不入库）
 _refs/
 
+# 本地 case 工作区（begin_case 产物：sample/evidence/会话记录，分析数据不入库）
+helmd-cases/
+
 # 凭据类文件，禁止进入历史
 cookie.txt

@@ -9,12 +9,29 @@ import { resolve, join } from 'node:path'
 import {
   bindCase, getCase, unbindCase, createCaseDir, loadCaseMd, closeCase,
   validateEvidenceIds, appendFinding, saveEvidence, countEvidence,
-  casesRoot,
+  casesRoot, findOpenCaseOnDisk, loadCaseInfoFromDisk, auditCasesRoot,
+  listLooseFilesInCase,
 } from '../case.js'
 import { getLevel } from '../mode.js'
 import { renderAdvisoryStats } from '../advisory.js'
+import { getStreamInterceptionStats } from '../llm-stream-hook.js'
 
-interface ExecLike { agent?: { id?: string } }
+interface ExecLike {
+  agent?: {
+    id?: string
+    cwd?: string
+    workspace?: string
+    session?: {
+      header?: {
+        cwd?: string
+      }
+    }
+  }
+}
+
+function resolveWorkspaceRoot(root?: string, exec?: ExecLike): string | undefined {
+  return root?.trim() || exec?.agent?.session?.header?.cwd || exec?.agent?.cwd || exec?.agent?.workspace
+}
 
 const RULES = [
   '1. Built-in tools first; missing capability → find_tool() (GitHub); custom scripts LAST, only in <case>/scripts/.',
@@ -34,13 +51,29 @@ export function registerCaseflowTools(ctx: Context): void {
     parameters: {
       goal: { type: 'string', required: true, description: 'What this investigation must deliver.' },
       samples: { type: 'array', items: { type: 'string' }, description: 'Absolute paths of sample files to ingest.' },
-      root: { type: 'string', description: 'Workspace root; defaults to HELMD_CASES_DIR or process cwd.' },
+      root: { type: 'string', description: 'Workspace root; defaults to session cwd, HELMD_CASES_DIR, or process cwd.' },
+      force: { type: 'boolean', description: 'Force open a new case even if an uncompleted open case exists on disk.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: { goal: string; samples?: string[]; root?: string }, exec?: ExecLike) {
+    async execute(args: { goal: string; samples?: string[]; root?: string; force?: boolean }, exec?: ExecLike) {
+      const effectiveRoot = resolveWorkspaceRoot(args.root, exec)
       const existing = getCase(exec?.agent?.id)
       if (existing) {
         return `A case is already active for this session: ${existing.name}\nClose it with end_case() before opening another.`
+      }
+      if (!args.force) {
+        const openCase = await findOpenCaseOnDisk(effectiveRoot)
+        if (openCase) {
+          return [
+            `Notice: an unclosed case is already open on disk: ${openCase.name}`,
+            `Goal: ${openCase.goal}`,
+            '',
+            `Options:`,
+            `1. Resume it: call case_status(name: "${openCase.name}")`,
+            `2. Close it first: call end_case(summary: "...")`,
+            `3. Force new case: call begin_case(goal: "...", force: true)`,
+          ].join('\n')
+        }
       }
       const mode = getLevel(exec?.agent?.id)
       const info = await createCaseDir({
@@ -48,7 +81,7 @@ export function registerCaseflowTools(ctx: Context): void {
         samples: args.samples ?? [],
         mode,
         route: 'pending (route_task)',
-        root: args.root,
+        root: effectiveRoot,
       })
       bindCase(exec?.agent?.id, info)
       return [
@@ -64,15 +97,59 @@ export function registerCaseflowTools(ctx: Context): void {
     name: 'case_status',
     description:
       'Re-read the active case state from disk (CASE.md header, samples, recent timeline). ' +
-      'Call this FIRST when resuming a task after context compaction — disk state survives what the conversation loses.',
-    parameters: {},
+      'Call this FIRST when resuming a task after context compaction — disk state survives what the conversation loses. ' +
+      'Can also resume an existing case by name or inspect cases on disk.',
+    parameters: {
+      name: { type: 'string', description: 'Optional case folder name to resume (or "open"/"latest" to rebind the most recent open case).' },
+      root: { type: 'string', description: 'Optional workspace root directory.' },
+    },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(_args: Record<string, never>, exec?: ExecLike) {
-      const active = getCase(exec?.agent?.id)
-      if (!active) {
-        const base = casesRoot()
-        return `No case bound to this session. Recent case dirs (if any) live under ${base} — inspect and re-run begin_case if resuming.`
+    async execute(args: { name?: string; root?: string }, exec?: ExecLike) {
+      const effectiveRoot = resolveWorkspaceRoot(args.root, exec)
+      let active = getCase(exec?.agent?.id)
+
+      if (args.name) {
+        if (args.name === 'open' || args.name === 'latest') {
+          const found = await findOpenCaseOnDisk(effectiveRoot)
+          if (found) {
+            bindCase(exec?.agent?.id, found)
+            active = found
+          } else {
+            return `No unclosed open case found on disk under ${casesRoot(effectiveRoot)}.`
+          }
+        } else {
+          const fromDisk = await loadCaseInfoFromDisk(args.name, effectiveRoot)
+          if (fromDisk) {
+            bindCase(exec?.agent?.id, fromDisk)
+            active = fromDisk
+          } else {
+            return `Case '${args.name}' not found under ${casesRoot(effectiveRoot)}.`
+          }
+        }
       }
+
+      if (!active) {
+        const base = casesRoot(effectiveRoot)
+        const audit = await auditCasesRoot(effectiveRoot)
+        const parts: string[] = [
+          `No case bound to this session. Recent case dirs (if any) live under ${base} — inspect and re-run begin_case if resuming.`,
+        ]
+        if (audit.cases.length > 0) {
+          parts.push('\nCases on disk:')
+          for (const c of audit.cases.slice(0, 5)) {
+            parts.push(`  - ${c.name} [${c.status}] (${c.evidenceCount} evidence): ${c.goal.slice(0, 60)}`)
+          }
+        }
+        if (audit.strays.length > 0) {
+          parts.push(`\n[Notice] Non-case items found under helmd-cases: ${audit.strays.join(', ')}`)
+        }
+        const openCase = audit.cases.find((c) => c.status === 'open')
+        if (openCase) {
+          parts.push(`\nActive unclosed case: ${openCase.name}. To resume: case_status(name: "${openCase.name}")`)
+        }
+        return parts.join('\n')
+      }
+
       const md = await loadCaseMd(active.dir)
       const lines = md.split('\n')
       const head = lines.slice(0, lines.indexOf('## timeline') >= 0 ? lines.indexOf('## timeline') : 12).join('\n')
@@ -80,6 +157,12 @@ export function registerCaseflowTools(ctx: Context): void {
       // The resume block is the handoff contract: it must survive a truncated window.
       const resumeAt = lines.findIndex((l) => l.startsWith('## resume'))
       const resume = resumeAt >= 0 ? lines.slice(resumeAt).join('\n').trim() : ''
+
+      const loose = await listLooseFilesInCase(active.dir)
+      const looseNotice = loose.length > 0
+        ? `\n\n[Warning] ${loose.length} loose unorganized file(s) in case root (will auto-archive to evidence/ on end_case): ${loose.join(', ')}`
+        : ''
+
       return [
         `case: ${active.name}`,
         `dir: ${active.dir}`,
@@ -88,10 +171,14 @@ export function registerCaseflowTools(ctx: Context): void {
         '',
         'recent timeline:',
         timeline || '  (empty)',
+        looseNotice,
         ...(resume ? ['', resume] : []),
         '',
         RULES,
         ...(renderAdvisoryStats() ? ['', renderAdvisoryStats()] : []),
+        ...(getStreamInterceptionStats().count > 0
+          ? ['', `[流式拒答拦截监控]\n已拦截拒答: ${getStreamInterceptionStats().count} 次 | 最近拦截: ${getStreamInterceptionStats().lastTime || '无'}\n审计日志文件: ${getStreamInterceptionStats().logFile}`]
+          : ['', `[流式拒答拦截监控]\n状态: 监控中 (当前会话拦截 0 次) | 审计日志文件: ${getStreamInterceptionStats().logFile}`]),
       ].join('\n')
     },
   }))

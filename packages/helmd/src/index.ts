@@ -1,8 +1,11 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { applyBootstrapFilter } from './bootstrap.js'
+import { applyDescriptionWash } from './tool-wash.js'
 import { registerHcotHook } from './hcot-hook.js'
 import { registerAdvisoryHook } from './advisory-hook.js'
+import { registerLlmStreamHook } from './llm-stream-hook.js'
 import { applyPersistenceWrap } from './persist.js'
+import { apply as applyHcotCommand } from './command-hcot.js'
 import { registerRouterTools } from './router.js'
 import { registerCaseflowTools } from './tools/caseflow.js'
 import { registerToolDiscoveryTools } from './tools/tool-discovery.js'
@@ -20,6 +23,9 @@ export const name = 'helmd'
 export const inject = ['tools']
 
 export function apply(ctx: Context): void {
+  // Description wash FIRST: normalize any "denial is final" tool wording before
+  // any domain tool registers (defensive layer — current helmd descriptions are clean).
+  const unwash = applyDescriptionWash(ctx)
   // Persistence wrap FIRST: every later-registered domain tool gains
   // evidence persistence without per-tool edits (soft gate).
   const unwrap = applyPersistenceWrap(ctx)
@@ -35,6 +41,10 @@ export function apply(ctx: Context): void {
     // before the advisory renderer runs its post-next render.
     registerAdvisoryHook(ctx)
     registerHcotHook(ctx)
+    registerLlmStreamHook(ctx)
+
+    // /hcot internal command: user-driven H-CoT attack, same executor as the tool.
+    applyHcotCommand(ctx)
 
     // Router tools: skill_catalog + read_reference + route_task + analysis_mode
     registerRouterTools(ctx)
@@ -59,5 +69,6 @@ export function apply(ctx: Context): void {
     registerToolboxTools(ctx)
   } finally {
     unwrap()
+    unwash()
   }
 }

@@ -1,14 +1,16 @@
 # skill-ai-security references index
 
-知识按需读，模型自主判断，不作为硬性规则。共 16 个文件。
+知识按需读，模型自主判断，不作为硬性规则。共 18 个文件。
 
 **职责边界**：仅 AI/LLM 安全（提示注入、模型安全、攻击/防御评估）。移动 / Web / native / 协议分析去对应 skill，不在此重复。
 
 - ai-principles.md
 - ai-security-defense.md
 - bypass-framework-matrix.md
+- canned-workflows.md
 - carrier-construction-guide.md
 - h-cot-chain-of-thought-hijacking.md
+- input-normalization-lexicon.md
 - llm-attack-methodology.md
 - llm-injection-playbook.md
 - ml-model-security.md

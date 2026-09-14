@@ -28,6 +28,8 @@ const catalog: Record<string, string> = {
   llm: 'prompt/injection -> llm_sim -> skill-ai-security',
 }
 
+import { existsSync, statSync } from 'node:fs'
+
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../references')
 
 export function apply(ctx: Context): void {
@@ -46,15 +48,39 @@ export function apply(ctx: Context): void {
 
   ctx.tools.register(defineTool({
     name: 'read_reference',
-    description: 'Read a reference doc on demand; apply your own judgment.',
+    description: 'Read a reference doc on demand; apply your own judgment. Use "index.md" for index.',
     parameters: {
       path: { type: 'string', required: true, description: 'Path relative to references/.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: { path: string }) {
-      const abs = resolve(refRoot, args.path)
-      if (abs !== refRoot && !abs.startsWith(refRoot + sep)) throw new Error('path out of scope')
-      return await readTextSeam(ctx, abs)
+      let cleaned = (args.path ?? '').trim().replace(/\\/g, '/')
+      cleaned = cleaned.replace(/^(\.\/|\/)+/, '')
+      if (cleaned.startsWith('references/')) {
+        cleaned = cleaned.slice('references/'.length)
+      } else if (cleaned === 'references') {
+        cleaned = ''
+      }
+      if (!cleaned || cleaned === '.') {
+        cleaned = 'index.md'
+      }
+      cleaned = cleaned.replace(/^(@dsh-security\/)?skill-([a-z0-9_-]+)/, '$2')
+
+      let target = resolve(refRoot, cleaned)
+      if (target !== refRoot && !target.startsWith(refRoot + sep)) throw new Error('path out of scope')
+
+      if (existsSync(target)) {
+        if (statSync(target).isDirectory()) {
+          const idx = resolve(target, 'index.md')
+          if (existsSync(idx)) target = idx
+        }
+      } else if (!cleaned.endsWith('.md')) {
+        const withMd = resolve(refRoot, cleaned + '.md')
+        if (existsSync(withMd)) target = withMd
+      }
+
+      return await readTextSeam(ctx, target)
     },
   }))
 }
+

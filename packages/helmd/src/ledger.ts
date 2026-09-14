@@ -249,6 +249,78 @@ export function syncHcotLedger(): string {
   return notes.length ? `[H-CoT 账本回流] ${notes.join('; ')}` : ''
 }
 
+export interface ShelfToolItem {
+  name: string
+  cat: string
+  desc: string
+  path: string
+  status: string
+}
+
+/**
+ * Parse structured tool list from TOOLS.md so both the host plane and
+ * web client can dynamically display the real installed tools on the shelf.
+ */
+export function readShelfTools(): ShelfToolItem[] {
+  try {
+    const p = TOOLS_MD()
+    if (!existsSync(p)) return []
+    const text = readFileSync(p, 'utf8')
+    const sections = text.split(/\n(?=## )/)
+    const items: ShelfToolItem[] = []
+
+    for (const sec of sections) {
+      if (!sec.startsWith('## ') || sec.startsWith('## 货架速览') || sec.startsWith('## 死路速览')) continue
+      const lines = sec.split('\n')
+      const name = lines[0].replace(/^##\s+/, '').trim()
+      let path = '(未登记)'
+      let purpose = '(待补职责)'
+      let status = 'installed'
+      let cat = '逆向分析'
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('- 路径:')) {
+          path = trimmed.replace(/^- 路径:\s*/, '').trim()
+        } else if (trimmed.startsWith('- 职责:')) {
+          purpose = trimmed.replace(/^- 职责:\s*/, '').trim()
+        } else if (trimmed.startsWith('- 状态:')) {
+          status = trimmed.replace(/^- 状态:\s*/, '').trim()
+        }
+      }
+
+      // Auto-classify category based on purpose / name keywords
+      const pLower = (name + ' ' + purpose).toLowerCase()
+      if (pLower.includes('混淆') || pLower.includes('脱壳') || pLower.includes('unpack') || pLower.includes('de4dot')) {
+        cat = '反混淆 / 脱壳'
+      } else if (pLower.includes('android') || pLower.includes('apk') || pLower.includes('dex') || pLower.includes('jadx')) {
+        cat = 'Android 逆向'
+      } else if (pLower.includes('hook') || pLower.includes('插桩') || pLower.includes('frida') || pLower.includes('hwbp') || pLower.includes('断点')) {
+        cat = '动态插桩 / 调试'
+      } else if (pLower.includes('web') || pLower.includes('渗透') || pLower.includes('sqlmap') || pLower.includes('nmap') || pLower.includes('fuzz')) {
+        cat = 'Web / 资产渗透'
+      } else if (pLower.includes('aes') || pLower.includes('加密') || pLower.includes('解密') || pLower.includes('zkm') || pLower.includes('密钥')) {
+        cat = '算法 / 密钥解密'
+      } else if (pLower.includes('pe') || pLower.includes('elf') || pLower.includes('metadata') || pLower.includes('二进制') || pLower.includes('dnfile')) {
+        cat = '二进制取证'
+      } else if (pLower.includes('h-cot') || pLower.includes('hcot') || pLower.includes('ai') || pLower.includes('模型')) {
+        cat = 'AI / 思维链安全'
+      }
+
+      items.push({
+        name,
+        cat,
+        desc: purpose,
+        path,
+        status,
+      })
+    }
+    return items
+  } catch {
+    return []
+  }
+}
+
 /**
  * Shelf overview + top dead-ends for the route card. Read-only: a routing card must not
  * write to a ledger, so folding the H-CoT result ledger in is the explicit

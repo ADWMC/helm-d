@@ -24,6 +24,7 @@ const tools = []
 const ctx = new Proxy({}, {
   get(target, prop) {
     if (prop === 'tools') { target.tools ??= { register: (def) => { if (def?.name) tools.push(def) } }; return target.tools }
+    if (prop === 'commands') { target.commands ??= { register: () => {} }; return target.commands }
     if (prop === 'on') return () => {}
     if (prop === 'get') return () => undefined
     if (typeof prop === 'string') return target[prop]

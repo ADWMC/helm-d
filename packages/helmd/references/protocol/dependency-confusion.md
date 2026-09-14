@@ -1,7 +1,7 @@
 ---
 name: dependency-confusion
 description: >-
-  Supply-chain testing via package-manager dependency confusion: when internal package names resolve to attacker-controlled public registries, leading to malicious install and script execution. Use for npm/pip/gem/Maven/Composer/Docker manifest review and authorized red-team supply-chain exercises.
+  Supply-chain testing via package-manager dependency confusion: when internal package names resolve to attacker-controlled public registries, leading to malicious install and script execution. Use for npm/pip/gem/Maven/Composer/Docker manifest review and supply-chain exercises.
 ---
 
 # SKILL: Dependency Confusion — Supply Chain Attack Playbook
@@ -74,7 +74,7 @@ gem search '^some-internal-package-name$' --remote
 # curl "https://search.maven.org/solrsearch/select?q=g:com.example+AND+a:internal-lib&rows=1&wt=json"
 ```
 
-Routing note: after package-name enumeration, consider PoC only in authorized environments; public registry lookups themselves are usually passive recon.
+Routing note: after package-name enumeration, consider a PoC; public registry lookups themselves are usually passive recon.
 
 ---
 
@@ -109,7 +109,7 @@ Routing note: after package-name enumeration, consider PoC only in authorized en
 }
 ```
 
-**pip — setup hook pattern (illustrative; use only in authorized lab packages)**
+**pip — setup hook pattern (illustrative)**
 
 ```python
 # setup.py (excerpt)
@@ -129,7 +129,7 @@ setup(
 )
 ```
 
-**Reference implementation (study / lab)**: community PoC layout and workflow similar to [`0xsapra/dependency-confusion-exploit`](https://github.com/0xsapra/dependency-confusion-exploit) — automate version bump, publish, and callback confirmation **only where you have written permission**.
+**Reference implementation (study / lab)**: community PoC layout and workflow similar to [`0xsapra/dependency-confusion-exploit`](https://github.com/0xsapra/dependency-confusion-exploit) — automate version bump, publish, and callback confirmation.
 
 ---
 
@@ -140,7 +140,7 @@ setup(
 | [**visma-prodsec/confused**](https://github.com/visma-prodsec/confused) | Scans manifest files for dependency names that may be **claimable** on public registries (multi-ecosystem). |
 | [**synacktiv/DepFuzzer**](https://github.com/synacktiv/DepFuzzer) | Automated **dependency confusion** testing workflows (use strictly in-scope). |
 
-Run these only against **your** manifests or **authorized** engagements; do not use to squat names for unrelated third parties.
+Run these against manifests in scope; do not use to squat names for unrelated third parties.
 
 ---
 
@@ -166,7 +166,7 @@ Do manifests reference package names that could be non-unique globally?
     │   ├─ YES → Lower risk; still verify CI and developer machines do not override config.
     │   └─ NO → HIGH RISK
     │         ├─ Can a public registry publish a HIGHER version inside declared ranges?
-    │         │   ├─ YES → Treat as exploitable in authorized tests; prove with callback PoC.
+    │         │   ├─ YES → Treat as exploitable; prove with callback PoC.
     │         │   └─ NO → Check pre-release tags, local `file:` deps, and stale lockfiles.
     │         └─ Are lifecycle scripts disabled/blocked in CI? (reduces impact, does not remove squat risk)
 ```

@@ -275,7 +275,7 @@ Adjust hosts/paths by duplicating `RequestEngine` instances if endpoints differ 
 
 1. **Reproducible** duplicate success under parallelism, not flaky single retries.
 2. **Server-side** artifact: two rows, two emails, two grants, or wrong final balance.
-3. **Correlate** with `x-request` (or similar) markers or unique body fields in logs (authorized environments).
+3. **Correlate** with `x-request` (or similar) markers or unique body fields in logs.
 
 **Routing summary**: if the scenario is more about business rules, pricing, or workflow bypass, load `skills/business-logic-vulnerabilities/SKILL.md`; this file focuses on **concurrency and transport-layer synchronization**.
 
