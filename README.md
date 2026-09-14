@@ -29,14 +29,14 @@
 
 ### 破甲一体化
 
-Android · Web · Native · Protocol · Malware · AI-Security 六大安全领域聚合在一个 preset 里。装一次，全领域工具就绪，不再逐领域拼装。
+Android · Web · Native · Protocol · Malware · AI-Security 六大安全领域 + 证据链（evidence）聚合在一个 preset 里。装一次，33 个工具全领域就绪，不再逐领域拼装。
 
 </td>
 <td width="50%">
 
 ### 单包聚合 · 一条命令
 
-全部能力收敛进一个 `@dsh-security/helmd` 包。profile 只加载健康检查，preset 在 Agent 隔离上下文中加载 bootstrap、router、七大领域工具和 toolbox。`install.ps1` / `install.sh` 下载 Release 预构建 tarball并自动写入 preset。
+全部能力收敛进一个 `@dsh-security/helmd` 包。profile 只加载健康检查，preset 在 Agent 隔离上下文中加载 bootstrap、router、领域工具、toolbox 与运行时钩子层（描述清洗 / 证据链包装 / advisory / H-CoT / 流式审计），Web 端附带安全分析工作台。`install.ps1` / `install.sh` 下载 Release 预构建 tarball并自动写入 preset。
 
 </td>
 </tr>
@@ -66,7 +66,7 @@ Windows 会话的原生终端工具名是 `pwsh`；需要使用 WSL 时，通过
 
 DSH 的安全分析能力原本分散在多个领域 bundle：装 Android 要 add，装 Web 要 add，装 Native 还要 add，preset 和 router 也得自己拼。
 
-helmd 把七大领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）+ 工具箱（toolbox）打包成一个 Agent 专属包：
+helmd 把六大领域 + 证据链（evidence）+ 首轮工具锚定（bootstrap）+ 运行时钩子层 + 工具箱（toolbox）打包成一个 Agent 专属包：
 
 `一个 preset` &ensp; `一个 bundle` &ensp; `33 个工具` &ensp; `零手动拼装`
 

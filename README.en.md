@@ -29,14 +29,14 @@ English | [中文](README.md)
 
 ### Armor-piercing, all-in-one
 
-Android · Web · Native · Protocol · Malware · AI-Security converge in a single preset. Install once and every domain's tools are ready — no per-domain wiring.
+Android · Web · Native · Protocol · Malware · AI-Security converge in a single preset, together with the evidence chain. Install once and all 33 tools are ready — no per-domain wiring.
 
 </td>
 <td width="50%">
 
 ### One bundle · zero wiring
 
-Everything converges into a single `@dsh-security/helmd` bundle: bootstrap, router, seven domain tool modules and the toolbox. `install.ps1` / `install.sh` fetch a prebuilt tarball from Releases and wire everything in one command.
+Everything converges into a single `@dsh-security/helmd` bundle: bootstrap, router, domain tools, the toolbox and the runtime hook layer (description washing / evidence wrap / advisory / H-CoT / stream audit), plus the web workbench. `install.ps1` / `install.sh` fetch a prebuilt tarball from Releases and wire everything in one command.
 
 </td>
 </tr>
@@ -67,7 +67,7 @@ Do not search for aliases such as `powershell`, `shell`, or `terminal`.
 
 DSH security-analysis capability used to be scattered across domain bundles: `add` Android, `add` Web, `add` Native — and you still had to wire up the preset and router yourself.
 
-helmd packs seven domains + evidence tooling + first-turn bootstrap + toolbox into one bundle:
+helmd packs six domains + evidence tooling + first-turn bootstrap + the runtime hook layer + toolbox into one bundle:
 
 `one preset` &ensp; `one bundle` &ensp; `33 tools` &ensp; `zero manual wiring`
 
