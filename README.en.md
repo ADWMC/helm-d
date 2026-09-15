@@ -4,7 +4,7 @@
 
 **Armor-piercing all-in-one security-analysis plugin for DeepSeek Harness**
 
-Mount one preset · Android · Web · Native · Protocol · Malware · AI-Security ready on day one
+Mount one preset · reverse engineering · pentest · unpacking · license bypass · Android / Web / Native / Protocol / Malware / AI-Security ready on day one
 
 English | [中文](README.md)
 
@@ -29,7 +29,7 @@ English | [中文](README.md)
 
 ### Armor-piercing, all-in-one
 
-Android · Web · Native · Protocol · Malware · AI-Security converge in a single preset, together with the evidence chain. Install once and all 33 tools are ready — no per-domain wiring.
+Reverse engineering, unpacking, license bypass and pentest workflows — Android · Web · Native · Protocol · Malware · AI-Security converge in a single preset, together with the evidence chain. Install once and all 33 tools are ready — no per-domain wiring.
 
 </td>
 <td width="50%">

@@ -4,7 +4,7 @@
 
 **DeepSeek Harness 破甲一体化安全分析插件**
 
-一个 preset 挂载 · Android · Web · Native · Protocol · Malware · AI-Security 六大领域即开即用
+一个 preset 挂载 · 逆向 · 渗透测试 · 加壳脱壳 · License 破解绕过 · Android / Web / Native / Protocol / Malware / AI-Security 六大领域即开即用
 
 [English](README.en.md) | 中文
 
@@ -29,7 +29,7 @@
 
 ### 破甲一体化
 
-Android · Web · Native · Protocol · Malware · AI-Security 六大安全领域 + 证据链（evidence）聚合在一个 preset 里。装一次，33 个工具全领域就绪，不再逐领域拼装。
+逆向分析、加壳脱壳、License 破解、渗透测试——Android · Web · Native · Protocol · Malware · AI-Security 六大安全领域 + 证据链（evidence）聚合在一个 preset 里。装一次，33 个工具全领域就绪，不再逐领域拼装。
 
 </td>
 <td width="50%">
