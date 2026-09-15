@@ -102,6 +102,21 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 - 当前计数基准：33 个工具（router 4 + tool_memory 1 + 案件生命周期 5（含 save_evidence）+ find_tool 1 + 领域 22；create_case 已废弃）。核对方法：`pnpm test:checks` 里的 `tool-catalog` 检查——它读本行声明的数字与 mock-ctx 实际注册名比对，不一致即红（改工具集而忘了改文档会当场失败）。
 - fork `ADWMC/awesome-dsh-plugin`：PR 合并后即可删（`gh repo delete --yes`）；再提 PR 时重新 fork 即可
 
+### 4.1 各商店收录台账（2026-09-14/15，v0.3.1）
+
+| 商店 | 机制 | 凭据 | 状态 |
+|------|------|------|------|
+| dshmarket.com（awesome-dsh-plugin） | 条目 yml PR，CI 校验 READMEs 与 data 一致 | [#5111](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/5111) | CI 绿，待合并；合并后删 fork |
+| dsh-plugin.shop（losebird/dsh-plugin-market） | `registry/curated/*.json` PR（站点 JS 表单最终落这里；爬虫按 `dsh-plugin` topic 扫描 + curated） | [#31](https://github.com/losebird/dsh-plugin-market/pull/31) | 待合并；合并后删 fork `ADWMC/dsh-plugin-market` |
+| DSH-Store（AI-Scarlett） | 开 issue 只填仓库地址 + monorepo 子路径，机器人静态预检 → 8h Catalog 周期全过自动上架（fail-closed） | [#877](https://github.com/AI-Scarlett/DSH-Store/issues/877) | 待机器人预检；被拒看 issue 评论补材料 |
+| DSH Market（2BingLing） | 开 issue 模板字段，每日 06:00 自动收录管道（topic `dsh-plugin` 也可被扫描进候选池） | [#157](https://github.com/2BingLing/dsh-market/issues/157) | 待次日管道 |
+
+台账维护规则：
+
+- 每次发版后四家都要走一遍同步：描述里的数字（工具数/参考文档数）必须与 `tool-catalog` 基准和打包树实测一致——CONTRIBUTING 明文「描述与代码核对，夸大即打回」
+- awesome-dsh-plugin 的 PR 若改了 `data/plugins/*.yml`，**必须同时重新生成 READMEs**（`node scripts/generate-readme.mjs`，须在 fork 目录里跑——脚本按 cwd 找 README）；CI 会机械比对
+- 商店搜索命中靠条目文本：README 首屏与各条目 description 里保留「逆向 / 渗透 / 破解 / 脱壳 / reverse / pentest / bypass」等真实能力词（均有 references/ 实据），改文案时别删
+
 ## 5. 已知坑位表（全部踩过）
 
 | 坑 | 症状 | 对策 |
