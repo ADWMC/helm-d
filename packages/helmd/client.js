@@ -1,4 +1,4 @@
-window.__ModuleLoader__.load({ id: "helm-d", factory: (require) => {
+window.__ModuleLoader__.load({ id: "@adwmc/helm-d", factory: (require) => {
 var module = { exports: {} }; var exports = module.exports;
 Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 /**
@@ -853,3 +853,11 @@ exports.apply = function apply(ctx) {
 };
 
 return module.exports; } });
+
+// Alias registration for legacy / alternate IDs
+try {
+	if (window.__ModuleLoader__ && typeof window.__ModuleLoader__.load === "function") {
+		window.__ModuleLoader__.load({ id: "helm-d", factory: (require) => window.__ModuleLoader__.require("@adwmc/helm-d") });
+		window.__ModuleLoader__.load({ id: "@dsh-security/helmd", factory: (require) => window.__ModuleLoader__.require("@adwmc/helm-d") });
+	}
+} catch (e) {}
