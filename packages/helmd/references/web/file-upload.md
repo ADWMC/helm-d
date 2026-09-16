@@ -1,5 +1,7 @@
 # file-upload-methodology
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/file-upload/00-index.md")`（解析漏洞 / 编辑器 / 截断绕过）
+
 > 来源: wgpsec/AboutSecurity (web-method) | 融合进 skill-web
 
 

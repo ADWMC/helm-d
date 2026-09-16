@@ -1,5 +1,7 @@
 # expression-language-injection
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/14-ssti.md")`（EL/SpEL/OGNL 表达式注入）
+
 > 来源: wgpsec/AboutSecurity (web-method) | 融合进 skill-web
 
 

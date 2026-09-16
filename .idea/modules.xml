@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/helm-d.iml" filepath="$PROJECT_DIR$/.idea/helm-d.iml" />
+      <module fileurl="file://$PROJECT_DIR$/packages/helmd/helmd.iml" filepath="$PROJECT_DIR$/packages/helmd/helmd.iml" />
+      <module fileurl="file://$PROJECT_DIR$/packages/skill-native/skill-native.iml" filepath="$PROJECT_DIR$/packages/skill-native/skill-native.iml" />
+    </modules>
+  </component>
+</project>

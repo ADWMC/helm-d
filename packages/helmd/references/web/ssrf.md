@@ -1,5 +1,7 @@
 # SSRF 攻击方法论
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/ssrf-cache-host/00-index.md")`（云元数据 / 缓存投毒 / Host 头 + payloader/by-category/web/ssrf.md）
+
 > 融合来源：wgpsec/AboutSecurity（方法论主体 + IP 绕过/Gopher/云 SSRF 深度）+ yaklang/hack-skills（攻击手册，见文末附录）。重复段已去重。
 > 配套：[ssrf-scenarios.md](./ssrf-scenarios.md)（WebLogic/Redis RCE 链/DNS Rebinding/K8s CVE）、[ssrf-url-parser-tricks.md](./ssrf-url-parser-tricks.md)（各语言 URL 解析差异表 + 全云元数据目录）。
 > 本文件自包含：IP 过滤绕过大全（REF: ssrf-bypass）、云 SSRF 进阶（REF: cloud-ssrf）、Gopher payload 全集（REF: gopherus-payloads）全部内联。

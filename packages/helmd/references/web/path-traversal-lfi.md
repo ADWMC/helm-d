@@ -4,6 +4,8 @@ description: >-
   Path traversal and LFI playbook. Use when file paths, download endpoints, include operations, archive extraction, or wrapper behavior may expose filesystem control.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/path-traversal/00-index.md")`（6 种编码 + WEB-INF / web.config + wrapper 链）
+
 # SKILL: Path Traversal / Local File Inclusion (LFI) — Expert Attack Playbook
 
 > **AI LOAD INSTRUCTION**: Expert path traversal and LFI techniques. Covers encoding bypass sequences, OS differences, filter bypass, PHP wrapper exploitation, log poisoning to RCE, and the critical distinction between path traversal (read only) vs LFI (execution). Base models miss encoding chains and RCE escalation paths.

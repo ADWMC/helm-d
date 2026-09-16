@@ -17,6 +17,7 @@
 | **Android 逆向** | [android/index.md](android/index.md) | APK/AAB/DEX/smali 逆向、Frida 插桩、加壳脱壳、指纹识别、防撤回与协议分析 |
 | **Native 二进制** | [native/index.md](native/index.md) | PE/ELF/Mach-O、保护器脱壳(VMP/Themida/OLLVM)、反混淆、JVM 常量解密、PWN/漏洞利用、Hook、Patch |
 | **Web 安全** | [web/index.md](web/index.md) | JS 逆向、API 签名、SQLi/XSS/SSRF/RCE/IDOR/XXE/SSTI/认证绕过等渗透测试与利用 Playbook |
+| **SRC / 众测** | [web/src-hunter/index.md](web/src-hunter/index.md) | 众测 / bug bounty / HackerOne 全量挖洞语料：19 类 playbook、305 条 payload、WAF 绕过变体、2887 份 H1 案例、国产指纹与默认凭据。**仅在 SRC 语境展开**（关键词触发：src 挖洞 / 众测 / bug bounty / 任意 X / 未授权 / 密码重置 / 支付逻辑 / 默认凭据） |
 | **AI 安全** | [ai-security/index.md](ai-security/index.md) | Prompt 注入、模型越狱、H-CoT 思维链劫持测试与防御、Agent 安全评估、Simulation |
 | **恶意代码分析** | [malware/index.md](malware/index.md) | C2 通信与流量、持久化机制、IOC 提取、YARA 规则生成、威胁样本研判 |
 | **网络协议** | [protocol/index.md](protocol/index.md) | PCAP 抓包解析、TCP/UDP 流重组、HAR 会话分析、WebSocket/gRPC/Protobuf 协议逆向 |
@@ -27,3 +28,6 @@
 
 1. **首轮定位**：优先通过 `route_task(hint: "...")` 确定主路由领域，或根据样本特征直接读取对应领域的 `<domain>/index.md`。
 2. **最小子集**：从领域索引中选取 1–2 篇与当前目标直接相关的文档深入阅读，不全量加载，控制上下文 token 开销。
+3. **SRC 语料按语境启用**：`web/src-hunter/` 含 2887 份案例 + 30k 行 payload（约 50MB），
+   仅在 SRC / 众测 / bug bounty 语境展开；常规 web 分析走 `web/index.md` 即可。
+   进入后先读 `web/src-hunter/index.md`，再按其指引逐层 Read，不要一次性遍历。

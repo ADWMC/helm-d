@@ -27,6 +27,7 @@
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
 | 依赖 cohort | `pnpm-workspace.yaml` `overrides`（宿主 dsh 0.1.5-rc.2 全家 + cordis + schemastery） | `pnpm install` → `pnpm-lock.yaml` + node_modules；`pnpm peers check` 必须无问题（跨 cohort peer = 迁移未完成） |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
+| src-hunter 语料 | 上游 zip（`src-hunter-skill-main.zip`）→ `scripts/merge-src-hunter.mjs`（拷贝+链接重写）+ `scripts/build-src-hunter-payloader.mjs`（从 raw JSON 重建 payloader）+ `scripts/normalize-src-hunter-links.mjs`（子目录化后修正 `../` 相对链接） | 生成 `references/web/src-hunter/`；`scripts/link-src-hunter-crossrefs.mjs` 在 35 篇重合主题顶部写入一行 SRC 指针（幂等） |
 | H-CoT 语料与账本 | 语料 `packages/helmd/scripts/ai-security/h_cot_variants.json`（纯数据）；结果账本 `~/.dsh/helmd-tools/h_cot_results.jsonl`（`HELMD_TOOLS_DIR` 可重定向） | 引擎直接读写；账本经工作台或 `/hcot` 清理/分组删除 |
 | 工作台 UI | `packages/helmd/client.js`（浏览器半，免构建）+ `src/hcot-settings.ts`（host 半，`pnpm build`）+ `cordis.patch.yml` 的 `dsh.client.inject` | settings `hcot` 命名空间是唯一通道：UI 写配置/动作请求，宿主消费并回写运行态 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
@@ -116,6 +117,44 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/latest/
 - 每次发版后四家都要走一遍同步：描述里的数字（工具数/参考文档数）必须与 `tool-catalog` 基准和打包树实测一致——CONTRIBUTING 明文「描述与代码核对，夸大即打回」
 - awesome-dsh-plugin 的 PR 若改了 `data/plugins/*.yml`，**必须同时重新生成 READMEs**（`node scripts/generate-readme.mjs`，须在 fork 目录里跑——脚本按 cwd 找 README）；CI 会机械比对
 - 商店搜索命中靠条目文本：README 首屏与各条目 description 里保留「逆向 / 渗透 / 破解 / 脱壳 / reverse / pentest / bypass」等真实能力词（均有 references/ 实据），改文案时别删
+
+## 4.2 src-hunter 融合语料（v0.3.x 新增）
+
+`references/web/src-hunter/` 是以子目录形式并入的**第四来源**（前三来源：自研 / AboutSecurity / hack-skills）。
+它与前三者的处理方式**故意不同**：
+
+- 前三者是「按主题合并进 `references/web/` 平铺 + 改名 + 去重」；
+- src-hunter 是「原样保留子树 + 两级按需启用」，因为它是 SRC/众测语境才展开的能力层（含 2887 份 H1 案例与 30k 行 payload，约 50MB 未压缩）。
+
+**两个必须知道的点**：
+
+1. **上游 `payloader/by-category/**.md` 与 `payloader/tools/**.md` 是乱码**（GBK 字节被当 latin1 写盘，例如 `MySQL注入` 变成 `MySQLע��`）。
+   权威源是 `payloader/raw/*.json`（完好 UTF-8），所以 payloader 全部**由脚本从 JSON 重建**，不要从上游拷 `.md`。
+2. **子目录化会打乱上游的相对链接**。上游按 `references/<dir>/x.md` 组织，下降一层后 `../x.md` 的含义变了
+   （`playbooks/xss/` 里的 `../tools/x.md` 指的是子树根，不是 `playbooks/tools/`）。
+   已用 `scripts/normalize-src-hunter-links.mjs` 全量修正（23 处），该脚本幂等。
+
+**验证**：`scripts/checks/src-hunter-route.check.mjs` 固定 —— SRC 关键词路由到 `srchunter`、
+常规 web 提示词**不**被抢走、路由卡指向的入口文件真实存在、`read_reference` 能解析文档里实际使用的
+`src-hunter/...` 路径、且子树不泄漏进 native/protocol 等领域。
+
+**`router.ts` 解析器的两处修正（v0.3.x，子目录融合暴露出来的）**：
+
+- 域内回退原先只处理**单段文件名**，所以 `read_reference(path: "src-hunter/index.md")` 返回 null ——
+  文档里 35 条交叉引用与路由卡全部失效（只有端到端解析测试才暴露，`existsSync` 文件检查看不出来）。
+  现已支持**域相对子路径**；
+- 目录没有 `index.md` 时原先会**返回该目录**，`readText` 随即抛 `EISDIR`；现返回 null。
+
+> 教训：改解析器只断言「文件存在」不够，必须断言 `resolveReferenceFile()` 的实际返回能被读取。
+
+**触发分级**（`packages/helmd/src/router.ts`）：
+
+- `ROUTE_TABLE` 的 `srchunter` 行命中 SRC 词（src 挖洞 / 众测 / bug bounty / 任意 X / 未授权 / 密码重置 / 支付逻辑 / 默认凭据 / HVV …）才展开；
+- `renderRoute()` 对 `srchunter` 走独立分支，输出「起手按序」清单并**明确警告不要全量加载**；
+- 常规 web 任务仍走 `web` 域 `references/web/`。
+
+> `fix-links.mjs` 已改为**递归**遍历并支持子目录内的相对链接（原先只读平铺文件，会把 `src-hunter/**` 的
+> 合法链接误报为断裂，且完全不检查子树内部）。URL / mailto / data 链接不再被当作文件路径。
 
 ## 5. 已知坑位表（全部踩过）
 

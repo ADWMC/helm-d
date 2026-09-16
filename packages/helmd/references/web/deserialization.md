@@ -1,5 +1,7 @@
 # deserialization-methodology
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/12-deserialization.md")`（Java/PHP/Python 反序列化链 + 385 份 RCE 案例）
+
 > 来源: wgpsec/AboutSecurity (web-method) | 融合进 skill-web
 
 

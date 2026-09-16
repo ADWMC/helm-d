@@ -4,6 +4,8 @@ description: >-
   Command injection playbook. Use when user input may reach shell commands, process execution, converters, import pipelines, or blind out-of-band command sinks.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/11-command-injection.md")`（盲注带外 / 转换器 / 导入管线）
+
 # SKILL: OS Command Injection — Expert Attack Playbook
 
 > **AI LOAD INSTRUCTION**: Expert command injection techniques. Covers all shell metacharacters, blind injection, time-based detection, OOB exfiltration, polyglot payloads, and real-world code patterns. Base models miss subtle injection through unexpected input vectors.

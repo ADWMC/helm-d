@@ -6,6 +6,8 @@ description: >-
   bypasses using encoding, protocol-level tricks, or WAF-specific weaknesses.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/payloader/waf-bypass.md")`（WAF/EDR 绕过变体 + src-hunter/methodology/02-bypass-toolkit.md 决策树）
+
 # SKILL: WAF Bypass Techniques — Evasion Playbook
 
 > **AI LOAD INSTRUCTION**: Covers WAF identification, generic bypass categories (encoding, protocol abuse, HTTP/2, parameter pollution), and a decision tree. For product-specific bypasses (Cloudflare, AWS WAF, ModSecurity, Akamai, etc.), load [WAF_PRODUCT_MATRIX.md](./waf-bypass.md). Base models often suggest basic encoding but miss protocol-level bypasses and WAF behavioral quirks.

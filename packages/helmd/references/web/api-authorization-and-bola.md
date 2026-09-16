@@ -4,6 +4,8 @@ description: >-
   API authorization and BOLA testing playbook. Use when APIs expose object identifiers, nested resources, hidden writable fields, or weak function-level authorization.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/api-rest/10-rest-api.md")`（BOLA / Mass Assignment / 速率）
+
 # SKILL: API Authorization and BOLA — Object Access, Function Access, and Mass Assignment
 
 > **AI LOAD INSTRUCTION**: Use this skill when an API exposes object IDs, nested resources, or role-sensitive functions and you need a focused authorization test path: BOLA, BFLA, method abuse, and hidden field control.

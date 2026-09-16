@@ -29,12 +29,23 @@ const DELETED_MAP = {
   '401-403-bypass-techniques.md': '401-403-bypass.md',
 }
 
-// inventory: domain -> Set(filenames)
+// inventory: domain -> Set(paths relative to the domain root, posix separators).
+// Walks subdirectories so subtree docs (web/src-hunter/**) are both indexed and
+// themselves checked; a flat readdir could not see them at all.
+function listMd(dir, prefix = '') {
+  const out = []
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const rel = prefix ? prefix + '/' + e.name : e.name
+    if (e.isDirectory()) out.push(...listMd(join(dir, e.name), rel))
+    else if (e.name.endsWith('.md')) out.push(rel)
+  }
+  return out
+}
 const inv = new Map()
 for (const d of DOMAINS) {
   const dir = join(REF, d)
   if (!existsSync(dir)) continue
-  inv.set(d, new Set(readdirSync(dir).filter((f) => f.endsWith('.md'))))
+  inv.set(d, new Set(listMd(dir)))
 }
 
 function candidates(base, ownName) {
@@ -89,26 +100,45 @@ function candidates(base, ownName) {
 }
 function kebab(s) { return s.replace(/[_\s]+/g, '-').toLowerCase() }
 
-function resolveTarget(fileDomain, relPath) {
-  // returns {domain, base} following ../domain/ or same-dir semantics
-  if (/^\.\.\/([a-z-]+)\/(.+)$/.exec(relPath)) {
-    return { domain: RegExp.$1, base: RegExp.$2 }
-  }
-  return { domain: fileDomain, base: relPath.replace(/^\.\//, '') }
+function resolveTarget(fileDomain, relPath, ownFile = '') {
+  // Returns {domain, base} with base relative to the DOMAIN root, or null when the
+  // link leaves the domain entirely.
+  //
+  // Semantic: a leading "../" climbs out of the referencing file's own directory,
+  // exactly as a browser/markdown resolver would. If the climb lands on a known
+  // domain name the link is a cross-domain reference; otherwise it stays inside the
+  // current domain (this is what makes src-hunter/playbooks/xss/ -> ../../tools/x.md
+  // resolve to the src-hunter subtree root rather than escaping to references/tools).
+  const ownDir = ownFile.includes('/') ? ownFile.slice(0, ownFile.lastIndexOf('/')) : ''
+
+  // Cross-domain form: ../<domain>/<rest>
+  const xdom = /^\.\.\/([a-z-]+)\/(.+)$/.exec(relPath)
+  if (xdom && DOMAINS.includes(xdom[1])) return { domain: xdom[1], base: xdom[2] }
+
+  // Same-domain form: resolve against the referencing file's own directory.
+  const rel = relPath.replace(/^\.\//, '')
+  const joined = ownDir ? posix.normalize(posix.join(ownDir, rel)) : rel
+  // A climb that escapes the domain root cannot be represented relative to it.
+  if (joined.startsWith('../')) return null
+  return { domain: fileDomain, base: joined }
 }
 
 let broken = [], fixed = 0, fixedFiles = new Set()
 for (const d of DOMAINS) {
   const dir = join(REF, d)
   if (!existsSync(dir)) continue
-  for (const f of readdirSync(dir).filter((x) => x.endsWith('.md'))) {
+  for (const f of listMd(dir)) {
     const p = join(dir, f)
     let text = readFileSync(p, 'utf8')
     const orig = text
     // markdown links
     text = text.replace(/\]\(([^)\s]+?\.md)(#[^)]*)?\)/g, (m, target, anchor = '') => {
       if (/^references\//i.exec(target)) return m // pre-existing hub links, out of scope
-      const { domain, base } = resolveTarget(d, target)
+      if (/^(https?:)?\/\//i.exec(target)) return m // absolute URLs are not files
+      if (/^(mailto|tel|data):/i.exec(target)) return m
+      const resolved = resolveTarget(d, target, f)
+      if (resolved === null) return m
+      const { domain, base } = resolved
       if (!inv.has(domain)) return m
       if (inv.get(domain).has(base)) return m
       for (const c of candidates(base, f)) {

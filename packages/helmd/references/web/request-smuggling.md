@@ -7,6 +7,8 @@ description: >-
   exploring client-side desync via browser fetch pipelines.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/http-smuggling.md")`（CL.TE / TE.CL / H2→H1 变体）
+
 # SKILL: HTTP Request Smuggling — Expert Attack Playbook
 
 > **AI LOAD INSTRUCTION**: Expert HTTP desync techniques. Covers CL.TE, TE.CL, TE.TE obfuscation variants, HTTP/2 downgrade and pseudo-header confusion, client-side desync (browser `fetch` pipelines), and tool-assisted fuzzing. Assumes familiarity with raw HTTP/1.1 framing and reverse-proxy topologies. This is not “header injection” — it is **message boundary disagreement** between hops.

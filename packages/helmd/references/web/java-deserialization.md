@@ -1,5 +1,7 @@
 # java-deserialization-methodology
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/12-deserialization.md")`（gadget 链与版本指纹）
+
 > 来源: wgpsec/AboutSecurity (web-method) | 融合进 skill-web
 
 

@@ -4,6 +4,8 @@ description: >-
   Open redirect playbook. Use when URL parameters, form actions, or JavaScript sinks control navigation targets and may redirect users to attacker-controlled destinations.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/oauth-saml-jwt/10-oauth-redirect.md")`（redirect_uri 白名单绕过链）
+
 # SKILL: Open Redirect — Expert Attack Playbook
 
 > **AI LOAD INSTRUCTION**: Open redirect techniques. Covers parameter-based redirects, JavaScript sinks, filter bypass, and chaining with phishing, CSRF Referer bypass, OAuth token theft, and SSRF. Often underrated but critical for phishing and as a building block in multi-step exploit chains.

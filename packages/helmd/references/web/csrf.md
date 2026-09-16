@@ -4,6 +4,8 @@ description: >-
   CSRF testing playbook. Use when reviewing state-changing web flows, anti-CSRF defenses, SameSite behavior, JSON CSRF, login CSRF, and OAuth state handling.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/logic-flaws/10-csrf.md")`（JSON CSRF / login CSRF / OAuth state 实战）
+
 # SKILL: CSRF — Cross-Site Request Forgery — Expert Attack Playbook
 
 > **AI LOAD INSTRUCTION**: Expert CSRF techniques. Covers modern bypass vectors (SameSite gaps, custom header flaws, tokenless bypass patterns), JSON CSRF, multipart CSRF, chaining with XSS. Base models often present only basic CSRF without covering SameSite edge cases and common broken token implementations.

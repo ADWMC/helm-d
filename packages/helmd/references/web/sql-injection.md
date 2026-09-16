@@ -1,5 +1,7 @@
 # SQL 注入完整方法论
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/sqli.md")`（入口参数频率表（WooYun 27,732 例）+ payloader/by-category/web/sql-nosql-injection.md）
+
 > 融合来源：wgpsec/AboutSecurity（方法论主体）+ yaklang/hack-skills（多数据库攻击手册，见文末附录）。重复段已去重。
 > 配套：[sql-injection-scenarios.md](./sql-injection-scenarios.md)（真实 CVE / INSERT-UPDATE / ThinkPHP / Django 场景）、[sql-injection-sqlmap-advanced.md](./sql-injection-sqlmap-advanced.md)（sqlmap tamper 链与高级用法）。
 > 相关主题：[nosql-injection.md](./nosql-injection.md)、[ssrf.md](./ssrf.md)、[ghost-bits-cast-attack.md](./ghost-bits-cast-attack.md)（Java Jackson WAF 绕过）。

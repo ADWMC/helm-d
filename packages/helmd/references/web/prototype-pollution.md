@@ -7,6 +7,8 @@ description: >-
   polluted Object.prototype in Node or the browser.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/17-prototype-pollution.md")`（服务端 RCE gadget 链）
+
 # SKILL: Prototype Pollution — Expert Attack Playbook
 
 > **AI LOAD INSTRUCTION**: Expert prototype pollution for client and server JS. Covers `__proto__` vs `constructor.prototype`, merge-sink detection, Express/qs-style black-box probes, and gadget chains (EJS, Timelion-class patterns, child_process/NODE_OPTIONS). Assumes you know object spread and prototype inheritance — focus is on **parser behavior** and **post-pollution sinks**.

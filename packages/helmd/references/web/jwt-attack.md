@@ -1,5 +1,7 @@
 # JWT 攻击方法论
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/oauth-saml-jwt/12-jwt.md")`（alg/kid 滥用 + 密钥混淆）
+
 > 融合来源：wgpsec/AboutSecurity（方法论主体 + 高级攻击技术）+ yaklang/hack-skills（JWT 部分速查已并入）。重复段已去重。
 > 本文件自包含：RS256→HS256 混淆、kid 注入、jku/x5u 替换、hashcat/john/c-jwt-cracker/jwt_tool 爆破工具链（原 jwt-advanced.md）全部内联。
 > 相关主题：[oauth-token-attacks.md](./oauth-token-attacks.md)（OAuth state/redirect_uri/implicit flow）。

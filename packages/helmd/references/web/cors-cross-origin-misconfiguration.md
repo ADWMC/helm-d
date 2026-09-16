@@ -4,6 +4,8 @@ description: >-
   CORS misconfiguration testing playbook. Use when analyzing cross-origin trust, credentialed browser reads, origin reflection, preflight policy bugs, and browser-based access to authenticated APIs.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/api-rest/10-rest-api.md")`（CORS 配置错误组合利用）
+
 # SKILL: CORS Misconfiguration — Credentialed Origins, Reflection, and Trust Boundary Errors
 
 > **AI LOAD INSTRUCTION**: Use this skill when browsers can access authenticated APIs cross-origin. Focus on reflected origins, credentialed requests, wildcard trust, parser mistakes, and origin allowlist bypasses. For JSONP hijacking deep dives, same-origin policy internals, honeypot de-anonymization, and CORS vs JSONP comparison, load the companion [SCENARIOS.md](./cors-cross-origin-misconfiguration-scenarios.md).

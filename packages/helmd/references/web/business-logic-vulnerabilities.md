@@ -4,6 +4,8 @@ description: >-
   Business logic vulnerability playbook. Use when reasoning about workflows, race conditions, price manipulation, coupon abuse, state machines, and multi-step authorization gaps.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/logic-flaws/11-business-logic.md")`（密码重置 4 模式 / 支付 / 验证码 + 234 份 H1 案例）
+
 # SKILL: Business Logic Vulnerabilities — Expert Attack Playbook
 
 > **AI LOAD INSTRUCTION**: Business logic flaws are scanner-invisible and high-reward on bug bounty. This skill covers race conditions, price manipulation, workflow bypass, coupon/referral abuse, negative values, and state machine attacks. These require human reasoning, not automation. For specific exploitation techniques (payment precision/overflow, captcha bypass, password reset flaws, user enumeration), load the companion [SCENARIOS.md](./business-logic-vulnerabilities-scenarios.md). For the workflow approach itself (modeling → state machine → attack-surface matrix → human judgement) load [METHODOLOGY.md](./business-logic-vulnerabilities-methodology.md). For the per-module check items load [CHECKLIST.md](./business-logic-vulnerabilities-checklist.md).

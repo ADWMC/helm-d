@@ -4,6 +4,8 @@ description: >-
   PHP type juggling and weak comparison (`==`) bypass. Use when authentication, HMAC/signature checks, or token validation uses loose equality, numeric coercion, or hash comparisons without strict types — common in legacy PHP and CTF-style code paths.
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/oauth-saml-jwt/13-auth-misc.md")`（弱比较与签名校验绕过）
+
 # SKILL: PHP Type Juggling — Weak Comparison & Magic Hash Bypass
 
 > **AI LOAD INSTRUCTION**: PHP `==` coercion, magic hashes (`0e…`), HMAC/hash loose checks, NULL from bad types, and CTF-style `strcmp` / `json_decode` / `intval` tricks. Use strict routing: map the sink (`==` vs `hash_equals`), PHP major version, and whether both operands are attacker-controlled. Routing note: when you encounter PHP login/signature logic or code like `md5($_GET['x'])==md5($_GET['y'])`, start with this skill; if `hash_equals`/`===` is already used, this path usually does not apply.

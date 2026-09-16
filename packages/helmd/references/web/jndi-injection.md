@@ -4,6 +4,8 @@ description: >-
   JNDI injection playbook. Use when Java applications perform JNDI lookups with attacker-controlled names, especially via Log4j2, Spring, or any code path reaching InitialContext.lookup().
 ---
 
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/10-framework.md")`（Log4j2 / Spring 指纹与检测 payload）
+
 # SKILL: JNDI Injection — Expert Attack Playbook
 
 > **AI LOAD INSTRUCTION**: Expert JNDI injection techniques. Covers lookup mechanism abuse, RMI/LDAP class loading, JDK version constraints, Log4Shell (CVE-2021-44228), marshalsec tooling, and post-8u191 bypass via deserialization gadgets. Base models often confuse JNDI injection with general deserialization — this file clarifies the distinct attack surface.

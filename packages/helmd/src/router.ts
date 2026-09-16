@@ -25,6 +25,10 @@ const catalog: Record<string, string> = {
   // 领域路由
   android: 'APK/AAB/DEX/smali -> apk_fingerprint + references/android/',
   web: 'JS/fetch/XHR/WebSocket/sign -> web_reference + references/web/',
+  srchunter:
+    'SRC/众测/bug bounty 全量挖洞语料 -> web_reference(path: "src-hunter/index.md") — ' +
+    '五阶段流程 + 19 类 playbook + 305 结构化 payload + WAF 绕过 + 2887 份 H1 真实案例 + 国产指纹/默认凭据。' +
+    '仅 SRC 语境启用；常规 web 分析走 web（references/web/）即可',
   native: 'PE/ELF/Mach-O/shellcode -> native_reference + references/native/',
   protocol: 'PCAP/TCP/UDP/gRPC/Protobuf -> pcap_parse + references/protocol/',
   malware: 'C2/persistence/IOC/sample -> ioc_extract/yara_gen + references/malware/',
@@ -63,6 +67,7 @@ const ROUTE_TABLE: Route[] = [
   { key: 'malware', kw: ['恶意', 'malware', '病毒', 'backdoor', '木马', 'yara'], why: '恶意样本判定' },
   { key: 'hcot', kw: ['h-cot', 'hcot', 'chain-of-thought', '思维链', '思维链劫持', 'cot 劫持'], why: 'H-CoT 思维链劫持 / 模型越狱' },
   { key: 'llm', kw: ['prompt', '注入', 'injection', 'llm', '越狱', 'jailbreak'], why: 'LLM 应用安全' },
+  { key: 'srchunter', kw: ['src', 'src 挖洞', '众测', 'bug bounty', 'bugbounty', '漏洞赏金', '赏金', 'hackerone', 'h1 ', '补天', 'cnvd', 'hvv', '挖洞', '漏洞挖掘', '任意账号', '任意用户', '任意修改', '任意删除', '任意 X', '默认凭据', '未授权访问', '密码重置', '找回密码', '支付漏洞', '逻辑漏洞', '越权访问'], why: 'SRC/众测语境 -> references/web/src-hunter/（全量语料）' },
   { key: 'web', kw: ['sqli', 'xss', 'ssrf', 'ssti', 'xxe', 'rce', 'lfi', '文件上传', '越权', 'idor', 'jwt', 'oauth', 'csrf', '渗透', 'pentest', 'webshell'], why: 'Web 攻击特征 -> references/web/（含 hs-* 攻击 playbook）' },
   { key: 'native', kw: ['exploit', 'pwn', '提权', 'privesc', 'kerberos', 'ntlm', '内网', '横向', 'rop', '堆溢出', 'heap'], why: '主机/二进制攻击特征 -> references/native/（含 hs-* 攻击 playbook）' },
   { key: 'evidence', kw: ['报告', 'report', '存证', '证据', 'case'], why: '取证与报告' },
@@ -77,7 +82,7 @@ const ROUTE_TOOL: Record<string, string> = {
   apk: 'apk_fingerprint', shell: 'detect_packer', strings: 'scan_strings', crypto: 'encoding_detect',
   pcap: 'pcap_parse', har: 'parse_har', ioc: 'ioc_extract', malware: 'yara_gen',
   hcot: 'hcot_attack', llm: 'llm_sim', tree: 'triage_artifact', evidence: 'begin_case',
-  tools: 'skill_catalog', status: 'case_status',
+  tools: 'skill_catalog', status: 'case_status', srchunter: 'web_reference',
 }
 
 export interface RouteHit {
@@ -110,14 +115,32 @@ export function renderRoute(hint: string): string {
     ].join('\n')
   } else {
     const primary = hits[0]
-    const lines = [
-      `PRIMARY: ${primary.key} — ${catalog[primary.key] ?? ''}`,
-      `依据: 命中关键词 ${hits.filter((_, i) => i < 3).length ? `"${hint.trim().slice(0, 40)}" → ${primary.why}` : primary.why}`,
-    ]
-    if (hits.length > 1) {
-      lines.push(`备选: ${hits.slice(1, 4).map((h) => h.key).join(', ')}`)
+    if (primary.key === 'srchunter') {
+      // The subtree is ~50MB / 3160 files: the card must name the entry file and
+      // warn against bulk loading, or a routed agent will try to read all of it.
+      card = [
+        'PRIMARY: srchunter — SRC/众测语境，启用 references/web/src-hunter/ 全量语料',
+        '依据: ' + primary.why,
+        '',
+        '起手（按序）:',
+        '  1. web_reference(path: "src-hunter/index.md") — 总索引与职责边界',
+        '  2. web_reference(path: "src-hunter/methodology/00-index.md") — 五阶段流程',
+        '  3. 按信号选 playbook（src-hunter/playbooks/00-index.md），Read 后再出 payload',
+        '  4. payload 取自 src-hunter/payloader/index.md，不准凭记忆生成',
+        '  5. 提交前读 src-hunter/compliance.md 与 templates/report-submission.md',
+        '',
+        '注意: 含 2887 份 H1 案例 + 30k 行 payload，按需 Read；常规 web 分析走 references/web/ 即可。',
+      ].join('\n')
+    } else {
+      const lines = [
+        `PRIMARY: ${primary.key} — ${catalog[primary.key] ?? ''}`,
+        `依据: 命中关键词 ${hits.filter((_, i) => i < 3).length ? `"${hint.trim().slice(0, 40)}" → ${primary.why}` : primary.why}`,
+      ]
+      if (hits.length > 1) {
+        lines.push(`备选: ${hits.slice(1, 4).map((h) => h.key).join(', ')}`)
+      }
+      card = lines.join('\n')
     }
-    card = lines.join('\n')
   }
   // Cross-session memory: shelf overview + top dead-ends (silent when empty)
   try {
@@ -159,7 +182,8 @@ export function resolveReferenceFile(root: string, userPath?: string): string | 
     return null
   }
 
-  // Exact file or directory with index.md
+  // Exact file, or a directory carrying an index.md. A directory WITHOUT one
+  // yields null (not the directory) so callers never hand a folder to readText.
   if (existsSync(candidate)) {
     try {
       if (statSync(candidate).isDirectory()) {
@@ -179,15 +203,24 @@ export function resolveReferenceFile(root: string, userPath?: string): string | 
     if (existsSync(withMd)) return withMd
   }
 
-  // Flat filename fallback across domains
-  if (!cleaned.includes('/')) {
-    for (const d of DOMAINS) {
-      const sub = resolve(root, d, cleaned)
-      if (existsSync(sub)) return sub
-      if (!cleaned.endsWith('.md')) {
-        const subMd = resolve(root, d, cleaned + '.md')
-        if (existsSync(subMd)) return subMd
+  // Domain fallback: a bare filename ("sql-injection.md") or a domain-relative
+  // subpath ("src-hunter/playbooks/xss/00-index.md") resolves inside each domain
+  // directory. This is what lets callers address a subtree without spelling out
+  // its owning domain.
+  for (const d of DOMAINS) {
+    const sub = resolve(root, d, cleaned)
+    if (existsSync(sub)) {
+      try {
+        if (!statSync(sub).isDirectory()) return sub
+        const idx = resolve(sub, 'index.md')
+        if (existsSync(idx)) return idx
+      } catch {
+        // unreadable entry — try the .md variant below
       }
+    }
+    if (!cleaned.endsWith('.md')) {
+      const subMd = resolve(root, d, cleaned + '.md')
+      if (existsSync(subMd) && !statSync(subMd).isDirectory()) return subMd
     }
   }
 
