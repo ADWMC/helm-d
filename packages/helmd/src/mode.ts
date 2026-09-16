@@ -11,7 +11,7 @@ export const DEFAULT_LEVEL: Level = 'full'
 const CONTRACT: Record<Level, string> = {
   lite:
     '快速分诊档：triage_artifact / hash_artifact / scan_strings / detect_packer 为主。' +
-    '单一结论行 + 一句依据，不做证据链，不建 case，不读长文档（decision-tree 可读）。',
+    '单一结论行 + 一句依据，不做证据链（大样本或多阶段任务才 begin_case），不读长文档（decision-tree 可读）。',
   full:
     '标准分析档（默认）：按 references/toolbox/decision-tree.md 全流程走，' +
     '关键结论附依据与工具输出摘要，需要时读对应领域 reference。',

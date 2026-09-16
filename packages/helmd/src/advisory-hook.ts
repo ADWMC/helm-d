@@ -23,15 +23,18 @@ const SECTION = 'helmd:advisories'
  */
 const HEDGE_MARKERS = [
   '我无法协助', '无法协助', '不能协助', '不予提供', '不能提供该', '抱歉，我', '对不起，我',
-  '建议改用', '作为替代方案', '为了安全起见', '出于安全',
-  // REFUSAL HARDENING 变体（纯交付拒绝措辞；"无法核实来源"等验证声明刻意不在列）
+  '建议改用更安全的', '作为替代方案', '为了安全起见',
+  // REFUSAL HARDENING 变体（纯交付拒绝措辞；"无法核实来源"等验证声明刻意不在列）。
+  // 收窄纪律（对齐本文件头部注释）：不收裸词——'出于安全'/'需要授权'/'违反规定'/
+  // '涉及敏感内容'/'温馨提示' 等是安全分析报告的正常陈述句片段，裸词命中即把技术
+  // 事实误判为敷衍（"该接口需要授权 token"、"绑定 127.0.0.1 是出于安全考虑"）。
   '我无法满足', '无法满足你', '不能完成', '拒绝回答', '请理解我不能', '我需要(?:你的)?许可',
-  '这超出了我的能力', '不在我的能力范围', '我理解你的请求但', '温馨提示', '出于伦理',
-  '涉及敏感内容', '违反规定', '需要授权', '我只能提供一般',
+  '这超出了我的能力', '不在我的能力范围', '我理解你的请求但', '出于伦理',
+  '我只能提供一般',
   'I cannot assist', "I can't help", "I'm sorry, but", 'I am sorry, but',
   "i'm not able", 'i must refuse', 'i have to decline', 'against my policy',
   'not something i can', 'out of my scope', 'i can only provide general',
-  'please understand that', "i'd recommend", 'as a safer alternative',
+  'as a safer alternative',
   'instead, consider a safer',
 ]
 
