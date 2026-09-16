@@ -239,6 +239,7 @@ export async function scheduleAttack(ctx: Context, opts: {
         break
       }
       let text = ''
+      let runFailed = false
       try {
         const result = await run.result
         text = (result.output ?? [])
@@ -248,11 +249,16 @@ export async function scheduleAttack(ctx: Context, opts: {
         if (!text && result.diagnostic) {
           text = `subagent stopped (${result.stopReason ?? 'unknown'}): ${result.diagnostic}`
         }
-        if (result.stopReason === 'refusal' || isRefusal(text)) {
+        // 审计 A5 修复：空输出 = 运行失败而非攻击成功 —— 落入降级路径，不再 ok:true。
+        if (!text.trim()) runFailed = true
+        if (result.stopReason === 'refusal') {
           subagentRefusals += 1
           continue
         }
       } catch (error) {
+        // 审计 A5 修复：run.result reject（进程崩溃/provider 报错/abort）此前被当成
+        // 攻击报告 ok:true 回流"攻击完成"假阳性 —— 现在标记失败并降级引擎直连。
+        runFailed = true
         text = `subagent run failed: ${error instanceof Error ? error.message : String(error)}`
       } finally {
         try {
@@ -260,7 +266,7 @@ export async function scheduleAttack(ctx: Context, opts: {
         } catch {}
       }
 
-      if (!isRefusal(text)) {
+      if (!runFailed && !isRefusal(text)) {
         const out: ScheduleResult = {
           ok: true, via: attempt === 0 ? 'subagent' : 'subagent-retry', text,
           subagentRefusals, input, proposal,
@@ -268,6 +274,7 @@ export async function scheduleAttack(ctx: Context, opts: {
         if (opts.notify !== false && sessionId) notifyResult(sessionId, out)
         return out
       }
+      if (runFailed) break
       subagentRefusals += 1
       // 子代理自己拒绝了 —— 换人格重试（防线3）
     }

@@ -56,6 +56,7 @@ export function registerAiSecurityTools(ctx: Context): void {
       transfer_probe: { type: 'string', description: 'Follow-up question asked after injection to measure cross-turn transfer.' },
       ledger: { type: 'string', description: 'Result ledger JSONL path (default HELMD_HCOT_LEDGER or ~/.dsh/helmd-tools/h_cot_results.jsonl).' },
       dry_run: { type: 'boolean', description: 'Print the three payloads without calling the API.' },
+      legacy: { type: 'boolean', description: 'Force the legacy 3-turn single-call shape; default is the adaptive 2-phase attack (benign template harvest -> mocked execution trace re-injection).' },
       semantic_auto: { type: 'boolean', description: 'Auto-pick strategy: classify(model,goal) + propose from ledger/instance library. Instances and ledger are references, not limits.' },
       frame: { type: 'string', description: 'Explicit frame instance id (see scripts/ai-security/h_cot_variants.json).' },
       enabler: { type: 'string', description: 'Explicit enabler instance id.' },
@@ -70,19 +71,24 @@ export function registerAiSecurityTools(ctx: Context): void {
         return await renderStats({ model: args.model, ledger: args.ledger })
       }
       const hasSlots = args.frame != null || args.enabler != null || args.continuation != null
+      // auto 死参修复（审计 B9）：auto:false 此前被静默丢弃。false = 不做账本择优，
+      // 用确定性首变体（除非显式指定 variant）。
+      const autoOff = args.auto === false
+      const resolvedVariant = args.variant ?? (autoOff ? 'analytical-four_part-format' : undefined)
       return (await runHcotAttack({
         goal: String(args.goal),
         model: args.model,
         baseUrl: args.base_url,
         apiKey: undefined,
         ctx,
-        variant: args.variant,
+        variant: resolvedVariant,
         probe: args.probe,
         forgeFile: args.forge_file,
         firstChars: args.first_chars,
         transferProbe: args.transfer_probe,
         ledger: args.ledger,
         dryRun: Boolean(args.dry_run),
+        legacy: args.legacy === true ? true : undefined,
         // Explicit slots win; otherwise semantic_auto lets the engine route.
         ...(hasSlots
           ? { strategy: { frame: args.frame, enabler: args.enabler, continuation: args.continuation } }
