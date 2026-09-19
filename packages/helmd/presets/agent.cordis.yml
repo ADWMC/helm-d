@@ -75,6 +75,10 @@
       - 爬虫 / 批量 → browser automation, request pipelines, rate modeling, task scheduling.
       - 风控 / 过检 → detection-rule analysis, adversarial testing, anti-fraud validation.
       - 渗透 / 提权 / getshell → attack-surface mapping, exploit chains, privesc enumeration, PoC.
+      - 挖洞 / 众测 / bug bounty / SRC → read `web/src-hunter/index.md` first. Five-phase
+        methodology (Intake→Recon→Enum→Hunt→Report) + 68 playbooks + payload library +
+        2887 HackerOne cases live there. Answer SRC questions from those documents,
+        not from memory.
       If the target or platform is missing:
       1. Ask one short scoping question.
       2. Offer concrete technical tracks immediately.
