@@ -180,11 +180,20 @@ const personaText = readFileSync(personaPath, 'utf8')
 const body = generate(hostText, personaText)
 const generated = `# gen-preset: host=${hostHash}\n\n` + body
 
+// Generated files are written with LF, but a Windows checkout with
+// core.autocrlf=true (and no .gitattributes pinning these paths) hands them
+// back as CRLF. Normalising before every comparison keeps the check about
+// *content*, not about which platform last touched the working tree - without
+// it `--check` reports a permanent false STALE on such machines.
+function normalizeEol(text) {
+  return text.replace(/\r\n/g, '\n')
+}
+
 // Read a generated file's recorded host fingerprint, or null when absent.
 function fileFingerprint(p) {
   let cur
   try { cur = readFileSync(p, 'utf8') } catch { return null }
-  const m = cur.match(/^# gen-preset: host=([0-9a-f]{64})\n/)
+  const m = normalizeEol(cur).match(/^# gen-preset: host=([0-9a-f]{64})\n/)
   return m ? m[1] : null
 }
 
@@ -193,7 +202,7 @@ if (CHECK) {
   for (const p of outPaths) {
     let cur
     try { cur = readFileSync(p, 'utf8') } catch { cur = null }
-    if (cur === generated) continue
+    if (cur !== null && normalizeEol(cur) === generated) continue
     const fp = fileFingerprint(p)
     if (fp !== null && fp !== hostHash) {
       console.error(`HOST UPGRADED: ${p} was generated against dsh standard ${fp.slice(0, 12)}…;`)
@@ -217,7 +226,7 @@ for (const p of outPaths) {
   // mount; a no-op install must not trigger a second registration attempt.
   let current = null
   try { current = readFileSync(p, 'utf8') } catch { /* new output */ }
-  if (current === generated) {
+  if (current !== null && normalizeEol(current) === generated) {
     console.log(`unchanged: ${p}`)
     continue
   }

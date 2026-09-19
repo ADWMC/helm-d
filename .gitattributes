@@ -1,0 +1,18 @@
+# Line-ending normalization. The repository stores LF; checkouts on Windows may
+# be CRLF. Several build/verify scripts compare generated files byte-for-byte
+# (scripts/gen-preset.mjs --check, scripts/repack.ps1), so the rule has to be
+# explicit rather than inherited from each machine's global core.autocrlf —
+# with autocrlf=true and no .gitattributes, `gen-preset --check` reported a
+# permanent false STALE on a clean checkout.
+* text=auto eol=lf
+
+# Generated agent presets are compared byte-for-byte by gen-preset --check.
+presets/full-reverse/agent.cordis.yml text eol=lf
+packages/helmd/presets/agent.cordis.yml text eol=lf
+
+# Not text: keep these byte-exact on every platform.
+*.tgz binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary

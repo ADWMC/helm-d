@@ -1,24 +1,60 @@
 // Artifacts under test for the host-seam checks: the installed host `dsh-session`
 // package plus helm-d's built output. One responsibility: locate and load them, or
 // report their absence so a check can skip instead of guessing.
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 export const repoRoot = join(import.meta.dirname, '..', '..')
 export const distDir = join(repoRoot, 'packages', 'helmd', 'dist')
 
-/** Installed host `dsh-session` entry, or null when this machine has no global dsh. */
-export function hostSessionEntry() {
+const SESSION_TAIL = ['@deepseek-ai', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-session', 'lib', 'index.js']
+
+/**
+ * Candidate `<prefix>/node_modules` roots that may hold a global `@deepseek-ai/dsh`.
+ *
+ * A dsh install is not always the npm-global one: the official installer and
+ * bundled/portable Node setups put it beside their own binary (e.g.
+ * `D:\NodeJS\node_modules`). Probing APPDATA alone made every host-seam check
+ * skip silently on such machines — the suite still printed `PASS`, so a broken
+ * host integration looked green. Derive roots from wherever this process can
+ * actually observe dsh; keep the explicit env override first.
+ */
+function candidateNodeModules() {
   const roots = [
     process.env.DSH_NODE_MODULES,
     process.env.APPDATA ? join(process.env.APPDATA, 'npm', 'node_modules') : undefined,
     '/usr/local/lib/node_modules',
     '/usr/lib/node_modules',
-  ].filter((root) => typeof root === 'string')
-  for (const root of roots) {
-    const entry = join(root, '@deepseek-ai', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-session', 'lib', 'index.js')
-    if (existsSync(entry)) return entry
+  ]
+
+  // A PATH entry IS the install prefix: the official Windows bundle ships
+  // `D:\NodeJS\dsh` beside `D:\NodeJS\node_modules`, so probing `dirname`
+  // (which yields `D:\`) misses it — probe the entry itself. Unix layouts put
+  // the global tree one level down under `<prefix>/lib`, so cover both.
+  const sep = process.platform === 'win32' ? ';' : ':'
+  for (const raw of (process.env.PATH ?? '').split(sep)) {
+    const dir = raw.replace(/[\/]+$/, '')
+    if (dir === '') continue
+    roots.push(join(dir, 'node_modules'), join(dir, 'lib', 'node_modules'))
+  }
+
+  return roots.filter((root) => typeof root === 'string' && root !== '')
+}
+
+/** Installed host `dsh-session` entry, or null when this machine has no global dsh. */
+export function hostSessionEntry() {
+  const seen = new Set()
+  for (const root of candidateNodeModules()) {
+    const key = root.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    const entry = join(root, ...SESSION_TAIL)
+    if (existsSync(entry)) {
+      // pnpm-style trees expose the package through a symlink; resolve it so
+      // the relative `../..` walks in hostStandardEntry() still land correctly.
+      try { return realpathSync(entry) } catch { return entry }
+    }
   }
   return null
 }
