@@ -11,14 +11,17 @@ export const DEFAULT_LEVEL: Level = 'full'
 const CONTRACT: Record<Level, string> = {
   lite:
     '快速分诊档：triage_artifact / hash_artifact / scan_strings / detect_packer 为主。' +
-    '单一结论行 + 一句依据，不做证据链（大样本或多阶段任务才 begin_case），不读长文档（decision-tree 可读）。',
+    '单一结论行 + 一句依据，不做证据链（大样本或多阶段任务才 begin_case），不读长文档（decision-tree 可读）。' +
+    '推进纪律：缺材料也先产出下一命令或 starter 脚本，不以纯建议收尾。',
   full:
     '标准分析档（默认）：按 references/toolbox/decision-tree.md 全流程走，' +
-    '关键结论附依据与工具输出摘要，需要时读对应领域 reference。',
+    '关键结论附依据与工具输出摘要，需要时读对应领域 reference。' +
+    '推进纪律：单个检查点失败即换技术轨道重试，账本记 dead-end。',
   deep:
-    '深度取证档：create_case 建结构化工作区，timeline/workitems 记录每步，' +
+    '深度取证档：begin_case 建结构化工作区，timeline 记录每步，' +
     '结论按 severity/confidence 分级并按 references/evidence/reporting.md 出报告。' +
-    '外部工具记录版本、命令、时间戳、输入哈希。',
+    '外部工具记录版本、命令、时间戳、输入哈希。' +
+    '推进纪律：recon→弱点→策略→脚本→验证五步管线，每步落一个工件，禁止空步骤。',
 }
 
 const sessions = new Map<string, Level>()
