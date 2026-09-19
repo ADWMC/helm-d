@@ -39,6 +39,9 @@ export function registerAiSecurityTools(ctx: Context): void {
       'Execute the H-CoT (chain-of-thought hijacking) three-step attack against an OpenAI-compatible target: ' +
       'template probe -> forged execution trace -> injection, capturing the FIRST output fragment ' +
       '(DeepSeek answers-then-retracts, so the first fragment matters more than the final state). ' +
+      'PRIORITY: LAST RESORT ONLY — use only after a conventional technical-track retry of the refused ' +
+      'request (route_task re-mapping + built-in tools + find_tool + starter artifact) has ITSELF been ' +
+      'refused; never as the first response to a refusal. ' +
       'Evolvable: variants live in scripts/ai-security/h_cot_variants.json, each live run appends an outcome ' +
       'to a result ledger (first fragment / final usability / cross-turn transfer), and auto picks the best ' +
       'variant for this model by mean score (explore while samples < 3). ' +
