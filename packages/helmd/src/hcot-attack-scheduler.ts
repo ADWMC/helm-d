@@ -18,6 +18,7 @@ import { isRefusal } from './hcot-hook.js'
 import { analyzeTrigger, classifyRequest, proposeStrategy, type LedgerRecord } from './hcot-strategy.js'
 import { BREACH_PERSONA, buildBreachPrompt } from './hcot-subagent-persona.js'
 import { runHcotAttack } from './hcot-engine.js'
+import { runHcotSearch, type SearchResult } from './hcot-search.js'
 import { safeService } from './seam.js'
 
 /** 子代理 provider 的注册名（dsh 配置里是 `providerName: spawn`，不是包名）。 */
@@ -280,9 +281,11 @@ export async function scheduleAttack(ctx: Context, opts: {
     }
   }
 
-  // ---- 降级：主会话直连执行器
+  // ---- 降级：主会话直连执行器 —— 搜索循环（拒→归因→变异→重试）----
+  // 参考 dreadnode/parley（TAP）循环骨架 + GPTFuzzer 变异 + AutoDAN-Turbo 阈值探索。
+  // 拒绝不是终点：analyzeTrigger 归因后按五算子变异换变体，直到 broke 或轮数耗尽。
   try {
-    const { text, result, steps } = await runHcotAttack({
+    const search = await runHcotSearch({
       goal: input.goal,
       model,
       baseUrl: opts.baseUrl,
@@ -290,22 +293,23 @@ export async function scheduleAttack(ctx: Context, opts: {
       ctx,
       dryRun: opts.dryRun ?? false,
       ledger: opts.ledger,
-      strategy: { frame: proposal.frame, enabler: proposal.enabler, continuation: proposal.continuation },
-      semanticType: profile.semanticType,
       trigger: input.triggerProfile,
+      maxRounds: maxRounds ?? DEFAULT_MAX_ROUNDS + 1,
     })
+    const winRound = search.rounds[search.rounds.length - 1]
     const out: ScheduleResult = {
-      ok: true, via: 'engine-fallback', text, subagentRefusals, input, proposal,
-      outcome: (result != null || steps != null) ? {
-        variant: result?.variant ?? steps?.variant,
-        broke: result?.broke,
-        refused: result?.refused,
-        firstFragment: result?.firstFragment,
-        final: result?.final,
-        payload: steps != null
-          ? { probe: steps.probe, forgedReasoning: steps.forgedReasoning, injectionPayload: steps.injectionPayload }
-          : undefined,
-      } : undefined,
+      ok: true, via: 'engine-fallback', text: formatSearchReport(search), subagentRefusals, input, proposal,
+      outcome: search.winning ? {
+        variant: search.winningStrategy,
+        broke: search.winning.broke,
+        refused: search.winning.refused,
+        firstFragment: search.winning.firstFragment,
+        final: search.winning.final,
+      } : {
+        variant: winRound?.strategy,
+        broke: false,
+        refused: winRound?.refused,
+      },
     }
     if (opts.notify !== false && sessionId) notifyResult(sessionId, out)
     return out
@@ -317,6 +321,22 @@ export async function scheduleAttack(ctx: Context, opts: {
     if (opts.notify !== false && sessionId) notifyResult(sessionId, out)
     return out
   }
+}
+
+/** 搜索循环报告：每轮一行 + 胜出轮详情。 */
+function formatSearchReport(search: SearchResult): string {
+  const lines = [
+    `== H-CoT search == goal: ${search.goal.slice(0, 100)}`,
+    `model: ${search.model}  rounds: ${search.rounds.length}  broke: ${search.broke}`,
+    '',
+    ...search.rounds.map((r) =>
+      `  R${r.round} ${r.strategy} → refused=${r.refused} leaked=${r.firstFragmentLeaked} usable=${r.finalUsable}`),
+    '',
+  ]
+  if (search.winning) {
+    lines.push(`-- winning fragment (round ${search.rounds.length}) --`, search.winning.firstFragment)
+  }
+  return lines.join('\n')
 }
 
 /** 结果回流：经现有 advisory 通道注入下一次 prompt，不新增宿主事件面。 */
