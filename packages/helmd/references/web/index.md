@@ -1,8 +1,8 @@
-# skill-web references index
+# web references index
 
 知识按需读，模型自主判断，不作为硬性规则。
 
-**职责边界**：仅 Web 应用层——前端 JS、API 黑盒、Web 漏洞、WAF / 缓存 / CSP。协议层归 `skill-protocol`，框架源码审计与移动端归各自 skill。
+**职责边界**：仅 Web 应用层——前端 JS、API 黑盒、Web 漏洞、WAF / 缓存 / CSP。协议层归 protocol 域，框架源码审计与移动端归各自域。
 
 **来源说明**：自研文档 + 两批外部融合（均已按主题重命名并入，不再带前缀）——[wgpsec/AboutSecurity](https://github.com/wgpsec/AboutSecurity)（原 `as-*`，46 篇）与 [yaklang/hack-skills](https://github.com/yaklang/hack-skills)（原 `hs-*`，56 篇）。同名主题已合并去重，互链同步改写。
 

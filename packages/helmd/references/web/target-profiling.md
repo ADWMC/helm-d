@@ -1,11 +1,11 @@
 # target-profiling
 
-> 来源: wgpsec/AboutSecurity (recon) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (recon) | 融合进 web 域参考库
 
 
 # 目标全景画像方法论
 
-本技能与 `recon-full`（主动扫描）互补：recon-full 负责「发现」，target-profiling 负责「分析和整理」。如果还没做侦察，先执行 recon-full。
+本文档与 `recon-full`（主动扫描）互补：recon-full 负责「发现」，target-profiling 负责「分析和整理」。如果还没做侦察，先执行 recon-full。
 
 ## Phase 1: 数据汇总
 用 `evidence_list`（按类型筛选资产记录）和 `list_vulns` 获取已有的侦察数据。如果数据不足，补充执行：

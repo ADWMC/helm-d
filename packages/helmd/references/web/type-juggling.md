@@ -280,4 +280,4 @@ Unserialize user input into objects whose `__toString` or properties feed into `
 
 ---
 
-**Safety & scope**: Run against local lab targets. This skill explains **language semantics** for defense and assessment — keep destructive payloads off production, the one retained red line.
+**Safety & scope**: Run against local lab targets. This document explains **language semantics** for defense and assessment — keep destructive payloads off production, the one retained red line.

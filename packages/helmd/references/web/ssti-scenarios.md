@@ -76,7 +76,7 @@ GET /pwn/anything
 # Check X-Pwn response header for command output
 ```
 
-Also see the dedicated [expression-language-injection](./expression-language-injection.md) skill for SpEL/OGNL deep dives.
+Also see the dedicated [expression-language-injection](./expression-language-injection.md) document for SpEL/OGNL deep dives.
 
 ---
 

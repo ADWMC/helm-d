@@ -315,7 +315,7 @@ Compromised host — where to move next?
 │   ├── Internal web apps? → tunnel + attack (§5.1)
 │   ├── Databases (3306/5432/6379)? → check harvested creds (§3)
 │   ├── SMB/NFS shares? → mount + search for creds/SUID (§6)
-│   └── Kubernetes API (6443)? → load kubernetes-pentesting skill
+│   └── Kubernetes API (6443)? → load kubernetes-pentesting document
 │
 ├── Can reach other hosts?
 │   ├── Direct SSH? → use keys/passwords

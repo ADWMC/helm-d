@@ -1,6 +1,6 @@
 # python-prototype-pollution
 
-> 来源: wgpsec/AboutSecurity (web-method) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (web-method) | 融合进 web 域参考库
 
 
 # Python 原型链污染方法论
@@ -102,7 +102,7 @@ curl -X POST http://target/api/get \
 
 | 技术 | 入口 | 关系 |
 |------|------|------|
-| **原型链污染** | merge/set_ 接口 | 本 skill |
+| **原型链污染** | merge/set_ 接口 | 本文档 |
 | **SSTI** | 模板注入点 | 原型链污染可改 Jinja2 定界符绕过 SSTI 过滤 |
 | **反序列化** | pickle/json | SECRET_KEY 被污染后可伪造 session → 触发 pickle 反序列化 |
 

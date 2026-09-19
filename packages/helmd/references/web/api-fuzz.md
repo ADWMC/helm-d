@@ -1,6 +1,6 @@
 # api-fuzz
 
-> 来源: wgpsec/AboutSecurity (web-method) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (web-method) | 融合进 web 域参考库
 
 
 # API 安全测试方法论

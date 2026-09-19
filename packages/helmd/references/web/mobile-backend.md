@@ -1,6 +1,6 @@
 # mobile-backend
 
-> 来源: wgpsec/AboutSecurity (auth) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (auth) | 融合进 web 域参考库
 
 
 # 移动 App 后端 API 安全测试方法论

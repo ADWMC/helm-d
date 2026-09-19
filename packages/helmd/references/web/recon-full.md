@@ -1,11 +1,11 @@
 # recon-full
 
-> 来源: wgpsec/AboutSecurity (recon) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (recon) | 融合进 web 域参考库
 
 
 # 主动式全流程侦察方法论
 
-本技能是渗透测试的标准第一步，目标是从域名/IP 出发，尽可能多地发现资产和漏洞。
+本文档是渗透测试的标准第一步，目标是从域名/IP 出发，尽可能多地发现资产和漏洞。
 
 ## 深入参考
 
@@ -184,7 +184,7 @@ console.log(__BUILD_MANIFEST.sortedPages)
 
 ### SPA / JS Bundle
 
-React、Vue、Angular 等 SPA 的 API 端点常在 JS bundle 中，发现后应转入 `js-api-extract` 技能做系统化提取。
+React、Vue、Angular 等 SPA 的 API 端点常在 JS bundle 中，发现后应转入 `js-api-extract` 文档做系统化提取。
 
 ---
 

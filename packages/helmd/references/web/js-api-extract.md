@@ -1,6 +1,6 @@
 # js-api-extract
 
-> 来源: wgpsec/AboutSecurity (recon) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (recon) | 融合进 web 域参考库
 
 
 # JavaScript API 端点提取方法论

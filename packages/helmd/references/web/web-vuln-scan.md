@@ -1,11 +1,11 @@
 # web-vuln-scan
 
-> 来源: wgpsec/AboutSecurity (web-method) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (web-method) | 融合进 web 域参考库
 
 
 # 单目标 Web 深度漏洞扫描方法论
 
-与 `recon-full`（广度优先、资产发现）不同，本技能是**深度优先**——对已确定的单个 Web 目标做全面漏洞测试。
+与 `recon-full`（广度优先、资产发现）不同，本文档是**深度优先**——对已确定的单个 Web 目标做全面漏洞测试。
 
 ## Phase 1: 技术栈驱动的扫描策略
 
@@ -62,7 +62,7 @@ ffuf -u http://target/FUZZ -w /pentest/AboutSecurity/Dic/Web/Directory/Fuzz_comm
 自动化工具覆盖不了逻辑漏洞和需要上下文理解的漏洞。对每个功能点做针对性测试：
 
 ### 3.1 输入点测试矩阵
-| 功能点 | 优先测试 | 参考技能 |
+| 功能点 | 优先测试 | 参考文档 |
 |--------|----------|----------|
 | 搜索/查询 | SQL 注入 | `sql-injection-methodology` |
 | 登录表单 | 弱密码、SQL注入、暴力破解 | `default-cred-sweep` |

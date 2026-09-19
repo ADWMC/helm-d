@@ -1,6 +1,6 @@
 # passive-recon
 
-> 来源: wgpsec/AboutSecurity (recon) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (recon) | 融合进 web 域参考库
 
 
 # 被动 OSINT 情报收集方法论

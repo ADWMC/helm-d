@@ -257,7 +257,7 @@ Need remote shell on target
 │   ├── Windows target?
 │   │   ├── PowerShell available? → PS reverse shell (§6)
 │   │   ├── Need binary? → msfvenom payload (§7)
-│   │   └── AV blocking? → load windows-av-evasion skill
+│   │   └── AV blocking? → load windows-av-evasion document
 │   │
 │   └── Web server (upload possible)?
 │       ├── PHP? → PHP web shell (§3) → upgrade to reverse shell

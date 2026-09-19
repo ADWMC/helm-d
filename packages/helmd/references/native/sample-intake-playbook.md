@@ -25,17 +25,17 @@
 
 | 信号 | 先加载 |
 |------|--------|
-| APK / AAB / DEX / smali / class loader | `apk_fingerprint` → skill-android |
+| APK / AAB / DEX / smali / class loader | `apk_fingerprint` → android 域 |
 | SO / PE / ELF / Mach-O / 汇编 | `detect_packer` + `native_reference` |
 | 壳 / packer / loader / OEP | `detect_packer` → `packer-handling.md` |
 | Frida / Interceptor / spawn / attach | `dynamic-analysis-frida.md` |
 | anti-Frida / maps / 端口 / 线程 / Root | `anti-frida-workarounds.md` / `anti-debug-methodology.md` |
-| JS hook / fetch / XHR / WebSocket / 签名 | `bot_analyze` → skill-web |
+| JS hook / fetch / XHR / WebSocket / 签名 | `bot_analyze` → web 域 |
 | 混淆 / JSFuck / webpack / 控制流平坦化 | `code-obfuscation-deobfuscation.md` |
 | sign / token / cookie / 加密请求 | `crypto-analysis-methodology.md` / `custom-xor-cipher-reversal.md` |
-| PCAP / TCP / UDP / WebSocket / gRPC | `pcap_parse` / `state_machine` → skill-protocol |
-| 恶意样本 / C2 / IOC | `ioc_extract` / `yara_gen` → skill-malware |
-| prompt / model / injection | `llm_sim` → skill-ai-security |
+| PCAP / TCP / UDP / WebSocket / gRPC | `pcap_parse` / `state_machine` → protocol 域 |
+| 恶意样本 / C2 / IOC | `ioc_extract` / `yara_gen` → malware 域 |
+| prompt / model / injection | `llm_sim` → ai-security 域 |
 | 崩溃 / fuzz / minidump / 覆盖率 | `unicorn-templates.md` / 动态分析 |
 | CTF / crackme / flag | CTF 流程 + 决策点 |
 

@@ -1,6 +1,6 @@
 # subdomain-deep
 
-> 来源: wgpsec/AboutSecurity (recon) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (recon) | 融合进 web 域参考库
 
 
 # 深度子域名挖掘方法论

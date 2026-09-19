@@ -1,13 +1,13 @@
 # social-engineering
 
-> 来源: wgpsec/AboutSecurity (recon) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (recon) | 融合进 web 域参考库
 
 
 # 社会工程学情报收集方法论
 
 > **⛔ 深入参考**：钓鱼邮件模板、pretexting 话术、凭据猜测脚本、水坑攻击方法见 下文「REF: social-engineering-techniques」
 
-社工攻击的成功率取决于前期情报质量。本技能聚焦于人员和组织层面的情报收集，为后续的钓鱼/水坑/凭据猜测提供弹药。
+社工攻击的成功率取决于前期情报质量。本文档聚焦于人员和组织层面的情报收集，为后续的钓鱼/水坑/凭据猜测提供弹药。
 
 ## Phase 1: 邮箱格式发现
 通过 `http_request` 或 `curl` 查询 Hunter API 搜索目标域名关联的邮箱地址。

@@ -1,6 +1,6 @@
 # python-web-debug
 
-> 来源: wgpsec/AboutSecurity (web-method) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (web-method) | 融合进 web 域参考库
 
 
 # Python Web Debug 模式利用

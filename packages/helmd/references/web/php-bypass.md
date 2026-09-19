@@ -1,12 +1,12 @@
 # php-bypass
 
-> 来源: wgpsec/AboutSecurity (web-method) | 融合进 skill-web
+> 来源: wgpsec/AboutSecurity (web-method) | 融合进 web 域参考库
 
 
 # PHP 安全特性绕过方法论
 
 
-当你已获取 webshell（能执行 PHP 代码）但无法执行系统命令时，本 skill 指导你突破 `disable_functions` 和 `open_basedir` 限制。
+当你已获取 webshell（能执行 PHP 代码）但无法执行系统命令时，本文档 指导你突破 `disable_functions` 和 `open_basedir` 限制。
 
 ## 深入参考
 

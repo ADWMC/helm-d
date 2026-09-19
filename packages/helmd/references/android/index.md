@@ -1,8 +1,8 @@
-# skill-android references index
+# android references index
 
 知识按需读，模型自主判断，不作为硬性规则。共 35 个文件。
 
-**职责边界**：仅移动端（Android/iOS）——APK/IPA、Java/ObjC Bridge、移动 Frida、流量拦截。通用 Frida API 与 native Interceptor 归 `skill-native`；桌面 PE/ELF 二进制归 `skill-native`。
+**职责边界**：仅移动端（Android/iOS）——APK/IPA、Java/ObjC Bridge、移动 Frida、流量拦截。通用 Frida API 与 native Interceptor 归 native 域；桌面 PE/ELF 二进制归 native 域。
 
 - androguard-apk-fallback.md
 - android-apk-malware-analysis.md
