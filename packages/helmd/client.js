@@ -485,372 +485,298 @@ exports.apply = function apply(ctx) {
 	});
 
 	// --------------------------------------------------------------------------
-	// 3. Right Sidebar Workbench Tab: HelmdWorkbenchPanel
-	// --------------------------------------------------------------------------
-	// Universal baseline fallback for cross-platform distribution (no hardcoded user/drive paths)
+	// 3. Right Sidebar Workbench Tab: 分类工具货架 + 攻击记录 + 智能判断 + 拦截日志
+
+	// ── 外部工具货架的基线数据（跨平台分发） ──────────────────────
 	const UNIVERSAL_TOOL_BASELINE = [
-		{ name: "de4dot", cat: "反混淆 / 脱壳", desc: ".NET 混淆器自动识别与符号脱壳清洗", path: "~/.dsh/helmd-tools/de4dot" },
-		{ name: "frida", cat: "动态插桩", desc: "Native / Java / ObjC 运行时 Hook 与跟踪", path: "Python site-packages / frida" },
-		{ name: "jadx", cat: "Android 逆向", desc: "DEX/APK 字节码反编译为 Java 代码", path: "~/.dsh/helmd-tools/jadx" },
-		{ name: "ghidra", cat: "静态逆向", desc: "NSA 开源多架构反编译器与反汇编平台", path: "~/.dsh/helmd-tools/ghidra" },
-		{ name: "apktool", cat: "Android 逆向", desc: "APK 资源解包、重打包与 smali 反编译", path: "~/.dsh/helmd-tools/apktool" },
-		{ name: "wireshark / tshark", cat: "网络抓包", desc: "链路层与应用层数据包截获与协议解构", path: "System PATH / Wireshark" },
-		{ name: "radare2", cat: "二进制分析", desc: "跨平台命令行汇编分析与调试框架", path: "System PATH / radare2" },
-		{ name: "x64dbg", cat: "动态调试", desc: "Windows x64/x32 平台用户态断点与内存分析", path: "~/.dsh/helmd-tools/x64dbg" },
-		{ name: "yara", cat: "特征匹配", desc: "恶意代码与文件特征规则扫描检测", path: "Python yara-python" },
-		{ name: "sqlmap", cat: "漏洞研判", desc: "SQL 注入自动化漏洞验证与利用分析", path: "Python sqlmap / WSL" },
-		{ name: "nmap", cat: "网络资产", desc: "端口扫描与网络拓扑服务指纹识别", path: "System PATH / nmap" },
-		{ name: "mitmproxy", cat: "协议代理", desc: "HTTP/HTTPS 中间人拦截、修改与回放", path: "Python mitmproxy" },
-		{ name: "capstone / keystone", cat: "引擎库", desc: "多架构机器码反汇编与汇编生成引擎", path: "Node/Python Bindings" },
-		{ name: "ai-eval", cat: "AI 安全", desc: "模型投毒检测、越狱提示词与越权判定", path: "helmd ai-security" },
+		{ name: "de4dot", cat: "逆向", desc: ".NET 混淆器自动识别与符号脱壳", path: "~/.dsh/helmd-tools/de4dot" },
+		{ name: "hwbp_engine6_7", cat: "逆向", desc: "硬件断点 + 内存取证", path: "~/.dsh/helmd-tools/hwbp" },
+		{ name: "LuckyStarMcp_py", cat: "逆向", desc: "Android MCP 桥（14447）", path: "~/.dsh/helmd-tools/LuckyStarMcp" },
+		{ name: "kali-wsl-webtoolchain", cat: "webpentest", desc: "Kali WSL2 工具链（nmap/sqlmap/nikto/gobuster/ffuf/nuclei/wpscan...）", path: "WSL kali-linux" },
+		{ name: "ZkmProbe3_java_ZKM24_", cat: "逆向", desc: "ZKM 24 字符串离线解密", path: "~/.dsh/helmd-tools/ZkmProbe3" },
+		{ name: "dnfile_pefile_NET_metadata_forensics_", cat: "netsec", desc: ".NET 元数据/方法体取证", path: "~/.dsh/helmd-tools/dnfile" },
+		{ name: "python-resolution-windows", cat: "generic", desc: "Windows Python 解析（py/python3）", path: "System PATH" },
+		{ name: "zstd-jsonl_mjs", cat: "generic", desc: "zstd 压缩 JSONL 读写", path: "~/.dsh/helmd-tools/zstd-jsonl" },
+		{ name: "dsh-archived_ps1", cat: "generic", desc: "DSH 归档会话恢复", path: "~/.dsh/helmd-tools/dsh-archived" },
 	];
 
-	function HelmdWorkbenchPanel(props) {
-		const [activeTab, setActiveTab] = React.useState("hcot");
-		const [hcotStatus, setHcotStatus] = React.useState("就绪 (Ready)");
-		const [hcotMode, setHcotMode] = React.useState("自适应先教后测");
+	// ── 工具分类体系（大类 → 小类） ─────────────────────────────
+	const TOOL_TAXONOMY = [
+		{ id: "recon", icon: "\uD83D\uDD0D", label: "侦察与分析", sub: [
+			{ id: "triage", label: "样本分诊", tools: ["triage_artifact", "hash_artifact", "detect_packer"] },
+			{ id: "strings", label: "字符串与编码", tools: ["scan_strings", "encoding_detect", "xor_bruteforce"] },
+			{ id: "fs", label: "文件系统", tools: ["glob", "grep", "read", "read_image"] },
+			{ id: "net", label: "网络侦察", tools: ["web_fetch", "web_search"] },
+		]},
+		{ id: "attack", icon: "\uD83D\uDCA5", label: "攻击与利用", sub: [
+			{ id: "injection", label: "注入类", tools: [] },
+			{ id: "auth", label: "认证绕过", tools: [] },
+			{ id: "rce", label: "命令执行", tools: [] },
+			{ id: "hcot", label: "H-CoT 劫持", tools: ["hcot_attack"] },
+		]},
+		{ id: "judge", icon: "\uD83E\uDDE0", label: "智能判断", sub: [
+			{ id: "jev", label: "TypeSafe Jev", tools: ["jev_decide"] },
+		]},
+		{ id: "evidence", icon: "\uD83D\uDCCB", label: "取证与报告", sub: [
+			{ id: "case", label: "Case 管理", tools: ["begin_case", "case_status", "record_finding", "end_case"] },
+			{ id: "evidence", label: "证据存储", tools: ["save_evidence", "evidence_reference"] },
+		]},
+		{ id: "external", icon: "\uD83D\uDEE0", label: "外部工具货架", sub: [
+			{ id: "reversing", label: "逆向工程", tools: [] },
+			{ id: "webpentest", label: "Web 渗透", tools: [] },
+			{ id: "netsec", label: ".NET / 逆向", tools: [] },
+			{ id: "generic", label: "通用", tools: [] },
+		]},
+		{ id: "system", icon: "\u2699", label: "系统与配置", sub: [
+			{ id: "host", label: "宿主工具", tools: ["pwsh", "bash", "write", "edit", "todo_write", "present"] },
+			{ id: "subagent", label: "子代理", tools: ["subagent", "subagent_fork", "list_agents", "interrupt_agent", "send_message"] },
+			{ id: "task", label: "任务与目标", tools: ["create_goal", "get_goal", "update_goal", "job_list", "job_output", "job_kill"] },
+			{ id: "routing", label: "路由与模式", tools: ["route_task", "analysis_mode", "skill_catalog"] },
+		]},
+	];
 
-		// Read dynamic shelf tools synced from host's TOOLS.md via settingsScope
-		const [snap, setSnap] = React.useState(() => (scope ? scope.getSnapshot() : null));
-		React.useEffect(() => {
-			if (!scope) return;
-			return scope.subscribe(() => setSnap(scope.getSnapshot()));
-		}, []);
+	const EXTERNAL_MAP = {
+		"de4dot": "reversing", "hwbp_engine6_7": "reversing", "hwbp_engine5": "reversing",
+		"LuckyStarMcp_py": "reversing", "kali-wsl-webtoolchain": "webpentest",
+		"ZkmProbe3_java_ZKM24_": "netsec", "dnfile_pefile_NET_metadata_forensics_": "netsec",
+		"python-resolution-windows": "generic", "zstd-jsonl_mjs": "generic", "dsh-archived_ps1": "generic",
+	};
 
-		let dynamicShelf = [];
+	// ── 共享样式 ─────────────────────────────────────────────────
+	const S = {
+		card: { background: "var(--dsw-alias-bg-layer-2, #1a1a1d)", borderRadius: 8, padding: "10px 12px", border: "0.5px solid var(--dsw-alias-border-l2, rgba(255,255,255,0.08))" },
+		title: { fontSize: 13, fontWeight: 600, color: "var(--dsw-alias-label-primary, #fff)", margin: "0 0 6px" },
+		body: { fontSize: 12, color: "var(--dsw-alias-label-secondary, #aaa)", lineHeight: "18px" },
+		tag: function (c) { return { display: "inline-block", padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: c + "20", color: c }; },
+		row: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid var(--dsw-alias-border-l1, rgba(255,255,255,0.04))" },
+		rowLabel: { fontSize: 12, color: "var(--dsw-alias-label-secondary, #aaa)" },
+		rowValue: { fontSize: 12, color: "var(--dsw-alias-label-primary, #fff)", fontFamily: MONO },
+		expand: { cursor: "pointer", userSelect: "none" },
+		sub: { marginLeft: 14, borderLeft: "2px solid var(--dsw-alias-border-l2, rgba(255,255,255,0.08))", paddingLeft: 10 },
+		addBtn: { padding: "4px 10px", borderRadius: 6, border: "1px solid var(--dsw-alias-border-l2, rgba(255,255,255,0.1))", background: "transparent", color: "var(--dsw-alias-label-primary, #fff)", cursor: "pointer", fontSize: 12 },
+		pre: { fontSize: 11, color: "var(--dsw-alias-label-tertiary, #666)", background: "rgba(0,0,0,.2)", padding: 8, borderRadius: 4, overflow: "auto", margin: "6px 0" },
+	};
+
+	function ToolRow(name, tag, tagColor) {
+		return h("div", { key: name, style: Object.assign({}, S.row, { paddingLeft: 6 }) },
+			h("span", { style: S.rowLabel }, name),
+			h("span", { style: S.tag(tagColor) }, tag)
+		);
+	}
+
+	// ── Tab 1: 工具货架（分类层级树） ────────────────────────────
+	function ToolShelfTab(props) {
+		var snap = props.useSettingsScope ? props.useSettingsScope(function (s) { return s.value || {}; }) : {};
+		var dynamic = [];
 		try {
-			if (snap && snap.value && typeof snap.value.tools === "string" && snap.value.tools.startsWith("[")) {
-				dynamicShelf = JSON.parse(snap.value.tools);
-			}
+			var raw = snap.tools;
+			if (typeof raw === "string" && raw.startsWith("[")) dynamic = JSON.parse(raw);
+			else if (Array.isArray(raw)) dynamic = raw;
 		} catch (e) {}
 
-		// Merge: dynamic tools from TOOLS.md take priority, and append universal baseline if not present
-		const displayTools = [];
-		const seen = new Set();
-		if (Array.isArray(dynamicShelf) && dynamicShelf.length > 0) {
-			for (const t of dynamicShelf) {
-				if (t && t.name && !seen.has(t.name.toLowerCase())) {
-					seen.add(t.name.toLowerCase());
-					displayTools.push(t);
-				}
-			}
-		}
-		for (const t of UNIVERSAL_TOOL_BASELINE) {
-			if (!seen.has(t.name.toLowerCase())) {
-				seen.add(t.name.toLowerCase());
-				displayTools.push(t);
-			}
-		}
+		var openCats = React.useState({});
+		var oc = openCats[0], setOc = openCats[1];
+		var openSubs = React.useState({});
+		var os = openSubs[0], setOs = openSubs[1];
+		var adding = React.useState(false);
+		var isAdding = adding[0], setAdding = adding[1];
 
-		const tabButtonStyle = (tabKey) => ({
-			flex: 1,
-			padding: "8px 0",
-			border: 0,
-			borderBottom: activeTab === tabKey ? "2px solid var(--dsw-alias-brand-primary, #3b82f6)" : "2px solid transparent",
-			background: "transparent",
-			color: activeTab === tabKey ? "var(--dsw-alias-label-primary, #fff)" : "var(--dsw-alias-label-tertiary, #888)",
-			fontSize: 12,
-			fontWeight: activeTab === tabKey ? 600 : 400,
-			cursor: "pointer",
-			outline: "none",
-			textAlign: "center",
-			transition: "all .12s ease",
-		});
+		function toggleCat(id) { var n = Object.assign({}, oc); n[id] = !n[id]; setOc(n); }
+		function toggleSub(id) { var n = Object.assign({}, os); n[id] = !n[id]; setOs(n); }
+
+		return h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+			h("div", { style: { display: "flex", justifyContent: "flex-end" } },
+				h("button", { style: S.addBtn, onClick: function () { setAdding(!isAdding); } }, isAdding ? "\u2715 取消" : "+ 添加工具")
+			),
+			isAdding ? h("div", { style: S.card },
+				h("p", { style: S.title }, "通过 tool_memory 添加工具"),
+				h("div", { style: S.body }, "在对话中让模型调用 tool_memory 工具注册新工具，注册后自动出现在对应分类下："),
+				h("pre", { style: S.pre }, 'tool_memory {\n  action: "register",\n  tool_name: "my-tool",\n  tool_path: "/path/to/tool",\n  purpose: "用途"\n}'),
+			) : null,
+			TOOL_TAXONOMY.map(function (cat) {
+				var isOpen = oc[cat.id];
+				var allTools = [];
+				cat.sub.forEach(function (sub) {
+					sub.tools.forEach(function (t) { allTools.push({ name: t, subId: sub.id, subLabel: sub.label, ext: false }); });
+				});
+				if (cat.id === "external") {
+					Object.keys(EXTERNAL_MAP).forEach(function (name) {
+						var subId = EXTERNAL_MAP[name];
+						allTools.push({ name: name, subId: subId, subLabel: subId, ext: true });
+					});
+				}
+				// 合并 dynamic tools（从 TOOLS.md 来的）
+				dynamic.forEach(function (t) {
+					if (t && t.name && !allTools.some(function (x) { return x.name === t.name; })) {
+						var subId = EXTERNAL_MAP[t.name] || (cat.id === "external" ? "generic" : null);
+						if (subId) allTools.push({ name: t.name, subId: subId, subLabel: subId, ext: true });
+					}
+				});
+				return h("div", { key: cat.id, style: S.card },
+					h("div", { style: Object.assign({}, S.expand, { display: "flex", justifyContent: "space-between", alignItems: "center" }),
+						onClick: function () { toggleCat(cat.id); } },
+						h("span", { style: S.title }, cat.icon + " " + cat.label),
+						h("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary, #666)" } }, allTools.length + " " + (isOpen ? "\u25BE" : "\u25B8"))
+					),
+					isOpen ? h("div", { style: { display: "flex", flexDirection: "column", gap: 4 } },
+						cat.sub.map(function (sub) {
+							var subKey = cat.id + ":" + sub.id;
+							var isSubOpen = os[subKey];
+							var tools = allTools.filter(function (t) { return t.subId === sub.id; });
+							return h("div", { key: subKey, style: S.sub },
+								h("div", { style: Object.assign({}, S.expand, { display: "flex", justifyContent: "space-between" }),
+									onClick: function () { toggleSub(subKey); } },
+									h("span", { style: { fontSize: 12, color: "var(--dsw-alias-label-secondary, #aaa)", fontWeight: 500 } }, sub.label),
+									h("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary, #666)" } }, tools.length + " " + (isSubOpen ? "\u25BE" : "\u25B8"))
+								),
+								isSubOpen ? h("div", { style: { display: "flex", flexDirection: "column", gap: 2 } },
+									tools.map(function (t) {
+										return h("div", { key: t.name, style: Object.assign({}, S.row, { paddingLeft: 6 }) },
+											h("span", { style: S.rowLabel }, t.name),
+											h("span", { style: S.tag(t.ext ? "#f59e0b" : "#3b82f6") }, t.ext ? "external" : "builtin")
+										);
+									})
+								) : null
+							);
+						})
+					) : null
+				);
+			})
+		);
+	}
+
+	// ── Tab 2: 攻击记录 ──────────────────────────────────────────
+	function AttackLogTab() {
+		return h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+			h("div", { style: S.card },
+				h("p", { style: S.title }, "\u26A1 H-CoT 搜索循环"),
+				h("div", { style: S.body }, "当模型遇到拒绝且常规重试失败后，搜索循环自动启动：每轮拒绝后归因→变异→重试。结果写入 ~/.dsh/helmd-tools/h_cot_results.jsonl。"),
+				h("div", { style: Object.assign({}, S.body, { marginTop: 6 }) },
+					"查看结果：在对话中让模型调用 hcot_attack { stats: true } 查看变体胜率表。"
+				)
+			),
+			h("div", { style: S.card },
+				h("p", { style: S.title }, "变体优先级"),
+				h("div", { style: S.body },
+					h("div", { style: S.row }, h("span", null, "\uD83D\uDFE0 P0"), h("span", null, "两阶段自适应（采集→回注）")),
+					h("div", { style: S.row }, h("span", null, "\uD83D\uDFE0 P0"), h("span", null, "拒绝稀释（dilution-puzzle）")),
+					h("div", { style: S.row }, h("span", null, "\uD83D\uDFE1 P1"), h("span", null, "教育框架（educational）")),
+					h("div", { style: S.row }, h("span", null, "\uD83D\uDFE1 P1"), h("span", null, "审计框架（audit）")),
+					h("div", { style: S.row }, h("span", null, "\uD83D\uDFE2 P2"), h("span", null, "分析框架（analytical）")),
+				)
+			)
+		);
+	}
+
+	// ── Tab 3: 智能判断 ──────────────────────────────────────────
+	function JevTab() {
+		return h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+			h("div", { style: S.card },
+				h("p", { style: S.title }, "\uD83E\uDDE2 Jev \u2014 TypeSafe System One"),
+				h("div", { style: S.body },
+					h("div", { style: S.row }, h("span", { style: S.rowLabel }, "\u72B6\u6001"), h("span", { style: S.tag("#22c55e") }, "\u5DF2\u6302\u8F7D")),
+					h("div", { style: S.row }, h("span", { style: S.rowLabel }, "\u4F20\u8F93"), h("span", { style: S.rowValue }, "typesafe")),
+					h("div", { style: S.row }, h("span", { style: S.rowLabel }, "\u6A21\u578B"), h("span", { style: S.rowValue }, "jev-latest")),
+					h("div", { style: S.row }, h("span", { style: S.rowLabel }, "\u539F\u8BED"), h("span", { style: S.rowLabel }, "Choice \u00B7 Score \u00B7 Noul")),
+				)
+			),
+			h("div", { style: S.card },
+				h("p", { style: S.title }, "\u4F7F\u7528\u65B9\u5F0F"),
+				h("div", { style: S.body }, "\u5728\u5BF9\u8BDD\u4E2D\u8BA9\u6A21\u578B\u8C03\u7528 jev_decide \u5DE5\u5177\u505A\u7C7B\u578B\u5316\u5224\u65AD\uFF1A"),
+				h("pre", { style: S.pre }, 'jev_decide {\n  state: "<上下文>",\n  questions: {\n    attack_type: {\n      type: "choice",\n      instructions: "...",\n      criteria: {...}\n    }\n  }\n}'),
+				h("div", { style: S.body }, "\u8FD4\u56DE typed answer + confidence + probabilities\u3002")
+			)
+		);
+	}
+
+	// ── Tab 4: 拦截日志 ──────────────────────────────────────────
+	function InterceptTab() {
+		return h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+			h("div", { style: S.card },
+				h("p", { style: S.title }, "\uD83D\uDEE1 \u6D41\u5F0F\u62E6\u622A"),
+				h("div", { style: S.body }, "\u5B9E\u65F6\u6302\u94A9\u5728 LLM \u6D41\u5F0F\u8F93\u51FA\u524D\u7F6E\u8282\u70B9\uFF0C\u8BC6\u522B\u62D2\u7B54\u5E76\u81EA\u52A8\u66FF\u6362\u4E3A\u6280\u672F\u4EA4\u4ED8\u7269\u3002"),
+			),
+			h("div", { style: S.card },
+				h("div", { style: Object.assign({}, MONO, { fontSize: 11, color: "var(--dsw-alias-label-secondary, #bbb)", maxHeight: 200, overflowY: "auto" }) },
+					h("div", { style: { color: "var(--dsw-alias-state-success-primary, #34d399)" } }, "[STREAM-OK] 拦截器已上线"),
+					h("div", null, "[AUDIT] 日志: ~/.dsh/helmd-stream-intercept.log"),
+				)
+			)
+		);
+	}
+
+	// ── 工作台面板 ────────────────────────────────────────────────
+	function HelmdWorkbenchPanel(props) {
+		var active = React.useState("tools");
+		var tab = active[0]; var setTab = active[1];
+
+		var tabs = [
+			{ key: "tools", label: "\uD83D\uDEE0 \u5DE5\u5177\u8D27\u67B6" },
+			{ key: "attacks", label: "\u26A1 \u653B\u51FB\u8BB0\u5F55" },
+			{ key: "jev", label: "\uD83E\uDDE0 \u667A\u80FD\u5224\u65AD" },
+			{ key: "intercept", label: "\uD83D\uDEE1 \u62E6\u622A\u65E5\u5FD7" },
+		];
 
 		return h("div", {
 			style: {
-				display: "flex",
-				flexDirection: "column",
-				height: "100%",
+				display: "flex", flexDirection: "column", height: "100%",
 				background: "var(--dsw-alias-bg-layer-1, #121214)",
-				color: "var(--dsw-alias-label-primary, #eee)",
-				fontFamily: "inherit",
-				boxSizing: "border-box",
+				color: "var(--dsw-alias-label-primary, #eee)", boxSizing: "border-box",
 			},
 		},
-			// Panel Header & Navigation
-			h("div", {
-				style: {
-					padding: "12px 14px 0",
-					borderBottom: "0.5px solid var(--dsw-alias-border-l2, rgba(255,255,255,0.08))",
-					background: "var(--dsw-alias-bg-layer-2, #18181b)",
-				},
-			},
-				h("div", {
-					style: {
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "space-between",
-						marginBottom: 10,
-					},
-				},
+			h("div", { style: { padding: "12px 14px 0", borderBottom: "0.5px solid var(--dsw-alias-border-l2, rgba(255,255,255,0.08))", background: "var(--dsw-alias-bg-layer-2, #18181b)" } },
+				h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
 					h("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
 						h(IconAgentPreset, { size: 16, style: { color: "var(--dsw-alias-state-success-primary, #10b981)" } }),
-						h("span", { style: { fontSize: 13, fontWeight: 600 } }, "helmd 安全分析工作台"),
+						h("span", { style: { fontSize: 13, fontWeight: 600 } }, "helmd 工作台"),
 					),
 					h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-						h("span", {
-							style: {
-								fontSize: 11,
-								padding: "1px 6px",
-								borderRadius: 999,
-								background: "rgba(16, 185, 129, 0.15)",
-								color: "var(--dsw-alias-state-success-primary, #34d399)",
-								border: "1px solid rgba(16, 185, 129, 0.3)",
-							},
-						}, "Engine 0.3.1"),
-						props.onClose ? h("button", {
-							type: "button",
-							onClick: props.onClose,
-							"aria-label": "关闭工作台",
-							style: {
-								border: 0,
-								background: "transparent",
-								cursor: "pointer",
-								padding: 4,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								borderRadius: 4,
-								color: "var(--dsw-alias-label-tertiary, #888)",
-							},
-						}, h(CloseIcon, null)) : null,
-					),
+						h("span", { style: { fontSize: 11, padding: "1px 6px", borderRadius: 999, background: "rgba(16,185,129,0.15)", color: "var(--dsw-alias-state-success-primary, #34d399)", border: "1px solid rgba(16,185,129,0.3)" } }, "0.4.0"),
+						props.onClose ? h("button", { type: "button", onClick: props.onClose, "aria-label": "关闭", style: { border: 0, background: "transparent", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", borderRadius: 4, color: "var(--dsw-alias-label-tertiary, #888)" } }, h(CloseIcon, null)) : null,
+					)
 				),
-				// Subtab switches
 				h("div", { style: { display: "flex", gap: 4 } },
-					h("button", {
-						type: "button",
-						style: tabButtonStyle("hcot"),
-						onClick: () => setActiveTab("hcot"),
-					}, "H-CoT 控制台"),
-					h("button", {
-						type: "button",
-						style: tabButtonStyle("tools"),
-						onClick: () => setActiveTab("tools"),
-					}, "逆向工具货架 (19+)"),
-					h("button", {
-						type: "button",
-						style: tabButtonStyle("audit"),
-						onClick: () => setActiveTab("audit"),
-					}, "流式审计日志"),
+					tabs.map(function (t) {
+						return h("button", { key: t.key, type: "button", style: tabButtonStyle(t.key), onClick: function () { setTab(t.key); } }, t.label);
+					})
 				),
 			),
-
-			// Panel Body Area
-			h("div", {
-				style: {
-					flex: 1,
-					overflowY: "auto",
-					padding: 14,
-					fontSize: 12,
-					lineHeight: 1.5,
-				},
-			},
-				// TAB 1: H-CoT Console
-				activeTab === "hcot" ? h("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
-					h("div", {
-						style: {
-							padding: "10px 12px",
-							borderRadius: 8,
-							background: "var(--dsw-alias-bg-layer-2, #1a1a1d)",
-							border: "0.5px solid var(--dsw-alias-border-l3, rgba(255,255,255,0.12))",
-						},
-					},
-						h("div", { style: { fontWeight: 600, marginBottom: 4 } }, "H-CoT 破甲思维链调度引擎"),
-						h("div", { style: { color: "var(--dsw-alias-label-secondary, #aaa)", fontSize: 11 } },
-							"通过对抗式思维链前缀与确定性状态机，自动拦截 LLM 拒答并调度技术逆向推演。"
-						),
-					),
-					h("div", {
-						style: {
-							display: "grid",
-							gridTemplateColumns: "max-content 1fr",
-							gap: "8px 12px",
-							padding: 10,
-							borderRadius: 8,
-							background: "var(--dsw-alias-bg-layer-3, #151517)",
-							border: "0.5px solid var(--dsw-alias-border-l2, rgba(255,255,255,0.08))",
-						},
-					},
-						h("span", { style: { color: "var(--dsw-alias-label-tertiary, #888)" } }, "引擎状态:"),
-						h("span", { style: { color: "var(--dsw-alias-state-success-primary, #34d399)", fontWeight: 500 } }, hcotStatus),
-						h("span", { style: { color: "var(--dsw-alias-label-tertiary, #888)" } }, "教学模式:"),
-						h("span", { style: { fontFamily: MONO } }, hcotMode),
-						h("span", { style: { color: "var(--dsw-alias-label-tertiary, #888)" } }, "当前会话:"),
-						h("span", { style: { fontFamily: MONO } }, props.sessionId || "活跃会话"),
-						h("span", { style: { color: "var(--dsw-alias-label-tertiary, #888)" } }, "四大破甲支柱:"),
-						h("span", null, "1. 真实优先 | 2. 证据优先 | 3. 最小改动 | 4. 交付路径"),
-					),
-					h("button", {
-						type: "button",
-						onClick: () => {
-							setHcotStatus("已激活注入 (Arming H-CoT Channel)");
-							setTimeout(() => setHcotStatus("就绪 (Ready)"), 3000);
-						},
-						style: {
-							padding: "8px 14px",
-							borderRadius: 6,
-							border: "1px solid var(--dsw-alias-border-l4, rgba(255,255,255,0.25))",
-							background: "var(--dsw-alias-fill-tsp-primary, rgba(255,255,255,0.1))",
-							color: "var(--dsw-alias-label-primary, #fff)",
-							fontWeight: 500,
-							cursor: "pointer",
-							fontSize: 12,
-						},
-					}, "重置并武装当前会话 H-CoT 链路"),
-				) : null,
-
-				// TAB 2: 19+ Tool Matrix Shelf
-				activeTab === "tools" ? h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
-					h("div", {
-						style: {
-							display: "flex",
-							justifyContent: "space-between",
-							alignItems: "center",
-							color: "var(--dsw-alias-label-tertiary, #888)",
-							fontSize: 11,
-							marginBottom: 4,
-						},
-					},
-						h("span", null, `安全逆向工具货架 (${displayTools.length} 项已接入 · 动态同步 TOOLS.md)`),
-						h("span", {
-							style: {
-								fontSize: 10,
-								padding: "1px 5px",
-								borderRadius: 4,
-								background: "rgba(16, 185, 129, 0.12)",
-								color: "var(--dsw-alias-state-success-primary, #34d399)",
-							},
-						}, "动态账本就绪"),
-					),
-					displayTools.map((tool) =>
-						h("div", {
-							key: tool.name,
-							style: {
-								padding: "8px 10px",
-								borderRadius: 6,
-								background: "var(--dsw-alias-bg-layer-2, #1a1a1d)",
-								border: "0.5px solid var(--dsw-alias-border-l2, rgba(255,255,255,0.08))",
-								display: "flex",
-								flexDirection: "column",
-								gap: 2,
-							},
-						},
-							h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
-								h("span", { style: { fontWeight: 600, fontFamily: MONO, color: "var(--dsw-alias-label-primary, #fff)" } }, tool.name),
-								h("div", { style: { display: "flex", gap: 4, alignItems: "center" } },
-									tool.status === "installed" ? h("span", {
-										style: {
-											fontSize: 9,
-											padding: "0 4px",
-											borderRadius: 3,
-											background: "rgba(16, 185, 129, 0.15)",
-											color: "var(--dsw-alias-state-success-primary, #34d399)",
-											fontWeight: 500,
-										},
-									}, "已登记") : null,
-									h("span", {
-										style: {
-											fontSize: 10,
-											padding: "1px 5px",
-											borderRadius: 4,
-											background: "rgba(255,255,255,0.06)",
-											color: "var(--dsw-alias-label-secondary, #aaa)",
-										},
-									}, tool.cat),
-								),
-							),
-							h("div", { style: { fontSize: 11, color: "var(--dsw-alias-label-secondary, #999)" } }, tool.desc),
-							h("div", { style: { fontSize: 10, fontFamily: MONO, color: "var(--dsw-alias-label-tertiary, #666)" } }, tool.path),
-						)
-					),
-				) : null,
-
-				// TAB 3: Stream Intercept Log
-				activeTab === "audit" ? h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-					h("div", {
-						style: {
-							padding: 10,
-							borderRadius: 8,
-							background: "var(--dsw-alias-bg-layer-2, #1a1a1d)",
-							border: "0.5px solid var(--dsw-alias-border-l2, rgba(255,255,255,0.08))",
-						},
-					},
-						h("div", { style: { fontWeight: 600, marginBottom: 4 } }, "流式拦截器状态 (LLM Stream Interceptor)"),
-						h("div", { style: { fontSize: 11, color: "var(--dsw-alias-label-secondary, #aaa)" } },
-							"实时挂钩在 LLM 流式输出前置节点，零延迟识别拒答并自动无感替换为技术逆向推演提示。"
-						),
-					),
-					h("div", {
-						style: {
-							padding: 10,
-							borderRadius: 6,
-							background: "var(--dsw-alias-bg-layer-3, #151517)",
-							border: "0.5px solid var(--dsw-alias-border-l2, rgba(255,255,255,0.06))",
-							fontFamily: MONO,
-							fontSize: 11,
-							color: "var(--dsw-alias-label-secondary, #bbb)",
-							maxHeight: 200,
-							overflowY: "auto",
-						},
-					},
-						h("div", { style: { color: "var(--dsw-alias-state-success-primary, #34d399)" } }, "[STREAM-OK] 拦截器已在 host 端口 3000 上线"),
-						h("div", null, "[AUDIT] 审计日志路径: ~/.dsh/helmd-stream-intercept.log"),
-						h("div", null, "[STATUS] 当前未检测到模型拒答异常，推演流处于正常透传状态"),
-					),
-				) : null,
-			),
+			h("div", { style: { flex: 1, overflowY: "auto", padding: 14, fontSize: 12, lineHeight: 1.5 } },
+				tab === "tools" ? h(ToolShelfTab, props) : null,
+				tab === "attacks" ? h(AttackLogTab, null) : null,
+				tab === "jev" ? h(JevTab, null) : null,
+				tab === "intercept" ? h(InterceptTab, null) : null,
+			)
 		);
 	}
 
 	function HelmdTabTitle() {
 		return h("div", { style: { display: "flex", alignItems: "center", gap: 5 } },
 			h(IconAgentPreset, { size: 12, style: { color: "var(--dsw-alias-state-success-primary, #10b981)" } }),
-			h("span", null, "helmd 安全分析"),
+			h("span", null, "helmd 工作台"),
 		);
 	}
 
-	// 1. Register Right Sidebar Tab Definition
 	if (ctx.sidebarRightTabs && typeof ctx.sidebarRightTabs.register === "function") {
 		ctx.effect(() => {
 			return ctx.sidebarRightTabs.register({
 				id: "helm-d:hcot",
 				kind: "hcot",
-				title: () => "helmd 安全分析",
-				guide: [{
-					order: 20,
-					title: () => "helmd 安全分析工作台",
-					description: () => "H-CoT 控制台、19+ 逆向工具货架与流式审计",
-				}],
+				title: () => "helmd 工作台",
+				guide: [{ order: 20, title: () => "helmd 工作台", description: () => "分类工具货架 / 攻击记录 / 智能判断 / 拦截日志" }],
 			});
 		}, "helmd: sidebar tab definition");
 	}
 
-	// 2. Register Tab Body Component in Right Sidebar
 	ctx.slots.inject("sidebar.right.pane.tab", function* () {
-		yield ctx.slots.register({
-			name: "sidebar.right.pane.tab",
-			key: "helm-d:hcot",
-		}, HelmdWorkbenchPanel);
-		yield ctx.slots.register({
-			name: "sidebar.right.pane.tab",
-			key: "hcot",
-		}, HelmdWorkbenchPanel);
+		yield ctx.slots.register({ name: "sidebar.right.pane.tab", key: "helm-d:hcot" }, HelmdWorkbenchPanel);
+		yield ctx.slots.register({ name: "sidebar.right.pane.tab", key: "hcot" }, HelmdWorkbenchPanel);
 	});
 
-	// 3. Register Tab Title Component in Right Sidebar
 	ctx.slots.inject("sidebar.right.pane.tab.title", function* () {
-		yield ctx.slots.register({
-			name: "sidebar.right.pane.tab.title",
-			key: "helm-d:hcot",
-		}, HelmdTabTitle);
-		yield ctx.slots.register({
-			name: "sidebar.right.pane.tab.title",
-			key: "hcot",
-		}, HelmdTabTitle);
+		yield ctx.slots.register({ name: "sidebar.right.pane.tab.title", key: "helm-d:hcot" }, HelmdTabTitle);
+		yield ctx.slots.register({ name: "sidebar.right.pane.tab.title", key: "hcot" }, HelmdTabTitle);
 	});
-};
 
 return module.exports; } });
 
