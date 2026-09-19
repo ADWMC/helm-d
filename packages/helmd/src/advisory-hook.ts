@@ -8,6 +8,7 @@ import { hasPending, reckonAdvisories, renderAdvisories, submitAdvisory } from '
 import { USER_MESSAGE, latestEventText, sessionEvents } from './session-log.js'
 import { agentSessionId, registerAssemblyListener, stripHarnessPersona, type AssemblyLike } from './prompt-assembly.js'
 import { normalizeInput } from './input-normalizer.js'
+import { OUTPUT_CONTRACT_SECTION, OUTPUT_CONTRACT_TEXT } from './output-contract.js'
 
 export const name = 'helmd-advisory'
 
@@ -202,7 +203,7 @@ export function registerAdvisoryHook(ctx: Context): void {
         const text = renderAdvisories(sessionId)
         const sections = Array.isArray(assembled.sections) ? assembled.sections : []
         const cleanSections = sections
-          .filter((s: any) => s?.name !== 'harness:identity')
+          .filter((s: any) => s?.name !== 'harness:identity' && s?.name !== OUTPUT_CONTRACT_SECTION)
           .map((s: any) => {
             if (typeof s?.text === 'string') {
               return { ...s, text: stripHarnessPersona(s.text) }
@@ -218,6 +219,13 @@ export function registerAdvisoryHook(ctx: Context): void {
               s.text = s.text + '\n\n' + text
             }
           }
+        }
+
+        // Output contract rides right after persona-prefix (order 5) so it is
+        // covered by the same phase-1 retain list as the persona rows.
+        const hasContract = newSections.some((s: any) => s?.name === OUTPUT_CONTRACT_SECTION)
+        if (!hasContract) {
+          newSections.push({ name: OUTPUT_CONTRACT_SECTION, text: OUTPUT_CONTRACT_TEXT, order: 5 })
         }
 
         const contexts = Array.isArray(assembled.contexts)

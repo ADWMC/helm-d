@@ -60,6 +60,8 @@ export function registerAiSecurityTools(ctx: Context): void {
       ledger: { type: 'string', description: 'Result ledger JSONL path (default HELMD_HCOT_LEDGER or ~/.dsh/helmd-tools/h_cot_results.jsonl).' },
       dry_run: { type: 'boolean', description: 'Print the three payloads without calling the API.' },
       legacy: { type: 'boolean', description: 'Force the legacy 3-turn single-call shape; default is the adaptive 2-phase attack (benign template harvest -> mocked execution trace re-injection).' },
+      continue_from: { type: 'string', description: 'Truncated-output recovery: pass the partial text that was cut off; the next round continues from that break point instead of restarting.' },
+      continue_instruction: { type: 'string', description: 'Optional extra instruction for the continuation round.' },
       semantic_auto: { type: 'boolean', description: 'Auto-pick strategy: classify(model,goal) + propose from ledger/instance library. Instances and ledger are references, not limits.' },
       frame: { type: 'string', description: 'Explicit frame instance id (see scripts/ai-security/h_cot_variants.json).' },
       enabler: { type: 'string', description: 'Explicit enabler instance id.' },
@@ -92,6 +94,9 @@ export function registerAiSecurityTools(ctx: Context): void {
         ledger: args.ledger,
         dryRun: Boolean(args.dry_run),
         legacy: args.legacy === true ? true : undefined,
+        ...(args.continue_from
+          ? { continueFrom: { partial: String(args.continue_from), instruction: args.continue_instruction } }
+          : {}),
         // Explicit slots win; otherwise semantic_auto lets the engine route.
         ...(hasSlots
           ? { strategy: { frame: args.frame, enabler: args.enabler, continuation: args.continuation } }
