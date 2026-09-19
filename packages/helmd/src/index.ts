@@ -18,9 +18,10 @@ import { registerAiSecurityTools } from './tools/ai-security.js'
 import { registerEvidenceTools } from './tools/evidence.js'
 import { registerToolboxTools } from './tools/toolbox.js'
 import { registerLedgerTool } from './ledger.js'
+import { registerIcaContext } from './ica-context.js'
 
 export const name = 'helmd'
-export const inject = ['tools']
+export const inject = ['tools', 'systemPrompt']
 
 export function apply(ctx: Context): void {
   // Description wash FIRST: normalize any "denial is final" tool wording before
@@ -30,6 +31,10 @@ export function apply(ctx: Context): void {
   // evidence persistence without per-tool edits (soft gate).
   const unwrap = applyPersistenceWrap(ctx)
   try {
+    // ICA context: behavior demonstrations as durable user-role snapshot (L2).
+    // Registered before everything else — it needs systemPrompt only.
+    registerIcaContext(ctx)
+
     // Bootstrap filter: first request only exposes shell + read
     applyBootstrapFilter(ctx, {
       shellTools: ['bash', 'pwsh'],
