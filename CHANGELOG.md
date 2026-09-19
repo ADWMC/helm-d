@@ -38,7 +38,7 @@
 ### references 全域清洗
 
 - **164+ 文件旧 skill 时代残留清除**：frontmatter 元数据、AI LOAD INSTRUCTION、SKILL.md 互链、Installation Notes/Recommended 段、Skill Map→Document Map 归一化；全域终检 0 残留
-- **SRC/众测语料融入**（PR #3，经清洗）：`src-hunter/` 3164 文件——playbooks 68 篇（19 类漏洞 P0-P2 排序）/payloader 936KB/h1-reports 2887 案例/字典/行业打法；compliance.md 红线文档删除、skill 残留清零、凭据脱敏（AWS/Salesforce/npm/Facebook token → REDACTED）
+- **SRC/众测语料融入**（PR #3，经清洗）：`src-hunter/` 3164 文件——playbooks 68 篇（19 类漏洞 P0-P2 排序）/payloader 936KB/h1-reports 141 归档 + 索引（raw 2887 份已从包内移除，GitHub 仓库仍有）/字典/行业打法；compliance.md 红线文档删除、skill 残留清零、凭据脱敏（AWS/Salesforce/npm/Facebook token → REDACTED）
 - **35 篇 web 文档移植 SRC 指针**：`> **SRC / 众测语境**` → src-hunter 对应 playbook
 - **pentest-router 流程补全**：Step 0 明确用户需求四问、Step 2.5 CVE/PoC 检索（gh 检索命令模式 + 误报过滤铁律）、SRC 语境路由节
 - **router.ts 正式接入**：src 语境路由（src/众测/bug bounty/补天/hvv/挖洞）→ src-hunter 能力层
