@@ -1,4 +1,5 @@
 # IDOR 不安全直接对象引用方法论
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/arbitrary-x-authz.md")`（任意账号 86.4% / 任意操作 72.5% 统计 + 465 份 H1 案例）
 
 > 融合来源：wgpsec/AboutSecurity（方法论主体 + 高级模式深度）+ yaklang/hack-skills（BOLA/BFLA 实战手册，见文末附录）。重复段已去重。
 > 本文件自包含：绕过技巧（参数包装/编码/HPP/方法切换，原 idor-bypass-techniques.md）、高级模式（多步链/文件IDOR/批量操作/间接引用/框架特征/证据规范，原 idor-advanced-patterns.md）、批量检测脚本与标识符可预测性（原 idor-techniques.md）全部内联。

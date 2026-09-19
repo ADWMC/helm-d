@@ -1,4 +1,5 @@
 # Clickjacking — Expert Attack Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/logic-flaws/12-clickjacking.md")`（框架绕过 / 多步点击链）
 
 ## 1. CORE CONCEPT
 

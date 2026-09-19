@@ -1,4 +1,5 @@
 # Open Redirect — Expert Attack Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/oauth-saml-jwt/10-oauth-redirect.md")`（redirect_uri 白名单绕过链）
 
 ## 1. CORE CONCEPT
 

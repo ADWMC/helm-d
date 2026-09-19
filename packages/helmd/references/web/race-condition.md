@@ -1,4 +1,5 @@
 # Race Conditions — Testing & Exploitation Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/race-conditions.md")`（优惠券双花 / 余额超扣 / 限额绕过）
 
 ---
 

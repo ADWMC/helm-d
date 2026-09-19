@@ -149,3 +149,27 @@
 
 - pentest-web-checklist.md — 授权渗透 Web 域清单（OWASP Top 10 + 前端 JS 深度分析，authorized-pentest-framework）
 - api-dictionary.md — API 字典累积规范
+
+
+## src-hunter 子目录（SRC / 众测 / bug bounty 全量语料）
+
+[`src-hunter/index.md`](src-hunter/index.md) — 融合自 [MyuriKanao/src-hunter](https://github.com/MyuriKanao/src-hunter-skill)（MIT）。
+
+**两级启用**：常规 web 分析（资源发现 / 应用理解 / 证据链）用本目录即可；
+只在 **SRC / 众测 / bug bounty / 漏洞赏金 / HackerOne / 挖洞 / 任意 X / 未授权 / 密码重置 / 支付逻辑 / 默认凭据 / WAF 绕过** 语境才展开 `src-hunter/`。
+
+| 内容 | 规模 |
+|---|---|
+| `src-hunter/playbooks/` | 19 类漏洞 playbook（68 篇，含 10 个目录型路由） |
+| `src-hunter/payloader/` | 305 条结构化 payload + 114 条工具命令 + WAF/EDR 绕过变体 |
+| `src-hunter/methodology/` | 五阶段流程 + 攻击优先级 + 绕过工具箱 + 证据纪律 |
+| `src-hunter/h1-reports/` | 2887 份 HackerOne High/Critical 已披露案例（按 weakness 归档 141 篇） |
+| `src-hunter/dictionaries/` | 国产 OA/中间件指纹 + CN 默认凭据表 |
+| `src-hunter/industry/` | 银行金融 / 电信 ISP 垂直打法 |
+| `src-hunter/templates/` | 三段式报告模板（CVSS 4.0） |
+
+> 上游 `payloader/by-category/**.md` 为乱码（GBK 字节被当 latin1 写盘），
+> 本仓库全部由 `scripts/build-src-hunter-payloader.mjs` 从原始 JSON 重建。
+>
+> 重合主题（sqli / xss / ssrf / idor / csrf / ssti / xxe …）已在对应文档顶部加一行
+> `> **SRC / 众测语境**` 指针，指向 `src-hunter/` 的对应 playbook —— 两套内容**并存不合并**。

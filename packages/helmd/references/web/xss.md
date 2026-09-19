@@ -1,4 +1,5 @@
 # XSS 跨站脚本完整方法论
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/xss/00-index.md")`（类型分类 / 绕过矩阵 / 利用链 + 335 份 H1 案例）
 
 > 融合来源：wgpsec/AboutSecurity（方法论主体 + CSP/DOM 深度技术）+ yaklang/hack-skills（攻击手册，见文末附录）。重复段已去重。
 > 配套：[xss-scenarios.md](./xss-scenarios.md)（真实 CVE / HttpOnly 绕过 / XS-Leaks / 会话固定）、[xss-advanced-xss-tricks.md](./xss-advanced-xss-tricks.md)（mXSS/DOMPurify、框架 XSS、Trusted Types、Service Worker）、[upload-insecure-files.md](./upload-insecure-files.md)（上传全路径）。

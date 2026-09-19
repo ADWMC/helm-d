@@ -1,4 +1,5 @@
 # subdomain-takeover
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/info-disclosure.md")`（dangling CNAME/NS/MX 判定流程）
 
 > 来源: wgpsec/AboutSecurity (web-method) | 融合进 web 域参考库
 

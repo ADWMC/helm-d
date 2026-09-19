@@ -1,4 +1,5 @@
 # HTTP Request Smuggling — Expert Attack Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/http-smuggling.md")`（CL.TE / TE.CL / H2→H1 变体）
 
 Routing note: load this document when you suspect CDN/reverse-proxy and origin disagree on request-end boundaries, or when abnormal concatenation appears during H2-to-H1 downgrade.
 

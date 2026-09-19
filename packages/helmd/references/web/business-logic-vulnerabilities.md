@@ -1,4 +1,5 @@
 # Business Logic Vulnerabilities — Expert Attack Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/logic-flaws/11-business-logic.md")`（密码重置 4 模式 / 支付 / 验证码 + 234 份 H1 案例）
 
 ### Companion files
 

@@ -1,4 +1,5 @@
 # CORS Misconfiguration — Credentialed Origins, Reflection, and Trust Boundary Errors
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/api-rest/10-rest-api.md")`（CORS 配置错误组合利用）
 
 ### Extended Scenarios
 

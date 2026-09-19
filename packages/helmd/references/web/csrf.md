@@ -1,4 +1,5 @@
 # CSRF — Cross-Site Request Forgery — Expert Attack Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/logic-flaws/10-csrf.md")`（JSON CSRF / login CSRF / OAuth state 实战）
 
 ## 0. RELATED ROUTING
 

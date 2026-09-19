@@ -1,4 +1,5 @@
 # XML External Entity Injection (XXE) — Expert Attack Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/15-xxe.md")`（带外 / OOXML / SOAP 实战 + payloader/by-category/web/xxe.md）
 
 ## 0. RELATED ROUTING
 

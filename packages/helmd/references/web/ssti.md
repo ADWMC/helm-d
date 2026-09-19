@@ -1,4 +1,5 @@
 # SSTI 服务端模板注入方法论
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/14-ssti.md")`（引擎指纹 + payloader/by-category/web/ssti.md）
 
 > 融合来源：wgpsec/AboutSecurity（方法论主体 + Jinja2/多引擎/过滤绕过深度）+ yaklang/hack-skills（攻击手册，见文末附录）。重复段已去重。
 > 配套：[ssti-scenarios.md](./ssti-scenarios.md)（Maccms/Jira/Confluence OGNL/Struts2/Spring Cloud Gateway CVE + 盲注 + Flask PIN）、[ssti-engine-payloads.md](./ssti-engine-payloads.md)（14 引擎 payload 矩阵）。

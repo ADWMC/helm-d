@@ -1,4 +1,5 @@
 # OAuth Token 攻击
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/oauth-saml-jwt/00-index.md")`（OAuth / SAML / JWT 全族）
 
 > 融合来源：yaklang/hack-skills `jwt-oauth-token-attacks` 的 OAuth 部分（JWT 部分已并入 [jwt-attack.md](./jwt-attack.md)）。
 > 相关主题：[oauth-oidc-misconfiguration.md](./oauth-token-attacks.md)、[oauth-sso-attack.md](./oauth-sso-attack.md)（SSO/OIDC 配置错误深度）、[csrf.md](./csrf.md)（state 缺失即 OAuth-CSRF）。

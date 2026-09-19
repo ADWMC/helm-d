@@ -1,4 +1,5 @@
 # API Authorization and BOLA — Object Access, Function Access, and Mass Assignment
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/api-rest/10-rest-api.md")`（BOLA / Mass Assignment / 速率）
 
 ## 1. CORE TEST LOOP
 

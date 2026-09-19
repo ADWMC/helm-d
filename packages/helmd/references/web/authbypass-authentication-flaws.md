@@ -1,4 +1,5 @@
 # Authentication Bypass — Expert Attack Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/unauth-access.md")`（默认凭据表 + Actuator/Swagger + 14377 例未授权统计）
 
 ## 0. CREDENTIAL TEST PLANNING
 

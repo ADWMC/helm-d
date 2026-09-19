@@ -1,4 +1,5 @@
 # Prototype Pollution — Expert Attack Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/17-prototype-pollution.md")`（服务端 RCE gadget 链）
 
 Routing note: prioritize PP when you see deep merges, recursive assign, `JSON.parse` followed by `Object.assign`, or URL queries converted to nested objects.
 

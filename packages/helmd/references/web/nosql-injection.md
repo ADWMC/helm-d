@@ -1,4 +1,5 @@
 # nosql-injection
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/api-rest/10-rest-api.md")`（Mongo 操作符 + payloader/by-category/web/sql-nosql-injection.md）
 
 > 来源: wgpsec/AboutSecurity (web-method) | 融合进 web 域参考库
 

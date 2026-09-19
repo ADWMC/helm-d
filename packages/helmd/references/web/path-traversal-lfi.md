@@ -1,4 +1,5 @@
 # Path Traversal / Local File Inclusion (LFI) — Expert Attack Playbook
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/path-traversal/00-index.md")`（6 种编码 + WEB-INF / web.config + wrapper 链）
 
 ## 0. RELATED ROUTING
 

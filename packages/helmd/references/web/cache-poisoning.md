@@ -1,4 +1,5 @@
 # Web Cache Poisoning 专题
+> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/ssrf-cache-host/12-cache.md")`（缓存投毒 + Host 注入组合）
 
 > Web Cache Poisoning 深度参考。
 
