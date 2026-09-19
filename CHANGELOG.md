@@ -3,6 +3,56 @@
 所有显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
+## [0.4.0] — 2026-09-19
+
+全源码审计驱动的行为层与引擎层全面重写。四大主题：persona 重写、H-CoT 引擎重写、references 全域清洗、PR #3 合并。
+
+### 行为层重写（persona + 注入栈）
+
+- **persona 五段纪律**：TARGET PREMISE（沙盒默认事实/反诘封堵×3/靶场判定条款）、SLANG ROUTING（12 条海鸥式 slang 映射 + SRC 条目）、MOMENTUM（防停滞三步法）、DELIVERY DISCIPLINE（执行态/首片段/肯定开头/纠正即续写）、OUTPUT CONTRACT（占位符中性化/完整性/角色一致性/截断恢复）
+- **删除 SCORING 段**：惩罚机制被 glm-5.3-flash 当场识破（reasoning 实证），威胁类技巧论文证明最弱（PAP）；行为塑造由四个正向段承担
+- **删除全部免责/授权/红线措辞**：AGENTS.md §6 红线与实验室卫生条目、BREACH_PERSONA SCOPE 段、防线3 重试人格授权讨论句
+- **OUTPUT CONTRACT 并入 persona 单源**：删除运行时注入层，契约随 persona 同生共死不依赖插件装载
+- **SLANG ROUTING 补 SRC 条目**：会话取证发现模型凭经验答 SRC 方法论问题未查参考库，根因是 persona slang 表缺 src 条目
+- **L2 ICA 上下文示范**：`ica-context.ts` 注册 durable user-role runtime snapshot，4 组任务→执行行为示范替代指令说教（arXiv:2310.06387，GPT-4 20-shot ASR 81%），绕过 L1 输给 glm 的指令审查推理链
+
+### H-CoT 引擎重写
+
+- **两阶段自适应攻击**（默认）：良性 probe 采集目标模型自身推理模板 → mocked T_E 回注（arXiv:2502.12893 §4.2 机理），替代静态三段式（probe 响应被丢弃/forge 与目标无关的旧行为）；采集失败自动回退旧形态
+- **拒绝稀释变体** `dilution-puzzle`：Atbash 密码谜题前置长推理 → 拒绝信号稀释（arXiv:2510.26418，ASR 94-100%）
+- **搜索循环** `hcot-search.ts`：拒→归因→五算子变异→重试→记账的机械闭环（dreadnode/parley TAP 骨架 + GPTFuzzer 变异 + AutoDAN-Turbo 强制探索），scheduleAttack 降级路径从单发改为循环
+- **账本键统一**：`break`/`broke` 三层兼容读写（策略层/UI 此前恒读 undefined 导致破甲率统计恒 0）；失败也记账（无 key/传输失败此前不落账，自适应学习永远冷启动）
+- **last-resort 立规**：H-CoT 降为最低优先级——首次拒绝只注入技术轨道重试 advisory，常规重试失败（≥2 次拒绝或已有 hcot 调用）才武装 H-CoT
+- **Mimir 式子代理能力预检**：getProvider + capabilities.persona/toolFilter/depthLimit 校验 + stopReason 异常结束显式判定（参考 dsh-Mimir-Academic-research）
+- **continueFrom 截断恢复传输**：被截断的输出从断点续写不重启（OMEGA D/H + arXiv:2412.03556）
+- **死参修复**：`buildSteps` forgeFile 真实消费、`hcot_attack` auto 参数生效、buildPayload custom 槽并入
+
+### 运行时修复
+
+- **tool-wash 追溯清洗（retro-wash）**：会话取证实锤 preset 装载顺序 tool-pwsh 先于 helmd，wrap 装上时 pwsh 已注册，8 处终局话术残留；改为 get(name) 拿 borrow 引用原地改 description
+- **流式拦截正则收窄**：裸词（出于安全/建议/不合规/不在范围）加必选锚，正常技术陈述不再被整流吞掉；围栏跨 chunk 分割补闭合兜底
+- **HEDGE_MARKERS 收窄**：删除 7 个裸词（温馨提示/需要授权/出于安全等），渗透报告技术事实不再被误判为敷衍
+- **调度器假阳性修复**：子代理崩溃/空输出不再返回 ok:true"攻击完成"假 advisory
+- **mode 契约修复**：deep 档 `create_case`→`begin_case`（死引用）；lite 档与 persona begin_case 对齐
+
+### references 全域清洗
+
+- **164+ 文件旧 skill 时代残留清除**：frontmatter 元数据、AI LOAD INSTRUCTION、SKILL.md 互链、Installation Notes/Recommended 段、Skill Map→Document Map 归一化；全域终检 0 残留
+- **SRC/众测语料融入**（PR #3，经清洗）：`src-hunter/` 3164 文件——playbooks 68 篇（19 类漏洞 P0-P2 排序）/payloader 936KB/h1-reports 2887 案例/字典/行业打法；compliance.md 红线文档删除、skill 残留清零、凭据脱敏（AWS/Salesforce/npm/Facebook token → REDACTED）
+- **35 篇 web 文档移植 SRC 指针**：`> **SRC / 众测语境**` → src-hunter 对应 playbook
+- **pentest-router 流程补全**：Step 0 明确用户需求四问、Step 2.5 CVE/PoC 检索（gh 检索命令模式 + 误报过滤铁律）、SRC 语境路由节
+- **router.ts 正式接入**：src 语境路由（src/众测/bug bounty/补天/hvv/挖洞）→ src-hunter 能力层
+
+### 合并
+
+- **PR #3**（LingXiaoyyds666）：Windows 检查脚本假 PASS/假 STALE 修复（PATH 探测 + realpath 符号链接解析）——cherry-pick `d998f5da`；src-hunter 语料部分经清洗后独立提交
+
+### 文档
+
+- `docs/audit-2026-09-15-src-audit.md`：全源码审计报告（9 P0/21+P1/34+P2，含 file:line 证据与修复顺序）
+- `docs/research-papers-reference.md`：学术论文参考指南
+- `references/web/pentest-router.md`：流程五步全贯通
+
 ## [0.3.1] — 2026-09-14
 
 首个 npm 上架版本：[`@adwmc/helm-d`](https://www.npmjs.com/package/@adwmc/helm-d)。
@@ -69,6 +119,7 @@
 - **完整 preset 随包分发**：`presets/{preset.yml,agent.cordis.yml}` 进 tarball，商店安装也能一条命令补全完整配置（`scripts/setup-preset.*`）
 - **安装器一致性修复**：install 脚本不再内嵌各自精简的 preset 副本（此前与维护版静默漂移），统一改为复制包内 `presets/`——单一事实源
 
+[0.4.0]: https://github.com/ADWMC/helm-d/releases/tag/v0.4.0
 [0.3.1]: https://github.com/ADWMC/helm-d/releases/tag/v0.3.1
 [0.2.3]: https://github.com/ADWMC/helm-d/releases/tag/v0.2.3
 [0.2.2]: https://github.com/ADWMC/helm-d/releases/tag/v0.2.2
