@@ -1,7 +1,5 @@
 # TCC Bypass Matrix — Per-Version & Per-Protection Techniques
 
-> **AI LOAD INSTRUCTION**: Load this when you need version-specific TCC bypass details, protection-type-specific techniques, or MDM/PPPC abuse patterns. Assumes the main [SKILL.md](./macos-security-bypass.md) is already loaded for TCC fundamentals.
-
 ---
 
 ## 1. TCC BYPASS BY macOS VERSION

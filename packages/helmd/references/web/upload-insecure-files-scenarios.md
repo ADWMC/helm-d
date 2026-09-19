@@ -1,6 +1,6 @@
 # Upload Insecure Files — Extended Scenarios & Real-World Cases
 
-> Companion to [SKILL.md](./upload-insecure-files.md). Contains parsing vulnerabilities, PUT method attacks, and CVE case studies.
+> Companion to [main document](./upload-insecure-files.md). Contains parsing vulnerabilities, PUT method attacks, and CVE case studies.
 
 ---
 

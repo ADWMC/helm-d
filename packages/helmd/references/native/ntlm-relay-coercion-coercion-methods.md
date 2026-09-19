@@ -1,7 +1,5 @@
 # Authentication Coercion Methods
 
-> **AI LOAD INSTRUCTION**: Load this for detailed authentication coercion method comparison, RPC function-level details, and the Coercer tool usage. Assumes the main [SKILL.md](./ntlm-relay-coercion.md) is already loaded for NTLM relay fundamentals.
-
 ---
 
 ## 1. COERCION METHODS MATRIX

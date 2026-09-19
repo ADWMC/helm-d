@@ -1,7 +1,5 @@
 # HTTP/2 Smuggling Variants & Advanced Desync Techniques
 
-> **AI LOAD INSTRUCTION**: Load this when you need H2.CL/H2.TE byte-level payloads, CL.0 desync, Fat GET smuggling, smuggling→cache poisoning chains, client-side desync (CSD) flows, or CDN/reverse-proxy behavior matrices. Assumes the main [SKILL.md](./request-smuggling.md) is already loaded for CL.TE, TE.CL, TE.TE fundamentals.
-
 ---
 
 ## 1. H2.CL — HTTP/2 Content-Length Desync

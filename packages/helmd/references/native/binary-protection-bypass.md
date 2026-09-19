@@ -1,12 +1,4 @@
----
-name: binary-protection-bypass
-description: >-
-  Binary protection bypass playbook. Use when identifying and bypassing ASLR, PIE, NX/DEP, stack canary, RELRO, FORTIFY_SOURCE, CET, and MTE protections in ELF binaries to enable exploitation.
----
-
-# SKILL: Binary Protection Bypass — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert binary protection identification and bypass techniques. Covers ASLR, PIE, NX, RELRO, canary, FORTIFY_SOURCE, stack clash, CET shadow stack, and ARM MTE. Each protection is paired with its bypass methods and required primitives. Distilled from ctf-wiki mitigation sections and real-world exploitation. Base models often confuse which protections block which attacks and miss the combinatorial effect of multiple protections.
+# Binary Protection Bypass — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

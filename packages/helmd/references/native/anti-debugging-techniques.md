@@ -1,14 +1,4 @@
----
-name: anti-debugging-techniques
-description: >-
-  Anti-debugging detection and bypass playbook. Use when reversing protected
-  binaries that detect debuggers via ptrace, PEB flags, timing checks, or
-  signal/exception handlers on Linux and Windows.
----
-
-# SKILL: Anti-Debugging Techniques — Detection & Bypass Playbook
-
-> **AI LOAD INSTRUCTION**: Expert anti-debug techniques across Linux and Windows. Covers ptrace, PEB flags, NtQueryInformationProcess, timing attacks, signal-based detection, TLS callbacks, VEH tricks, and all corresponding bypass methods. Base models often miss the distinction between user-mode and kernel-mode detection and the correct patching strategy for each.
+# Anti-Debugging Techniques — Detection & Bypass Playbook
 
 ## 0. RELATED ROUTING
 

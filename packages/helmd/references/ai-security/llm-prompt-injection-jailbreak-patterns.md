@@ -1,6 +1,6 @@
 # Jailbreak Patterns — Categorized Technique Reference
 
-> **Load trigger**: When the agent needs a comprehensive catalog of LLM jailbreak techniques, multi-step escalation strategies, or specific bypass payloads. Assumes the main [SKILL.md](./llm-prompt-injection.md) is already loaded for conceptual understanding of prompt injection.
+> **Load trigger**: When the agent needs a comprehensive catalog of LLM jailbreak techniques, multi-step escalation strategies, or specific bypass payloads. Assumes the main [main document](./llm-prompt-injection.md) is already loaded for conceptual understanding of prompt injection.
 
 ---
 

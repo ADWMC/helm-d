@@ -1,12 +1,4 @@
----
-name: prototype-pollution-advanced
-description: >-
-  Advanced prototype pollution playbook — server-side RCE, client-side gadgets, filter bypasses, and detection techniques. Companion to ../prototype-pollution/ for basics. Use when you've confirmed pollution and need to escalate to code execution or find framework-specific gadgets.
----
-
-# SKILL: Prototype Pollution Advanced — RCE & Gadget Exploitation
-
-> **AI LOAD INSTRUCTION**: Advanced prototype pollution escalation. Covers server-side RCE via template engines (EJS, Pug, Handlebars), Node.js child_process gadgets, client-side script gadgets, filter bypass patterns, and systematic detection. Load [../prototype-pollution/SKILL.md](./prototype-pollution.md) first for fundamentals (merge sinks, `__proto__` vs `constructor.prototype`, basic probes).
+# Prototype Pollution Advanced — RCE & Gadget Exploitation
 
 ## 0. RELATED ROUTING
 
@@ -244,7 +236,7 @@ Object.defineProperty(Object.prototype, '__proto__', {
 ## 5. EXPLOITATION FLOW
 
 ```
-1. Find merge sink (../prototype-pollution/SKILL.md Section 0)
+1. Find merge sink (../prototype-pollution/main document Section 0)
    └── JSON body parsed and deep-merged into server object
 
 2. Confirm pollution:
@@ -310,7 +302,7 @@ Confirmed prototype pollution?
 │   └── Try JSON key variations (Section 4.3)
 │
 └── Not confirmed yet?
-    └── Go back to ../prototype-pollution/SKILL.md for detection
+    └── Go back to ../prototype-pollution/main document for detection
 ```
 
 ---

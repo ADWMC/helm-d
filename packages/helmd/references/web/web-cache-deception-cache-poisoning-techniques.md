@@ -1,7 +1,5 @@
 # Web Cache Poisoning Techniques — Advanced Reference
 
-> **AI LOAD INSTRUCTION**: Load this when you need clear cache poisoning vs deception distinction, unkeyed header/parameter poisoning techniques, Fat GET cache poisoning, parameter cloaking, CDN-specific behavior, or Vary header attacks. Assumes the main [SKILL.md](./web-cache-deception.md) is already loaded for cache deception fundamentals.
-
 ---
 
 ## 1. WEB CACHE POISONING vs WEB CACHE DECEPTION

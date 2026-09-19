@@ -1,7 +1,5 @@
 # Protection Bypass Matrix — Comprehensive Cross-Reference
 
-> **AI LOAD INSTRUCTION**: Load this for a systematic lookup of which bypass technique works against which protection, and what primitive is required. Assumes [SKILL.md](./binary-protection-bypass.md) is loaded for individual protection details.
-
 ---
 
 ## 1. PROTECTION × BYPASS × PRIMITIVE MATRIX

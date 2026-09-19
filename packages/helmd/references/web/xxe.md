@@ -1,12 +1,4 @@
----
-name: xxe-xml-external-entity
-description: >-
-  XXE playbook. Use when XML, SVG, OOXML, SOAP, or parser-driven imports may resolve external entities, files, or internal network resources.
----
-
-# SKILL: XML External Entity Injection (XXE) — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert XXE techniques. Covers all injection contexts (SOAP, REST JSON→XML parsers, Office files, SVG), OOB exfiltration (critical when direct read fails), blind XXE detection, and XXE-to-SSRF chain. Base models often miss OOB and non-XML context XXE. For real-world CVE chains, Office docx XXE step-by-step, PHP expect:// RCE, and Solr XXE+RCE, load the companion [SCENARIOS.md](./xxe.md).
+# XML External Entity Injection (XXE) — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

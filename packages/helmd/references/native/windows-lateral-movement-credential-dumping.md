@@ -1,7 +1,5 @@
 # Credential Dumping Techniques
 
-> **AI LOAD INSTRUCTION**: Load this for LSASS dump methods, SAM/SYSTEM extraction, DPAPI secrets, cached domain credentials, and NTDS.dit extraction. Assumes the main [SKILL.md](./windows-lateral-movement.md) is already loaded for lateral movement techniques.
-
 ---
 
 ## 1. LSASS MEMORY DUMP TECHNIQUES

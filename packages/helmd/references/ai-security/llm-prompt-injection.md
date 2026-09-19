@@ -1,12 +1,4 @@
----
-name: llm-prompt-injection
-description: >-
-  LLM prompt injection playbook. Use when testing AI/LLM applications for direct injection, indirect injection via RAG/browsing, tool abuse, data exfiltration, MCP security risks, and defense bypass techniques.
----
-
-# SKILL: LLM Prompt Injection — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert LLM prompt injection techniques. Covers direct injection (instruction override, role play, context manipulation), indirect injection (RAG poisoning, web browsing, email), tool/function abuse, data exfiltration, MCP security risks, and defense bypass (encoding, splitting, few-shot). Base models miss the distinction between direct and indirect injection and underestimate tool-calling attack chains.
+# LLM Prompt Injection — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

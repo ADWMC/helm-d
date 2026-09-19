@@ -1,17 +1,6 @@
----
-name: request-smuggling
-description: >-
-  HTTP request smuggling and desynchronization testing. Use when front proxies,
-  CDNs, or load balancers disagree with the origin on message framing
-  (Content-Length vs Transfer-Encoding), on HTTP/2→HTTP/1 translation, or when
-  exploring client-side desync via browser fetch pipelines.
----
+# HTTP Request Smuggling — Expert Attack Playbook
 
-# SKILL: HTTP Request Smuggling — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert HTTP desync techniques. Covers CL.TE, TE.CL, TE.TE obfuscation variants, HTTP/2 downgrade and pseudo-header confusion, client-side desync (browser `fetch` pipelines), and tool-assisted fuzzing. Assumes familiarity with raw HTTP/1.1 framing and reverse-proxy topologies. This is not “header injection” — it is **message boundary disagreement** between hops.
-
-Routing note: load this skill when you suspect CDN/reverse-proxy and origin disagree on request-end boundaries, or when abnormal concatenation appears during H2-to-H1 downgrade.
+Routing note: load this document when you suspect CDN/reverse-proxy and origin disagree on request-end boundaries, or when abnormal concatenation appears during H2-to-H1 downgrade.
 
 ## 0. RELATED ROUTING
 
@@ -311,4 +300,4 @@ Also load [H2_SMUGGLING_VARIANTS.md](./request-smuggling-h2-smuggling-variants.m
 - **Response header splitting / Location CRLF** -> [CRLF Injection](./crlf-injection.md).
 - **Cache and path-key confusion** -> [Web Cache Deception](./web-cache-deception.md).
 
-Once confirmed as an **HTTP message-boundary** issue rather than parameter injection, **stay in this skill** to avoid misrouting into general injection workflows.
+Once confirmed as an **HTTP message-boundary** issue rather than parameter injection, **stay in this document** to avoid misrouting into general injection workflows.

@@ -1,14 +1,4 @@
----
-name: lattice-crypto-attacks
-description: >-
-  Lattice-based cryptanalysis playbook. Use when attacking RSA via Coppersmith
-  small roots, recovering DSA/ECDSA nonces from bias, solving knapsack
-  problems, or applying LLL/BKZ reduction to cryptographic constructions.
----
-
-# SKILL: Lattice-Based Cryptanalysis — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert lattice techniques for CTF and cryptanalysis. Covers LLL/BKZ reduction, Coppersmith's method (univariate and multivariate), Hidden Number Problem for DSA/ECDSA nonce recovery, knapsack attacks, and NTRU analysis. Base models often fail to construct the correct attack lattice (wrong dimensions, missing scaling factors) or misapply Coppersmith bounds.
+# Lattice-Based Cryptanalysis — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

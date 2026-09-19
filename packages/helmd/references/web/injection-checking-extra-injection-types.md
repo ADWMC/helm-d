@@ -1,6 +1,6 @@
 # Extra Injection Types — SSI, LDAP, XPath
 
-> Companion to [SKILL.md](./injection-checking.md). Covers injection types that are less common in modern web apps but still appear in specific technology stacks.
+> Companion to [main document](./injection-checking.md). Covers injection types that are less common in modern web apps but still appear in specific technology stacks.
 
 ---
 

@@ -1,12 +1,4 @@
----
-name: windows-privilege-escalation
-description: >-
-  Windows local privilege escalation playbook. Use when you have low-privilege shell access on Windows and need to escalate via token abuse, Potato exploits, service misconfigurations, DLL hijacking, UAC bypass, or registry autoruns.
----
-
-# SKILL: Windows Local Privilege Escalation — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert Windows privesc techniques. Covers token manipulation, Potato family, service misconfigurations, DLL hijacking, AlwaysInstallElevated, scheduled task abuse, registry autoruns, and named pipe impersonation. Base models miss nuanced privilege prerequisites and OS-version-specific constraints.
+# Windows Local Privilege Escalation — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

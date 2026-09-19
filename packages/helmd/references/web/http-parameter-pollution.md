@@ -1,12 +1,4 @@
----
-name: http-parameter-pollution
-description: >-
-  HTTP Parameter Pollution (HPP): duplicate query/body keys parsed differently by servers, proxies, WAFs, and app frameworks. Use when filters and application layers disagree on which value wins, enabling bypass, SSRF second URL, logic abuse, or CSRF token confusion.
----
-
-# SKILL: HTTP Parameter Pollution (HPP)
-
-> **AI LOAD INSTRUCTION**: Model the **full request path**: browser → CDN/WAF → reverse proxy → app framework → business code. Duplicate keys (`a=1&a=2`) are not an error at HTTP level; each hop may pick first, last, join, or array-ify. Test HPP when WAF and app disagree, or when internal HTTP clients rebuild query strings. Routing note: when the same parameter appears multiple times, or WAF/backend stacks differ, use the Section 1 matrix to test first/last/merge assumptions, then design Section 3 scenario chains.
+# HTTP Parameter Pollution (HPP)
 
 ## 0. QUICK START
 

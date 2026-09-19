@@ -1,7 +1,7 @@
 > 融合来源：authorized-pentest-framework 的内网/域提权清单。
 > 相关文档：
 - [exploit-dev-checklist](./exploit-dev-checklist.md)
-用于 SKILL.md §9 的内网域与 LPE 路由。以"系统/主机"为单位全面覆盖（见 SKILL.md §0 目标单位定义）：一个系统覆盖其所有端口/服务/组件，不因端口不同而割裂。
+用于 main document §9 的内网域与 LPE 路由。以"系统/主机"为单位全面覆盖（见 main document §0 目标单位定义）：一个系统覆盖其所有端口/服务/组件，不因端口不同而割裂。
 
 ## 1. 内网侦察（被动，限范围内）
 

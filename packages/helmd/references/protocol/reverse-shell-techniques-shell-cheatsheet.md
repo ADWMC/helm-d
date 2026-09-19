@@ -1,9 +1,3 @@
----
-name: reverse-shell-cheatsheet
-description: >-
-  One-liner reverse shell cheatsheet for 20+ languages and tools. Copy-paste ready payloads with ATTACKER/PORT placeholders.
----
-
 # REVERSE SHELL CHEATSHEET
 
 > Supplementary reference for [reverse-shell-techniques](./reverse-shell-techniques.md). Replace `ATTACKER` with your IP and `PORT` with your listener port.

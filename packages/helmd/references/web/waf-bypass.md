@@ -215,7 +215,7 @@ Transfer-Encoding: chunked
 GET /admin HTTP/1.1
 ...
 ```
-→ 详细走私技术见 `cache-poisoning-smuggling` skill
+→ 详细走私技术见 `cache-poisoning-smuggling.md`
 
 
 ---

@@ -1,12 +1,4 @@
----
-name: mobile-ssl-pinning-bypass
-description: >-
-  Mobile SSL pinning bypass playbook. Use when intercepting HTTPS traffic from mobile applications that implement certificate pinning, public key pinning, or SPKI hash pinning on Android and iOS, including React Native, Flutter, and Xamarin frameworks.
----
-
-# SKILL: Mobile SSL Pinning Bypass — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert SSL pinning bypass techniques for mobile platforms. Covers Android and iOS bypass methods (Frida, Objection, Xposed, SSL Kill Switch), framework-specific bypasses (Flutter, React Native, Xamarin), and troubleshooting non-standard pinning implementations. Base models miss framework-specific hook points and multi-layer pinning configurations.
+# Mobile SSL Pinning Bypass — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

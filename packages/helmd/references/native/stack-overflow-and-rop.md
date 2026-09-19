@@ -1,12 +1,4 @@
----
-name: stack-overflow-and-rop
-description: >-
-  Stack overflow and ROP playbook. Use when exploiting buffer overflows to hijack control flow via return address overwrite, ROP chains, ret2libc, ret2csu, ret2dlresolve, or SROP on Linux userland binaries.
----
-
-# SKILL: Stack Overflow & ROP — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert stack-based exploitation techniques. Covers classic buffer overflow, return-to-libc, ROP chain construction, ret2csu, ret2dlresolve, SROP, stack pivoting, and canary bypass. Distilled from ctf-wiki advanced-rop, real-world CVEs, and CTF competition patterns. Base models often miss the nuance of gadget selection under constrained conditions.
+# Stack Overflow & ROP — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

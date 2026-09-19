@@ -1,9 +1,3 @@
----
-name: port-service-matrix
-description: >-
-  Comprehensive service exploitation matrix organized by port number. Covers 20+ common services with enumeration, exploitation, and post-exploitation techniques for each.
----
-
 # PORT / SERVICE EXPLOITATION MATRIX
 
 > Supplementary reference for [unauthorized-access-common-services](./unauthorized-access-common-services.md). Organized by port for rapid triage during service enumeration.
@@ -280,7 +274,7 @@ crackmapexec winrm TARGET -u user -p pass -x 'whoami'
 
 ## Port 6379 — Redis
 
-See [unauthorized-access-common-services SKILL.md §2](./unauthorized-access-common-services.md) for full Redis exploitation (SSH key write, crontab, webshell, master-slave RCE).
+See [unauthorized-access-common-services main document §2](./unauthorized-access-common-services.md) for full Redis exploitation (SSH key write, crontab, webshell, master-slave RCE).
 
 ```bash
 # Quick check

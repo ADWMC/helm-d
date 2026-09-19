@@ -1,12 +1,4 @@
----
-name: race-condition
-description: >-
-  Race condition and TOCTOU testing for web apps. Use when testing one-time operations, concurrent HTTP abuse, rate-limit bypass, Turbo Intruder gates, HTTP/2 single-packet attacks, and CWE-362-style synchronization gaps.
----
-
-# SKILL: Race Conditions — Testing & Exploitation Playbook
-
-> **AI LOAD INSTRUCTION**: Treat race conditions as **authorization/state integrity** issues: non-atomic read-then-write lets multiple requests observe stale state. Prioritize **one-time** or **balance-like** operations. Combine **parallel transport** (HTTP/1.1 last-byte sync, HTTP/2 single-packet, Turbo Intruder gates) with **application evidence** (duplicate success responses, inconsistent balances, duplicate ledger rows). **Run against local lab targets.** Routing note: for business workflows, coupons, inventory, or one-time rewards, start with this skill and cross-load `business-logic-vulnerabilities`.
+# Race Conditions — Testing & Exploitation Playbook
 
 ---
 
@@ -277,7 +269,7 @@ Adjust hosts/paths by duplicating `RequestEngine` instances if endpoints differ 
 2. **Server-side** artifact: two rows, two emails, two grants, or wrong final balance.
 3. **Correlate** with `x-request` (or similar) markers or unique body fields in logs.
 
-**Routing summary**: if the scenario is more about business rules, pricing, or workflow bypass, load `skills/business-logic-vulnerabilities/SKILL.md`; this file focuses on **concurrency and transport-layer synchronization**.
+**Routing summary**: if the scenario is more about business rules, pricing, or workflow bypass, load `skills/business-logic-vulnerabilities/main document`; this file focuses on **concurrency and transport-layer synchronization**.
 
 ---
 
@@ -523,4 +515,4 @@ h2_conn.send_multiple_requests_at_once(all_headers, body_list=all_bodies)
 
 ## Related
 
-- **business-logic-vulnerabilities** — workflow, coupon abuse, and logic-first checklists (`../business-logic-vulnerabilities/SKILL.md`).
+- **business-logic-vulnerabilities** — workflow, coupon abuse, and logic-first checklists (`../business-logic-vulnerabilities/main document`).

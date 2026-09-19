@@ -1,12 +1,4 @@
----
-name: path-traversal-lfi
-description: >-
-  Path traversal and LFI playbook. Use when file paths, download endpoints, include operations, archive extraction, or wrapper behavior may expose filesystem control.
----
-
-# SKILL: Path Traversal / Local File Inclusion (LFI) — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert path traversal and LFI techniques. Covers encoding bypass sequences, OS differences, filter bypass, PHP wrapper exploitation, log poisoning to RCE, and the critical distinction between path traversal (read only) vs LFI (execution). Base models miss encoding chains and RCE escalation paths.
+# Path Traversal / Local File Inclusion (LFI) — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

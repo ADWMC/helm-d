@@ -1,12 +1,4 @@
----
-name: api-authorization-and-bola
-description: >-
-  API authorization and BOLA testing playbook. Use when APIs expose object identifiers, nested resources, hidden writable fields, or weak function-level authorization.
----
-
-# SKILL: API Authorization and BOLA — Object Access, Function Access, and Mass Assignment
-
-> **AI LOAD INSTRUCTION**: Use this skill when an API exposes object IDs, nested resources, or role-sensitive functions and you need a focused authorization test path: BOLA, BFLA, method abuse, and hidden field control.
+# API Authorization and BOLA — Object Access, Function Access, and Mass Assignment
 
 ## 1. CORE TEST LOOP
 

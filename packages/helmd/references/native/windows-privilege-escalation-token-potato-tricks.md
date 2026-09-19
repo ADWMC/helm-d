@@ -1,7 +1,5 @@
 # Token Manipulation & Potato Family Detailed Comparison
 
-> **AI LOAD INSTRUCTION**: Load this for in-depth Potato exploit selection, token privilege prerequisites, OS-version matrices, and protocol-level details. Assumes the main [SKILL.md](./windows-privilege-escalation.md) is already loaded for general Windows privesc flow.
-
 ---
 
 ## 1. TOKEN PRIVILEGE PRIMER

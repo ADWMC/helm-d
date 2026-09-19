@@ -1,12 +1,4 @@
----
-name: upload-insecure-files
-description: >-
-  Insecure file upload playbook. Use when testing upload validation, storage paths, processing pipelines, preview behavior, overwrite risks, and upload-to-RCE chains.
----
-
-# SKILL: Upload Insecure Files — Validation Bypass, Storage Abuse, and Processing Chains
-
-> **AI LOAD INSTRUCTION**: Expert file upload attack playbook. Use when the target accepts files, imports, avatars, media, documents, or archives and you need the full workflow: validation bypass, storage path abuse, post-upload access, parser exploitation, multi-tenant overwrite, and chaining into XSS, XXE, CMDi, traversal, or business logic impact. For web server parsing vulnerabilities, PUT method exploitation, and specific CVEs (WebLogic, Flink, Tomcat), load the companion [SCENARIOS.md](./upload-insecure-files-scenarios.md).
+# Upload Insecure Files — Validation Bypass, Storage Abuse, and Processing Chains
 
 ## 0. RELATED ROUTING
 

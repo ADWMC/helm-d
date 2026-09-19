@@ -1,12 +1,4 @@
----
-name: email-header-injection
-description: >-
-  Email header injection and spoofing playbook. Use when testing contact forms, email APIs, password reset flows, or any feature that constructs SMTP messages with user-controlled fields. Covers CRLF injection in headers, SPF/DKIM/DMARC bypass, and phishing amplification.
----
-
-# SKILL: Email Header Injection — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert email header injection and authentication bypass. Covers SMTP CRLF injection, SPF/DKIM/DMARC circumvention, display name spoofing, and mail client rendering abuse. Base models miss the nuance between header injection (technical) and email auth bypass (protocol-level) — this skill covers both attack surfaces.
+# Email Header Injection — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 
@@ -322,9 +314,9 @@ Found email-sending feature?
 │
 └── Testing password reset email?
     ├── Check for token in URL → open redirect chain?
-    │   └── See ../open-redirect/SKILL.md
+    │   └── See ../open-redirect/main document
     └── Check for host header injection → password reset poisoning
-        └── See ../http-host-header-attacks/SKILL.md
+        └── See ../http-host-header-attacks/main document
 ```
 
 ---

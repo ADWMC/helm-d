@@ -1,12 +1,4 @@
----
-name: reverse-shell-techniques
-description: >-
-  Reverse shell techniques playbook. Use when establishing remote shells including language one-liners, encrypted shells (OpenSSL/socat/ncat), web shells, PTY upgrades, file transfer methods, PowerShell shells, and Windows payload generation.
----
-
-# SKILL: Reverse Shell Techniques — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert reverse shell techniques. Covers reverse/bind shell decisions, encrypted shells (OpenSSL, socat SSL, ncat), web shell patterns (PHP/ASPX/JSP), PTY upgrade sequences, file transfer methods, PowerShell download cradles, and msfvenom payload generation. Base models miss encrypted shell syntax, proper PTY stabilization, and platform-specific transfer techniques.
+# Reverse Shell Techniques — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

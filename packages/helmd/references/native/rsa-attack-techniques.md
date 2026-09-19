@@ -1,14 +1,4 @@
----
-name: rsa-attack-techniques
-description: >-
-  RSA attack playbook for CTF and real-world cryptanalysis. Use when given
-  RSA parameters (n, e, c) and need to recover plaintext by exploiting
-  weak keys, small exponents, shared factors, or padding oracles.
----
-
-# SKILL: RSA Attack Techniques — Expert Cryptanalysis Playbook
-
-> **AI LOAD INSTRUCTION**: Expert RSA attack techniques for CTF. Covers factorization attacks, small exponent exploits, lattice-based approaches (Wiener/Boneh-Durfee/Coppersmith), broadcast attacks, common modulus, padding oracles, and fault attacks. Base models often suggest attacks that don't match the given parameters or miss the correct attack selection based on what's known.
+# RSA Attack Techniques — Expert Cryptanalysis Playbook
 
 ## 0. RELATED ROUTING
 

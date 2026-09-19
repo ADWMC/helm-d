@@ -1,7 +1,5 @@
 # AMSI Bypass Techniques — Detailed Patterns
 
-> **AI LOAD INSTRUCTION**: Load this for detailed AMSI bypass code patterns, PowerShell-specific bypasses, .NET AMSI bypass, and Constrained Language Mode escape. Assumes the main [SKILL.md](./windows-av-evasion.md) is already loaded for general AV/EDR evasion concepts.
-
 ---
 
 ## 1. AMSI ARCHITECTURE

@@ -1,12 +1,4 @@
----
-name: websocket-security
-description: >-
-  WebSocket handshake, CSWSH, tooling (wsrepl, ws-harness, Burp), and common flaws. Use when apps use real-time channels, chat, notifications, or WS-backed APIs.
----
-
-# SKILL: WebSocket Security
-
-> **AI LOAD INSTRUCTION**: This skill covers WebSocket protocol basics, cross-site WebSocket hijacking (CSWSH), practical tooling bridges, and common vulnerability classes. Treat tokens and message content as sensitive. For REST/GraphQL companion testing, cross-load **[api-sec](../web/api-sec.md)** when present in the workspace.
+# WebSocket Security
 
 ## 0. QUICK START
 

@@ -1,12 +1,4 @@
----
-name: insecure-source-code-management
-description: >-
-  Source control and artifact exposure (.git, .svn, .hg, backups, .env). Use when recon finds VCS paths, 403 on hidden dirs, or backup/config leaks.
----
-
-# SKILL: Insecure Source Code Management
-
-> **AI LOAD INSTRUCTION**: This skill covers detection and recovery of exposed version-control metadata, common backup artifacts, and related misconfigurations. Treat recovered credentials and URLs as sensitive: prove impact with the minimum data needed, sanitize what you hand over, and do not spread recovered data to unrelated third parties — delivery to the affected vendor or a vulnerability platform is the normal path. For broad discovery workflow, cross-load [recon-for-sec](../web/recon-for-sec.md) and [recon-and-methodology](../web/recon-and-methodology.md) when those skills exist in the workspace.
+# Insecure Source Code Management
 
 ## 0. QUICK START
 

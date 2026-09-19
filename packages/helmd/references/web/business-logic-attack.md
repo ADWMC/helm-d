@@ -144,11 +144,11 @@ POST /api/forgot  Host: evil.com  {"email":"victim@target.com"}
 ✅ 所有价格/金额参数: 改为 0、负数、极大值、小数
 ✅ 所有数量参数: 改为 0、负数、极大值
 ✅ 所有状态参数: 尝试跳转、回退、重复
-✅ 所有 ID 参数: 替换为其他用户/订单的 ID (→ IDOR skill)
+✅ 所有 ID 参数: 替换为其他用户/订单的 ID (→ idor.md)
 ✅ 所有验证码: 复用、爆破、轰炸
 ✅ 所有优惠券: 复用、枚举、叠加
 ✅ 所有多步骤操作: 跳过中间步骤
-✅ 并发请求: 余额消费、优惠券使用 (→ race-condition skill)
+✅ 并发请求: 余额消费、优惠券使用 (→ race-condition.md)
 ```
 
 ## 深入参考

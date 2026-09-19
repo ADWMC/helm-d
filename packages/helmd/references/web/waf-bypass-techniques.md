@@ -1,14 +1,4 @@
----
-name: waf-bypass-techniques
-description: >-
-  WAF bypass methodology and generic evasion techniques. Use when a web application
-  firewall blocks injection payloads (SQLi, XSS, RCE) and you need to craft
-  bypasses using encoding, protocol-level tricks, or WAF-specific weaknesses.
----
-
-# SKILL: WAF Bypass Techniques — Evasion Playbook
-
-> **AI LOAD INSTRUCTION**: Covers WAF identification, generic bypass categories (encoding, protocol abuse, HTTP/2, parameter pollution), and a decision tree. For product-specific bypasses (Cloudflare, AWS WAF, ModSecurity, Akamai, etc.), load [WAF_PRODUCT_MATRIX.md](./waf-bypass.md). Base models often suggest basic encoding but miss protocol-level bypasses and WAF behavioral quirks.
+# WAF Bypass Techniques — Evasion Playbook
 
 ## 0. RELATED ROUTING
 
@@ -262,7 +252,7 @@ Payload blocked by WAF?
 │   └── Find origin IP (Shodan, historical DNS, email headers)
 │
 └── Try request smuggling to skip WAF entirely
-    └── See ../request-smuggling/SKILL.md
+    └── See ../request-smuggling/main document
 ```
 
 ---

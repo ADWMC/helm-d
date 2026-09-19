@@ -1,6 +1,6 @@
 # CORS Misconfiguration — Extended Scenarios
 
-> Companion to [SKILL.md](./cors-cross-origin-misconfiguration.md). Contains JSONP hijacking, same-origin policy deep dive, and real-world exploitation patterns.
+> Companion to [main document](./cors-cross-origin-misconfiguration.md). Contains JSONP hijacking, same-origin policy deep dive, and real-world exploitation patterns.
 
 ---
 

@@ -1,6 +1,6 @@
 # Business Logic Vulnerability Testing Methodology / 业务逻辑漏洞测试方法论
 
-> Companion to [SKILL.md](./business-logic-vulnerabilities.md) and [CHECKLIST.md](./business-logic-vulnerabilities-checklist.md). Distilled from real-world payment / captcha / authentication / data-exposure logic flaw cases and live Java code-audit walkthroughs.
+> Companion to [main document](./business-logic-vulnerabilities.md) and [CHECKLIST.md](./business-logic-vulnerabilities-checklist.md). Distilled from real-world payment / captcha / authentication / data-exposure logic flaw cases and live Java code-audit walkthroughs.
 
 业务逻辑漏洞与传统注入/溢出类漏洞最大的不同在于：**它没有固定的特征签名，几乎无法被自动化工具发现，依赖测试者对目标业务的深度理解和经验**。本方法论给出一套可重复、可检索的工程化流程，把"凭感觉挖洞"压缩为"按图索骥"。
 
@@ -311,7 +311,7 @@ Q7  实在没思路 → 回 PHASE 1，对着没读懂的业务再读一遍代码
 
 ## 8. References / 参考索引
 
-- [SKILL.md](./business-logic-vulnerabilities.md) — 业务逻辑漏洞 attack playbook（英文）
+- [main document](./business-logic-vulnerabilities.md) — 业务逻辑漏洞 attack playbook（英文）
 - [SCENARIOS.md](./business-logic-vulnerabilities-scenarios.md) — 支付精度/竞态/验证码/找回密码/枚举的细化 scenario（英文）
 - [CHECKLIST.md](./business-logic-vulnerabilities-checklist.md) — 按业务模块分组的可勾选检查项（双语）
 - 蒸馏原始素材（外部，未入库）：

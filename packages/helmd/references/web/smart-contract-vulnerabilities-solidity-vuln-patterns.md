@@ -1,6 +1,6 @@
 # Solidity Vulnerability Patterns — Code Reference
 
-> **Load trigger**: When the agent needs side-by-side vulnerable vs fixed Solidity code patterns, gas-optimization-introduced vulnerabilities, or proxy storage slot collision calculations. Assumes the main [SKILL.md](./smart-contract-vulnerabilities.md) is already loaded for conceptual understanding.
+> **Load trigger**: When the agent needs side-by-side vulnerable vs fixed Solidity code patterns, gas-optimization-introduced vulnerabilities, or proxy storage slot collision calculations. Assumes the main [main document](./smart-contract-vulnerabilities.md) is already loaded for conceptual understanding.
 
 ---
 

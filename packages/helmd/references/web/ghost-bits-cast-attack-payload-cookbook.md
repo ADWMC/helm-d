@@ -1,12 +1,11 @@
 # Ghost Bits Cast Attack — Payload Cookbook
 
-> **AI LOAD INSTRUCTION**: Load this companion when the main
-> [SKILL.md](./ghost-bits-cast-attack.md) is already in context AND you need (a) a complete
+> [main document](./ghost-bits-cast-attack.md) is already in context AND you need (a) a complete
 > low-byte → Unicode lookup table beyond the compact one in section 4,
 > (b) an affected-component / patched-version matrix, (c) ready-to-paste
 > Python and Yaklang payload generators, or (d) blue-team multi-view
 > normalization pseudocode for WAF rules. Do NOT load this if the user only
-> wants the conceptual primer; the main SKILL covers that.
+> wants the conceptual primer; the main document covers that.
 
 ---
 
@@ -425,7 +424,7 @@ Bits surface":
     compare to baseline.
 
 [ ] If any of the above produces a body / status / length / timing
-    difference, switch to the per-recipe payload from SKILL section 5.
+    difference, switch to the per-recipe payload from document section 5.
 
 [ ] Always log the candidate `k` per substitution; rotate `k` between runs
     so adaptive WAFs cannot signature on a single character.

@@ -1,7 +1,5 @@
 # SUID/SGID & Capabilities Exploitation Tricks
 
-> **AI LOAD INSTRUCTION**: Load this for detailed SUID binary exploitation commands (GTFOBins top 30), capability-specific abuse techniques, and custom SUID exploitation methodology. Assumes the main [SKILL.md](./linux-privilege-escalation.md) is already loaded for enumeration and general privesc flow.
-
 ---
 
 ## 1. TOP 30 SUID BINARIES — EXPLOITATION COMMANDS

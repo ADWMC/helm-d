@@ -1,7 +1,5 @@
 # Dylib Hijacking & XPC Exploitation — Step-by-Step Techniques
 
-> **AI LOAD INSTRUCTION**: Load this when you need detailed dylib hijacking methodology, XPC exploitation walkthroughs, or Mach port technique specifics. Assumes the main [SKILL.md](./macos-process-injection.md) is already loaded for injection vector overview.
-
 ---
 
 ## 1. DYLIB HIJACKING METHODOLOGY

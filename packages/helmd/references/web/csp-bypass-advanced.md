@@ -1,14 +1,4 @@
----
-name: csp-bypass-advanced
-description: >-
-  Advanced Content Security Policy bypass techniques. Use when XSS or data
-  exfiltration is blocked by CSP and you need to find policy weaknesses, trusted
-  endpoint abuse, nonce leakage, or exfiltration channels that CSP cannot block.
----
-
-# SKILL: CSP Bypass — Advanced Techniques
-
-> **AI LOAD INSTRUCTION**: Covers per-directive bypass techniques, nonce/hash abuse, trusted CDN exploitation, data exfiltration despite CSP, and framework-specific bypasses. Base models often suggest `unsafe-inline` bypass without checking if the CSP actually uses it, or miss the critical `base-uri` and `object-src` gaps.
+# CSP Bypass — Advanced Techniques
 
 ## 0. RELATED ROUTING
 
@@ -239,7 +229,7 @@ CSP present?
 │   └── Script gadget creating dynamic scripts from DOM data
 │
 └── All script execution blocked?
-    ├── Dangling markup injection → exfil without JS (see ../dangling-markup-injection/SKILL.md)
+    ├── Dangling markup injection → exfil without JS (see ../dangling-markup-injection/main document)
     ├── DNS prefetch exfiltration
     ├── WebRTC exfiltration
     ├── CSS injection for data extraction

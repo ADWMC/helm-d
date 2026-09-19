@@ -1,7 +1,5 @@
 # WAF Product Bypass Matrix
 
-> **AI LOAD INSTRUCTION**: Load this when you've identified the specific WAF product and need product-targeted bypass techniques. Assumes the main [SKILL.md](./waf-bypass-techniques.md) is already loaded for generic bypass methodology.
-
 ---
 
 ## 1. Cloudflare WAF

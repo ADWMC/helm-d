@@ -1,4 +1,4 @@
-> 融合来源：x-vul-reward-self-check（微步 X 漏洞奖励计划提交前自查）：SKILL + 规则快照 + 字段对照三合一。规则有时效性，以平台页面为准。
+> 融合来源：x-vul-reward-self-check（微步 X 漏洞奖励计划提交前自查）：document + 规则快照 + 字段对照三合一。规则有时效性，以平台页面为准。
 > 相关文档：
 - [reporting](./reporting.md)
 # X 漏洞奖励计划辅助提交Skill

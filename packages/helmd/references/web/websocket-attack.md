@@ -111,7 +111,7 @@ Socket.IO 使用自己的协议格式：
 
 # WebSocket 高级利用技术
 
-> 本文补充 SKILL.md 中未深入展开的高级攻击面：CSWSH 深度利用、SockJS 回退传输、WebSocket 走私、DoS、认证令牌提取、竞态条件、原型链污染。
+> 本文补充 main document 中未深入展开的高级攻击面：CSWSH 深度利用、SockJS 回退传输、WebSocket 走私、DoS、认证令牌提取、竞态条件、原型链污染。
 
 ## 识别：高级攻击面枚举
 

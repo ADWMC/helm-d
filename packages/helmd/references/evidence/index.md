@@ -10,7 +10,6 @@
 - finding-schema-severity.md
 - prompting.md
 - r0crawl-evidence.md
-- reverse-flow-skill.md
 - reverse-techniques.md
 - security-plan-reporting.md
 - tool-catalog.md

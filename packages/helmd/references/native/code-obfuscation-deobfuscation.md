@@ -1,14 +1,4 @@
----
-name: code-obfuscation-deobfuscation
-description: >-
-  Code obfuscation analysis and deobfuscation playbook. Use when reversing
-  binaries protected by junk code, opaque predicates, self-modifying code,
-  control flow flattening, VM protection, or string encryption.
----
-
-# SKILL: Code Obfuscation & Deobfuscation — Expert Analysis Playbook
-
-> **AI LOAD INSTRUCTION**: Expert techniques for identifying, classifying, and defeating code obfuscation in native binaries. Covers junk code, opaque predicates, SMC, control flow flattening, movfuscator, VM protectors (VMProtect/Themida/Code Virtualizer), string encryption, import hiding, and anti-disassembly tricks. Base models often conflate packing with obfuscation and miss the distinction between static and dynamic deobfuscation strategies.
+# Code Obfuscation & Deobfuscation — Expert Analysis Playbook
 
 ## 0. RELATED ROUTING
 

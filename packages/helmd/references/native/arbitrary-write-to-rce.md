@@ -1,12 +1,4 @@
----
-name: arbitrary-write-to-rce
-description: >-
-  Arbitrary write to RCE playbook. Use when you have an arbitrary write primitive (from heap exploitation, format string, or OOB write) and need to convert it into code execution by targeting GOT, hooks, _IO_FILE vtable, exit_funcs, TLS_dtor_list, modprobe_path, .fini_array, or C++ vtables.
----
-
-# SKILL: Arbitrary Write to Code Execution — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert techniques for converting an arbitrary write primitive into code execution. Covers every major overwrite target organized by glibc version compatibility: GOT, __malloc_hook, __free_hook, _IO_FILE vtable, __exit_funcs, TLS_dtor_list, _dl_fini, modprobe_path, .fini_array, C++ vtable, and setcontext gadget. This is the "last mile" skill. Base models often target hooks that no longer exist (post-glibc 2.34) or miss pointer mangling requirements.
+# Arbitrary Write to Code Execution — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

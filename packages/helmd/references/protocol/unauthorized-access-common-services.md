@@ -1,12 +1,4 @@
----
-name: unauthorized-access-common-services
-description: >-
-  Unauthorized access playbook for common exposed services. Use when Redis, Rsync, PHP-FPM, AJP/Ghostcat, Hadoop YARN, H2 Console, or similar management interfaces are exposed without authentication.
----
-
-# SKILL: Unauthorized Access to Common Services — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert techniques for exploiting unauthenticated or weakly authenticated management services. Covers Redis write-to-RCE, Rsync data theft, PHP-FPM code execution, Ghostcat AJP file read, Hadoop YARN job submission, and H2 Console JNDI. These are infrastructure-level findings distinct from web application vulnerabilities.
+# Unauthorized Access to Common Services — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

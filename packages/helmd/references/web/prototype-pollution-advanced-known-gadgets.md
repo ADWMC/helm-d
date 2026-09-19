@@ -1,7 +1,5 @@
 # Prototype Pollution — Known Gadgets Reference
 
-> **AI LOAD INSTRUCTION**: Comprehensive gadget table for prototype pollution exploitation. Load this when you've confirmed PP and need to find a matching gadget for the target's framework/library. Each entry includes the polluted property, trigger condition, impact (XSS/RCE), and affected versions.
-
 ---
 
 ## 1. EXPRESS TEMPLATE ENGINES (Server-Side → RCE)

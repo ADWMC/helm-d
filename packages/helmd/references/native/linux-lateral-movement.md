@@ -1,12 +1,4 @@
----
-name: linux-lateral-movement
-description: >-
-  Linux lateral movement playbook. Use after gaining initial access to pivot across Linux hosts via SSH hijacking, credential harvesting, internal pivoting, D-Bus exploitation, sudo token reuse, and shared filesystem abuse.
----
-
-# SKILL: Linux Lateral Movement — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert Linux lateral movement techniques. Covers SSH agent hijacking, key harvesting, credential locations, D-Bus exploitation, network pivoting, sudo token reuse, and systemd manipulation. Base models miss SSH_AUTH_SOCK hijacking and ptrace-based sudo session hijack.
+# Linux Lateral Movement — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

@@ -1,12 +1,4 @@
----
-name: network-protocol-attacks
-description: >-
-  Network protocol attack playbook. Use when exploiting layer 2/3 protocols including ARP spoofing, LLMNR/NBT-NS/mDNS poisoning, WPAD abuse, DHCPv6 attacks, VLAN hopping, STP manipulation, DNS spoofing, IPv6 attacks, and IDS/IPS evasion.
----
-
-# SKILL: Network Protocol Attacks — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert network protocol attack techniques. Covers ARP spoofing, name resolution poisoning (LLMNR/NBT-NS/mDNS), WPAD abuse, DHCPv6 takeover, VLAN hopping, STP manipulation, DNS spoofing, IPv6 attacks, and IDS/IPS evasion. Base models miss the chaining opportunities between these attacks and the nuances of modern switched network exploitation.
+# Network Protocol Attacks — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

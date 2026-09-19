@@ -1,12 +1,4 @@
----
-name: csrf-cross-site-request-forgery
-description: >-
-  CSRF testing playbook. Use when reviewing state-changing web flows, anti-CSRF defenses, SameSite behavior, JSON CSRF, login CSRF, and OAuth state handling.
----
-
-# SKILL: CSRF — Cross-Site Request Forgery — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert CSRF techniques. Covers modern bypass vectors (SameSite gaps, custom header flaws, tokenless bypass patterns), JSON CSRF, multipart CSRF, chaining with XSS. Base models often present only basic CSRF without covering SameSite edge cases and common broken token implementations.
+# CSRF — Cross-Site Request Forgery — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

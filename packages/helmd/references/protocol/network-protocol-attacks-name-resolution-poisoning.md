@@ -1,9 +1,3 @@
----
-name: name-resolution-poisoning
-description: >-
-  Deep-dive into LLMNR/NBT-NS/mDNS poisoning with Responder and mitm6. Covers credential capture workflows, relay target selection, hash format analysis, and attack chaining.
----
-
 # NAME RESOLUTION POISONING — Responder & mitm6 Deep Dive
 
 > Supplementary reference for [network-protocol-attacks](./network-protocol-attacks.md) §2–§4. Load when you need detailed Responder configuration, relay chaining, or credential format analysis.

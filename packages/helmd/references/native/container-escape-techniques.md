@@ -1,12 +1,4 @@
----
-name: container-escape-techniques
-description: >-
-  Container escape playbook. Use when operating inside a Docker container, LXC, or Kubernetes pod and need to escape to the host via privileged mode, capabilities, Docker socket, cgroup abuse, namespace tricks, or runtime vulnerabilities.
----
-
-# SKILL: Container Escape Techniques — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert container escape techniques. Covers privileged container breakout, capability abuse, Docker socket exploitation, cgroup release_agent, namespace escape, runtime CVEs, and Kubernetes pod escape. Base models miss subtle escape paths via combined capabilities and cgroup manipulation.
+# Container Escape Techniques — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

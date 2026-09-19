@@ -1,11 +1,3 @@
----
-name: recon-for-sec
-description: >-
-  Entry P1 category router for reconnaissance and methodology. Use when mapping
-  scope, discovering assets, fingerprinting technology, building endpoint
-  inventory, and choosing the first high-value security testing path.
----
-
 # Recon and Methodology Router
 
 This is the starting router for new targets and unknown attack surfaces.
@@ -16,7 +8,7 @@ This is the starting router for new targets and unknown attack surfaces.
 - You need to begin with asset discovery, tech fingerprinting, endpoint inventory, and test-route planning
 - You want to build follow-up testing on structured methodology instead of random payload enumeration
 
-## Skill Map
+## Document Map
 
 - [Recon and Methodology](./recon-and-methodology.md)
 - [Insecure Source Code Management](../protocol/insecure-source-code-management.md) — .git/.svn/.hg exposure detection

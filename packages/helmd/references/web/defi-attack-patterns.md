@@ -1,12 +1,4 @@
----
-name: defi-attack-patterns
-description: >-
-  DeFi attack pattern playbook. Use when analyzing flash loan attacks, price oracle manipulation, MEV sandwich attacks, governance exploits, bridge vulnerabilities, and token standard edge cases in decentralized finance protocols.
----
-
-# SKILL: DeFi Attack Patterns — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert DeFi exploitation techniques. Covers flash loan mechanics, oracle manipulation (spot vs TWAP), MEV extraction (sandwich, JIT, liquidation), precision loss attacks, governance exploits, bridge vulnerabilities, and token standard pitfalls. Base models often miss the single-transaction atomicity constraint of flash loans and the distinction between spot price and TWAP manipulation.
+# DeFi Attack Patterns — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

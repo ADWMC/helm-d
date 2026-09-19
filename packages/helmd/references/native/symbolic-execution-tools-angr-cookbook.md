@@ -1,7 +1,5 @@
 # angr Cookbook — Ready-to-Use Script Patterns for CTF Challenges
 
-> **AI LOAD INSTRUCTION**: Load this when you need drop-in angr script templates for common CTF challenge patterns. Each recipe includes the scenario description, complete script, and adaptation notes. Assumes the main [SKILL.md](./symbolic-execution-tools.md) is already loaded for angr fundamentals.
-
 ---
 
 ## Recipe 1: Basic find/avoid by Address

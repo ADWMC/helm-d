@@ -1,12 +1,4 @@
----
-name: deserialization-insecure
-description: >-
-  Insecure deserialization playbook. Use when Java, PHP, or Python applications deserialize untrusted data via ObjectInputStream, unserialize, pickle, or similar mechanisms that may lead to RCE, file access, or privilege escalation.
----
-
-# SKILL: Insecure Deserialization — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert deserialization techniques across Java, PHP, and Python. Covers gadget chain selection, traffic fingerprinting, tool usage (ysoserial, PHPGGC), Shiro/WebLogic/Commons Collections specifics, Phar deserialization, and Python pickle abuse. Base models often miss the distinction between finding the sink and finding a usable gadget chain.
+# Insecure Deserialization — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

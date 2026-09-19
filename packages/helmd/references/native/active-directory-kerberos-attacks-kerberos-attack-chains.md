@@ -1,7 +1,5 @@
 # Kerberos Multi-Step Attack Chains
 
-> **AI LOAD INSTRUCTION**: Load this for end-to-end Kerberos attack chains that combine multiple AD techniques. Assumes the main [SKILL.md](./active-directory-kerberos-attacks.md) is already loaded for individual Kerberos attacks. Use when planning multi-step attack paths from initial foothold to domain admin.
-
 ---
 
 ## 1. CHAIN: KERBEROAST → CONSTRAINED DELEGATION → DOMAIN ADMIN

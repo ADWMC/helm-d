@@ -1,11 +1,3 @@
----
-name: auth-sec
-description: >-
-  Entry P1 category router for authentication and authorization. Use when
-  testing login flows, sessions, object authorization, JWT, OAuth, CORS, CSRF,
-  and enterprise SSO weaknesses before any deeper auth topic skill.
----
-
 # Authentication and Authorization Router
 
 This is the routing entry point for authentication, sessions, and authorization boundaries.
@@ -18,7 +10,7 @@ Use it to decide whether the issue is mainly login mechanics, object-level autho
 - You suspect object authorization flaws, cross-tenant access, cross-origin reads, CSRF, or protocol misconfiguration
 - You need to decide whether to test authentication or authorization first
 
-## Skill Map
+## Document Map
 
 - [Authentication Bypass](./authbypass-authentication-flaws.md): login bypass, password reset, 2FA, enumeration, brute-force protections
 - [IDOR Broken Object Authorization](./idor.md): IDOR, BOLA, BFLA, missing object permissions

@@ -1,7 +1,5 @@
 # Java Gadget Chains & Cross-Language Deserialization Deep Dive
 
-> **AI LOAD INSTRUCTION**: Load this when you need Java gadget chain version compatibility, SnakeYAML/Hessian/Kryo patterns, .NET ViewState forgery details, Ruby YAML exploitation, or deserialization fingerprint magic bytes. Assumes the main [SKILL.md](./deserialization-insecure.md) is already loaded for ysoserial basics, PHP/Python fundamentals.
-
 ---
 
 ## 1. JAVA GADGET CHAIN VERSION COMPATIBILITY MATRIX

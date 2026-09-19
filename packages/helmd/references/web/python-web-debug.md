@@ -125,7 +125,7 @@ ALLOWED_HOSTS → 子域名信息
 # 伪造 Django 签名数据 / session
 # Django 默认使用 JSONSerializer；只有显式配置 PickleSerializer 的旧应用才存在 pickle 反序列化 RCE 风险
 import django.core.signing
-# 默认 JSON session 场景主要关注签名数据伪造；PickleSerializer 场景再参考 deserialization-methodology skill
+# 默认 JSON session 场景主要关注签名数据伪造；PickleSerializer 场景再参考 deserialization-methodology document
 
 # 伪造密码重置 Token
 from django.contrib.auth.tokens import PasswordResetTokenGenerator

@@ -1,15 +1,4 @@
----
-name: classical-cipher-analysis
-description: >-
-  Classical cipher analysis playbook. Use when encountering substitution
-  ciphers, Vigenere, transposition, XOR, or encoded text in CTF challenges
-  that requires frequency analysis, Kasiski examination, or known-plaintext
-  cryptanalysis.
----
-
-# SKILL: Classical Cipher Analysis — Expert Cryptanalysis Playbook
-
-> **AI LOAD INSTRUCTION**: Expert classical cipher identification and breaking techniques for CTF. Covers cipher identification methodology (frequency analysis, IC, Kasiski), monoalphabetic substitution, Caesar/ROT, Vigenere, Enigma, affine, Hill, transposition ciphers, Bacon/Polybius/Playfair, and XOR ciphers. Base models often skip the identification step and jump to the wrong cipher type, or fail to recognize encoded (base64/hex) ciphertext that needs decoding before analysis.
+# Classical Cipher Analysis — Expert Cryptanalysis Playbook
 
 ## 0. RELATED ROUTING
 

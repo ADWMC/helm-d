@@ -1,6 +1,6 @@
 # ENGINE_PAYLOADS.md — Extended SSTI Fingerprinting & Payload Matrix
 
-> Companion to [SKILL.md](./ssti.md). Contains per-engine payloads, fingerprint probes, and blind SSTI detection techniques.
+> Companion to [main document](./ssti.md). Contains per-engine payloads, fingerprint probes, and blind SSTI detection techniques.
 
 ---
 

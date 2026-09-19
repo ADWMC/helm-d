@@ -1,12 +1,4 @@
----
-name: clickjacking
-description: >-
-  Clickjacking playbook. Use when testing whether target pages can be framed, whether X-Frame-Options or CSP frame-ancestors are properly configured, and whether UI redress attacks can trigger sensitive actions.
----
-
-# SKILL: Clickjacking — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Clickjacking (UI redress) techniques. Covers iframe transparency tricks, X-Frame-Options bypass, CSP frame-ancestors, multi-step clickjacking, drag-and-drop attacks, and chaining with other vulnerabilities. Often a "low severity" finding that becomes critical when targeting admin actions.
+# Clickjacking — Expert Attack Playbook
 
 ## 1. CORE CONCEPT
 

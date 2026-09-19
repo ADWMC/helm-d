@@ -1,7 +1,5 @@
 # AD CS ESC1–ESC13 Quick Reference Matrix
 
-> **AI LOAD INSTRUCTION**: Load this for the complete ESC vulnerability matrix with conditions, impact, exploitation commands, and detection notes. Assumes the main [SKILL.md](./active-directory-certificate-services.md) is already loaded for AD CS concepts and detailed exploitation.
-
 ---
 
 ## 1. ESC VULNERABILITY MATRIX

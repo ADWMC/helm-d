@@ -1,12 +1,4 @@
----
-name: http2-specific-attacks
-description: >-
-  HTTP/2 protocol-specific attack playbook. Use when the target supports HTTP/2 and you need to exploit binary framing, HPACK compression, h2c upgrade smuggling, pseudo-header injection, stream multiplexing abuse, or H2→H1 downgrade translation flaws.
----
-
-# SKILL: HTTP/2 Specific Attacks — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: HTTP/2 protocol-level attack techniques beyond basic request smuggling. Covers h2c smuggling, pseudo-header manipulation, HPACK attacks, single-packet race conditions, and H2→H1 downgrade injection. Base models conflate HTTP/2 smuggling with HTTP/1.1 smuggling — this skill focuses on H2-unique attack surface.
+# HTTP/2 Specific Attacks — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 
@@ -321,7 +313,7 @@ Target supports HTTP/2?
 │       └── PRIORITY starvation (Section 5.3)
 │
 └── NO (HTTP/1.1 only)
-    └── See ../request-smuggling/SKILL.md for H1-specific techniques
+    └── See ../request-smuggling/main document for H1-specific techniques
 ```
 
 ---

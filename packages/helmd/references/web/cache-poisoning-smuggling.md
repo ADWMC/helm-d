@@ -114,7 +114,7 @@ SMUGGLED
 
 # 缓存投毒/走私高级技术
 
-SKILL.md 覆盖了 CL.TE/TE.CL 基础检测和缓存键概念，本文档聚焦高级技术：缓存欺骗与投毒的区分、URL 差异利用、HTTP/2 降级走私、h2c 走私、响应队列 Desync 和浏览器侧走私。
+main document 覆盖了 CL.TE/TE.CL 基础检测和缓存键概念，本文档聚焦高级技术：缓存欺骗与投毒的区分、URL 差异利用、HTTP/2 降级走私、h2c 走私、响应队列 Desync 和浏览器侧走私。
 
 ---
 
@@ -464,7 +464,7 @@ Turbo Intruder：requestsPerConnection=1, pipeline=False
 │  │  ├─ URL 差异（分隔符/编码/点段） → 缓存欺骗窃取数据
 │  │  └─ 扩展名后缀缓存 + CSPT → 认证 token 窃取
 │  ├─ 测试前后端解析差异
-│  │  ├─ CL vs TE 差异 → 传统走私（见 SKILL.md）
+│  │  ├─ CL vs TE 差异 → 传统走私（见 main document）
 │  │  ├─ HTTP/2 + 降级 → H2.TE / H2.CL
 │  │  ├─ Upgrade 头转发 → h2c 走私 / WebSocket 走私
 │  │  └─ TE 规范化缺陷 → close-delimited 回退走私

@@ -1,14 +1,4 @@
----
-name: hash-attack-techniques
-description: >-
-  Hash attack playbook. Use when exploiting length extension, MD5/SHA1
-  collisions, HMAC timing leaks, birthday attacks, or hash-based proof
-  of work in CTF scenarios.
----
-
-# SKILL: Hash Attack Techniques — Expert Cryptanalysis Playbook
-
-> **AI LOAD INSTRUCTION**: Expert hash attack techniques for CTF and security assessments. Covers length extension attacks, MD5/SHA1 collision generation, meet-in-the-middle hash attacks, HMAC timing side channels, birthday attacks, and proof-of-work solving. Base models often incorrectly apply length extension to HMAC or SHA-3, or fail to distinguish between identical-prefix and chosen-prefix collisions.
+# Hash Attack Techniques — Expert Cryptanalysis Playbook
 
 ## 0. RELATED ROUTING
 

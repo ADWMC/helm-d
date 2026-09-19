@@ -1,6 +1,6 @@
 # Business Logic Vulnerabilities — Extended Scenarios
 
-> Companion to [SKILL.md](./business-logic-vulnerabilities.md), [METHODOLOGY.md](./business-logic-vulnerabilities-methodology.md), [CHECKLIST.md](./business-logic-vulnerabilities-checklist.md). Contains payment security, captcha bypass, password reset flaws, user enumeration, traversal attack scenarios, and four blocks of distilled instructor-led real-world cases (§10 privacy / §11 payment / §12 registration / §13 password recovery).
+> Companion to [main document](./business-logic-vulnerabilities.md), [METHODOLOGY.md](./business-logic-vulnerabilities-methodology.md), [CHECKLIST.md](./business-logic-vulnerabilities-checklist.md). Contains payment security, captcha bypass, password reset flaws, user enumeration, traversal attack scenarios, and four blocks of distilled instructor-led real-world cases (§10 privacy / §11 payment / §12 registration / §13 password recovery).
 
 ---
 
@@ -494,7 +494,7 @@ return_url | notify_url | callback_url                  → attacker server (cap
 
 ### 11.7 Multi-Device Concurrent Subscription Discount
 
-Already covered in [SKILL.md §2 Multi-Device Concurrent VIP Subscription](./business-logic-vulnerabilities.md). Practical Burp recipe:
+Already covered in [main document §2 Multi-Device Concurrent VIP Subscription](./business-logic-vulnerabilities.md). Practical Burp recipe:
 
 ```text
 1. Login same account on 3 devices (or 3 browser sessions in incognito)
@@ -535,7 +535,7 @@ Bypass flow:
 When the basic flow `POST /sendCode {"phone": "..."}` is rate-limited, real-world bypasses:
 
 ```text
-1. CONCURRENCY:  Turbo Intruder concurrentConnections=30 (see SKILL §2)
+1. CONCURRENCY:  Turbo Intruder concurrentConnections=30 (see document §2)
 2. COOKIE TRICK: Delete JSESSIONID → send → server resets per-session counter to 0
 3. WHITESPACE / ENCODING:
      "phone": "13888888888 "     (trailing space)
@@ -695,7 +695,7 @@ Bypass:
 
 ## 14. IDOR / Authorization — Reproducible Drills
 
-> Companion to [SKILL.md §11.6](./business-logic-vulnerabilities.md) and [CHECKLIST.md §8](./business-logic-vulnerabilities-checklist.md).
+> Companion to [main document §11.6](./business-logic-vulnerabilities.md) and [CHECKLIST.md §8](./business-logic-vulnerabilities-checklist.md).
 > Each drill below is a 30-second reproduction window: capture once, swap one
 > field, replay. The point is to make the test **boring enough to run on every endpoint**.
 
@@ -803,7 +803,7 @@ will not have aligned auth. Always test all four.
 
 ## 15. File Upload — Payload Library and Reproduction Windows
 
-> Companion to [SKILL.md §11.8](./business-logic-vulnerabilities.md) and [CHECKLIST.md §16](./business-logic-vulnerabilities-checklist.md).
+> Companion to [main document §11.8](./business-logic-vulnerabilities.md) and [CHECKLIST.md §16](./business-logic-vulnerabilities-checklist.md).
 
 ### 15.1 Extension Bypass Lab
 
@@ -944,7 +944,7 @@ quote, or use a dedicated CSV writer with `quoting=csv.QUOTE_ALL`.
 
 ## 16. SSRF / XXE / Out-of-Band — Field-Ready Payloads
 
-> Companion to [SKILL.md §11.9](./business-logic-vulnerabilities.md) and [CHECKLIST.md §17](./business-logic-vulnerabilities-checklist.md).
+> Companion to [main document §11.9](./business-logic-vulnerabilities.md) and [CHECKLIST.md §17](./business-logic-vulnerabilities-checklist.md).
 
 ### 16.1 OOB Setup — One-Line Listeners
 

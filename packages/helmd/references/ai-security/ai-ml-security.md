@@ -1,12 +1,4 @@
----
-name: ai-ml-security
-description: >-
-  AI/ML security playbook. Use when assessing model supply chain attacks (pickle RCE, poisoned weights), adversarial examples, model poisoning, model stealing, data privacy attacks (membership inference, model inversion), and autonomous agent security risks.
----
-
-# SKILL: AI/ML Security — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert AI/ML security techniques. Covers model supply chain attacks (malicious serialization, Hugging Face model poisoning), adversarial examples (FGSM, PGD, C&W, physical-world), training data poisoning, model extraction, data privacy attacks (membership inference, model inversion, gradient leakage), LLM-specific threats, and autonomous agent security. Base models underestimate the severity of pickle deserialization RCE and the practicality of black-box model extraction.
+# AI/ML Security — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

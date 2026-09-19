@@ -1,12 +1,4 @@
----
-name: api-recon-and-docs
-description: >-
-  API reconnaissance and documentation review playbook. Use when discovering endpoints, schemas, versions, OpenAPI specs, hidden docs, and surface area for API testing.
----
-
-# SKILL: API Recon and Docs — Endpoints, Schemas, and Version Surface
-
-> **AI LOAD INSTRUCTION**: Use this skill first when the target is a REST, mobile, or GraphQL API and you need to enumerate endpoints, documentation, versions, and hidden surface area before exploitation.
+# API Recon and Docs — Endpoints, Schemas, and Version Surface
 
 ## 1. PRIMARY GOALS
 
@@ -53,7 +45,7 @@ curl https://target/app.js | grep -oE '(/api|/rest|/graphql)[^"'\'' ]+' | sort -
 
 ## 4. NEXT ROUTING
 
-| Finding | Next Skill |
+| Finding | Next Document |
 |---|---|
 | object IDs everywhere | [api authorization and bola](./api-authorization-and-bola.md) |
 | JWT, OAuth, role claims | [api auth and jwt abuse](./api-auth-and-jwt-abuse.md) |

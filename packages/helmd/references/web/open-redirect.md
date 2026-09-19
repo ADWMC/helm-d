@@ -1,12 +1,4 @@
----
-name: open-redirect
-description: >-
-  Open redirect playbook. Use when URL parameters, form actions, or JavaScript sinks control navigation targets and may redirect users to attacker-controlled destinations.
----
-
-# SKILL: Open Redirect — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Open redirect techniques. Covers parameter-based redirects, JavaScript sinks, filter bypass, and chaining with phishing, CSRF Referer bypass, OAuth token theft, and SSRF. Often underrated but critical for phishing and as a building block in multi-step exploit chains.
+# Open Redirect — Expert Attack Playbook
 
 ## 1. CORE CONCEPT
 

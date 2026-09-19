@@ -1,12 +1,4 @@
----
-name: csv-formula-injection
-description: >-
-  CSV/spreadsheet formula injection (DDE, Excel/LibreOffice, Google Sheets IMPORT*). Use when exports, imports, or user fields feed spreadsheets or reporting tools.
----
-
-# SKILL: CSV Formula Injection
-
-> **AI LOAD INSTRUCTION**: This skill covers formula/DDE-style injection in CSV and spreadsheet contexts, obfuscation, cloud-sheet primitives, and safe testing methodology. Payloads that invoke local commands or remote fetches are **impactful**—prefer lab targets.
+# CSV Formula Injection
 
 ## 0. QUICK START
 
@@ -141,4 +133,4 @@ Input:  =1+1
 Output: '=1+1   OR   \t=1+1   OR   (empty prefix) with escaped quotes per RFC 4180
 ```
 
-**Note**: when correlating business exports, reports, and API export parameters, combine with injection, business-logic, and API-security skills.
+**Note**: when correlating business exports, reports, and API export parameters, combine with injection, business-logic, and API-security documents.

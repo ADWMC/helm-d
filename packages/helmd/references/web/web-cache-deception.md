@@ -1,12 +1,4 @@
----
-name: web-cache-deception
-description: >-
-  Web cache deception and poisoning playbook. Use when CDN, reverse proxy, or application caching may serve sensitive authenticated content to other users due to path confusion or cache key manipulation.
----
-
-# SKILL: Web Cache Deception — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Web cache deception and poisoning techniques. Covers path confusion attacks, CDN cache behavior exploitation, cache key manipulation, and the distinction between cache deception (steal data) and cache poisoning (serve malicious content). Presented by Omer Gil at Black Hat 2017 and significantly expanded since.
+# Web Cache Deception — Expert Attack Playbook
 
 ### Advanced Reference
 

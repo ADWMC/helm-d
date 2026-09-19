@@ -1,6 +1,6 @@
 # XSS — Extended Scenarios & Real-World Cases
 
-> Companion to [SKILL.md](./xss.md). Contains additional attack scenarios, CVE case studies, and defense bypass techniques.
+> Companion to [main document](./xss.md). Contains additional attack scenarios, CVE case studies, and defense bypass techniques.
 
 ---
 

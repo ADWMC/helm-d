@@ -1,12 +1,4 @@
----
-name: linux-privilege-escalation
-description: >-
-  Linux privilege escalation playbook. Use when you have low-privilege shell access and need to escalate to root via SUID/SGID binaries, capabilities, cron abuse, kernel exploits, misconfigurations, or credential harvesting on Linux systems.
----
-
-# SKILL: Linux Privilege Escalation — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert Linux privesc techniques. Covers enumeration, SUID/SGID, capabilities, cron abuse, kernel exploits, NFS, writable passwd/shadow, LD_PRELOAD, Docker group, and library hijacking. Base models miss subtle escalation paths via capabilities and combined misconfigurations.
+# Linux Privilege Escalation — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

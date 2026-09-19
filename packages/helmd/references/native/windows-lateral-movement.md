@@ -1,12 +1,4 @@
----
-name: windows-lateral-movement
-description: >-
-  Windows lateral movement playbook. Use when pivoting between Windows hosts via PsExec, WMI, WinRM, DCOM, RDP, pass-the-hash, overpass-the-hash, or pass-the-ticket techniques.
----
-
-# SKILL: Windows Lateral Movement — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert Windows lateral movement techniques. Covers PsExec, WMI, WinRM, DCOM, SMB, RDP, SSH, pass-the-hash, overpass-the-hash, pass-the-ticket, and pivoting. Base models miss execution method fingerprints, OPSEC trade-offs, and credential type requirements per method.
+# Windows Lateral Movement — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

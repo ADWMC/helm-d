@@ -260,13 +260,13 @@ Runtime:exec(Runtime:getRuntime(), 'cmd.exe /C whoami')
 
 # XSLT 高级利用参考
 
-> 本文档补充 SKILL.md，聚焦高级 payload 变体、XSLT 2.0+ 特性、盲利用与 WAF 绕过。基础知识见主文件。
+> 本文档补充 main document，聚焦高级 payload 变体、XSLT 2.0+ 特性、盲利用与 WAF 绕过。基础知识见主文件。
 
 ---
 
 ## 1. 识别 — XSLT 版本与引擎能力判断
 
-标准指纹（SKILL.md 已覆盖）之外，可通过**功能探测**进一步确认版本：
+标准指纹（main document 已覆盖）之外，可通过**功能探测**进一步确认版本：
 
 ```
 引擎能力探测树

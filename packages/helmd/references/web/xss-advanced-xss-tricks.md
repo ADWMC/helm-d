@@ -1,6 +1,6 @@
 # Advanced XSS Tricks — Supplementary Reference
 
-> **Load trigger**: When the agent needs modern framework XSS, mXSS, DOM Clobbering, Trusted Types bypass, or Service Worker persistence techniques beyond the core SKILL.md.
+> **Load trigger**: When the agent needs modern framework XSS, mXSS, DOM Clobbering, Trusted Types bypass, or Service Worker persistence techniques beyond the core main document.
 
 ## 1. mXSS (Mutation XSS)
 

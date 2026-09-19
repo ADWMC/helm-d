@@ -1,7 +1,5 @@
 # SQLMap Advanced Workflow & Deep SQL Injection Techniques
 
-> **AI LOAD INSTRUCTION**: Load this when you need SQLMap tamper chain recipes, INSERT/UPDATE/DELETE injection patterns, GraphQL+SQLi, WAF bypass tamper stacking, or DB-specific advanced functions that base models miss. Assumes the main [SKILL.md](./sql-injection.md) is already loaded for fundamentals.
-
 ---
 
 ## 1. SQLMAP — ADVANCED WORKFLOW

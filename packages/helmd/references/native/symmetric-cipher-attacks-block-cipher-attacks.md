@@ -1,7 +1,5 @@
 # Block Cipher Attacks — Detailed Scripts & Walkthrough
 
-> **AI LOAD INSTRUCTION**: Load this when you need full attack implementations, step-by-step walkthroughs, and edge-case handling for block cipher exploitation. Assumes the main [SKILL.md](./symmetric-cipher-attacks.md) is already loaded for attack selection and decision trees.
-
 ---
 
 ## 1. PADDING ORACLE — FULL WALKTHROUGH

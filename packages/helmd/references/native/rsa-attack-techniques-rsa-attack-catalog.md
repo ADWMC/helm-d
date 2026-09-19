@@ -1,7 +1,5 @@
 # RSA Attack Catalog — Detailed Implementations & Mathematics
 
-> **AI LOAD INSTRUCTION**: Load this when you need full mathematical derivations, complete SageMath/Python implementations, and edge-case handling for each RSA attack. Assumes the main [SKILL.md](./rsa-attack-techniques.md) is already loaded for attack selection and decision trees.
-
 ---
 
 ## 1. FACTORIZATION METHODS — DETAILED

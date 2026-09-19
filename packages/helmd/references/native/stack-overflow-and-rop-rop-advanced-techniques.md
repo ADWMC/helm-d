@@ -1,7 +1,5 @@
 # Advanced ROP Techniques — BROP, Partial Overwrite, JOP, COP
 
-> **AI LOAD INSTRUCTION**: Load this when you need Blind ROP methodology, ret2vdso for ASLR bypass, partial overwrite for PIE bypass, or alternative code-reuse paradigms (JOP/COP). Assumes the main [SKILL.md](./stack-overflow-and-rop.md) is already loaded for fundamental ROP, ret2csu, ret2dlresolve, and SROP.
-
 ---
 
 ## 1. BLIND ROP (BROP)

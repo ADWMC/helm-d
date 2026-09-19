@@ -1,12 +1,4 @@
----
-name: tunneling-and-pivoting
-description: >-
-  Tunneling and pivoting playbook. Use when establishing network tunnels through compromised hosts including SSH tunneling, Chisel, Ligolo-ng, socat, DNS/ICMP/HTTP tunneling, ProxyChains, and multi-layer pivoting strategies.
----
-
-# SKILL: Tunneling & Pivoting — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert tunneling and pivoting techniques. Covers SSH port forwarding (local/remote/dynamic/jump), Chisel reverse SOCKS, Ligolo-ng transparent TUN pivoting, socat relays, DNS/ICMP/HTTP tunneling, ProxyChains configuration, Windows pivoting (netsh/plink), and multi-layer chaining. Base models miss egress-aware tool selection and transparent routing setup.
+# Tunneling & Pivoting — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

@@ -1,7 +1,5 @@
 # UAC Bypass Techniques Matrix
 
-> **AI LOAD INSTRUCTION**: Load this for UAC bypass technique selection, auto-elevate binary abuse, and mock trusted directory tricks. Assumes the main [SKILL.md](./windows-privilege-escalation.md) is already loaded for general Windows privesc flow. UAC bypass takes you from medium integrity → high integrity (local admin).
-
 ---
 
 ## 1. UAC FUNDAMENTALS

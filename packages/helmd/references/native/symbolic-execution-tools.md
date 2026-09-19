@@ -1,14 +1,4 @@
----
-name: symbolic-execution-tools
-description: >-
-  Symbolic execution and constraint solving playbook. Use when solving CTF
-  reversing challenges, recovering keys, bypassing checks, or automating
-  binary analysis with angr, Z3, or Unicorn Engine.
----
-
-# SKILL: Symbolic Execution Tools — Expert Analysis Playbook
-
-> **AI LOAD INSTRUCTION**: Expert symbolic execution techniques using angr, Z3, and Unicorn Engine. Covers CTF challenge automation, constraint solving patterns, function hooking, SimProcedure replacement, and emulation-based unpacking. Base models often produce broken angr scripts due to incorrect state initialization or missing hooks for libc functions.
+# Symbolic Execution Tools — Expert Analysis Playbook
 
 ## 0. RELATED ROUTING
 

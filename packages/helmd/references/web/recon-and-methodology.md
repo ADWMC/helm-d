@@ -1,12 +1,4 @@
----
-name: recon-and-methodology
-description: >-
-  Reconnaissance and methodology playbook. Use when mapping assets, discovering endpoints, fingerprinting technology, and building a structured testing plan for a new target.
----
-
-# SKILL: Recon and Methodology — Expert Bug Bounty Playbook
-
-> **AI LOAD INSTRUCTION**: Systematic recon and bug-finding methodology from top bug hunters. Covers subdomain enumeration, endpoint discovery, tech fingerprinting, and the hunter's mental model for finding bugs that others miss. Key insight: most high-severity bugs are found through systematic coverage, not just clever payloads.
+# Recon and Methodology — Expert Bug Bounty Playbook
 
 ---
 

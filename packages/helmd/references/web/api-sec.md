@@ -1,16 +1,8 @@
----
-name: api-sec
-description: >-
-  Entry P1 category router for API security. Use when choosing between API
-  recon, authorization, token abuse, and hidden-parameter workflows before any
-  deeper API topic skill.
----
-
 # API Security Router
 
 This is the routing entry point for API security testing.
 
-Use this skill first to decide whether the API issue is mostly recon/docs, object authorization, token trust, or GraphQL/hidden parameters, then route to a deeper topic skill.
+Read this document first to decide whether the API issue is mostly recon/docs, object authorization, token trust, or GraphQL/hidden parameters, then route to a deeper topic document.
 
 ## When to Use
 
@@ -18,7 +10,7 @@ Use this skill first to decide whether the API issue is mostly recon/docs, objec
 - You need to define API testing order before going into specific topics
 - You want to handle object authorization, JWT, GraphQL, and hidden fields as separate tracks
 
-## Skill Map
+## Document Map
 
 - [API Recon and Docs](./api-recon-and-docs.md): OpenAPI, Swagger, version drift, hidden documentation
 - [API Authorization and BOLA](./api-authorization-and-bola.md): BOLA, BFLA, method abuse, hidden writable fields

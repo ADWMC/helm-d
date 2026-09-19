@@ -1,7 +1,5 @@
 # URL Parser Differentials & Advanced SSRF Techniques
 
-> **AI LOAD INSTRUCTION**: Load this when you need URL parser confusion tables, full cloud metadata endpoint catalogs, gopher:// payload recipes, DNS rebinding deep dives, or headless-browser/PDF-generator SSRF patterns. Assumes the main [SKILL.md](./ssrf.md) is already loaded for fundamentals.
-
 ---
 
 ## 1. URL PARSER DIFFERENTIAL TABLE

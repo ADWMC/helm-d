@@ -250,7 +250,7 @@ HTTP/1.1 Keep-Alive 场景下，部分反向代理只在**第一个请求**验�
 
 # HTTP 头部操纵高级技术
 
-> 本文档补充 SKILL.md，聚焦三类与 Host Header 攻击协同使用的 HTTP 头部操纵手法。
+> 本文档补充 main document，聚焦三类与 Host Header 攻击协同使用的 HTTP 头部操纵手法。
 
 ---
 

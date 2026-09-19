@@ -1,12 +1,4 @@
----
-name: dns-rebinding-attacks
-description: >-
-  DNS rebinding attack playbook. Use when testing applications that trust DNS resolution for origin checks, interact with internal services from browser context, or when SSRF is not possible server-side but the target has client-side fetch/XHR to attacker-controlled domains.
----
-
-# SKILL: DNS Rebinding — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert DNS rebinding techniques for bypassing same-origin policy via DNS manipulation. Covers TTL tricks, browser cache bypasses, attack variants (HTTP, WebSocket, TOCTOU), internal service targeting, and tool usage. Base models confuse DNS rebinding with SSRF — this skill clarifies the client-side nature and unique exploit paths.
+# DNS Rebinding — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

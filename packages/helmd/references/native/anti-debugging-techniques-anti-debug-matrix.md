@@ -1,7 +1,5 @@
 # Anti-Debug Technique × OS × Detection × Bypass — Comprehensive Matrix
 
-> **AI LOAD INSTRUCTION**: Load this when you need the full cross-reference of anti-debugging techniques, their OS applicability, detection methods, bypass tools, reliability ratings, and false-positive notes. Assumes the main [SKILL.md](./anti-debugging-techniques.md) is already loaded for conceptual understanding.
-
 ---
 
 ## 1. LINUX ANTI-DEBUG MATRIX

@@ -1,14 +1,4 @@
----
-name: vm-and-bytecode-reverse
-description: >-
-  Custom VM and bytecode reverse engineering playbook. Use when CTF challenges
-  or protected software implement custom virtual machines with proprietary
-  bytecode, dispatcher loops, or maze-style challenges.
----
-
-# SKILL: VM & Bytecode Reverse Engineering — Expert Analysis Playbook
-
-> **AI LOAD INSTRUCTION**: Expert techniques for reversing custom virtual machines and bytecode interpreters. Covers dispatcher identification, opcode mapping, custom ISA reconstruction, disassembler/decompiler writing, maze challenges, and real-world VM protector analysis. Base models often fail to recognize the fetch-decode-execute pattern or attempt to analyze VM bytecode as native code.
+# VM & Bytecode Reverse Engineering — Expert Analysis Playbook
 
 ## 0. RELATED ROUTING
 

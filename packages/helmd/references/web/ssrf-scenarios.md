@@ -1,6 +1,6 @@
 # SSRF — Extended Scenarios & Real-World Cases
 
-> Companion to [SKILL.md](./ssrf.md). Contains additional CVE case studies, advanced bypass techniques, and chaining scenarios.
+> Companion to [main document](./ssrf.md). Contains additional CVE case studies, advanced bypass techniques, and chaining scenarios.
 
 ---
 

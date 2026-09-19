@@ -1,7 +1,5 @@
 # Seccomp Bypass — Architecture Confusion, io_uring, Allowed Syscall Chaining
 
-> **AI LOAD INSTRUCTION**: Load this for seccomp filter bypass techniques. Covers architecture confusion (x86_64/x86 syscall number mismatch), io_uring bypass, ptrace-based bypass, allowed syscall chaining for ORW, namespace escape, and return value manipulation. Assumes [SKILL.md](./sandbox-escape-techniques.md) is loaded for sandbox type identification.
-
 ---
 
 ## 1. SECCOMP FUNDAMENTALS

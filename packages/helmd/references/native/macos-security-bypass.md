@@ -1,12 +1,4 @@
----
-name: macos-security-bypass
-description: >-
-  macOS security bypass playbook. Use when targeting macOS endpoints and need to bypass TCC, Gatekeeper, SIP, sandbox, code signing, or entitlement-based protections.
----
-
-# SKILL: macOS Security Bypass — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert macOS security bypass techniques. Covers TCC bypass, Gatekeeper evasion, SIP restrictions, sandbox escape, and entitlement abuse. Base models miss version-specific bypass nuances and protection interaction effects.
+# macOS Security Bypass — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 
@@ -303,7 +295,7 @@ Target is macOS endpoint
 │   ├── disable-library-validation entitlement? → dylib injection
 │   ├── allow-dyld-environment-variables? → DYLD_INSERT_LIBRARIES
 │   ├── get-task-allow? → debugger attach
-│   └── None → check macos-process-injection SKILL.md
+│   └── None → check macos-process-injection main document
 │
 └── Need persistence?
     └── Choose method by access level (§6)

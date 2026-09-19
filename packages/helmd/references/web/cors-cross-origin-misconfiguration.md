@@ -1,12 +1,4 @@
----
-name: cors-cross-origin-misconfiguration
-description: >-
-  CORS misconfiguration testing playbook. Use when analyzing cross-origin trust, credentialed browser reads, origin reflection, preflight policy bugs, and browser-based access to authenticated APIs.
----
-
-# SKILL: CORS Misconfiguration — Credentialed Origins, Reflection, and Trust Boundary Errors
-
-> **AI LOAD INSTRUCTION**: Use this skill when browsers can access authenticated APIs cross-origin. Focus on reflected origins, credentialed requests, wildcard trust, parser mistakes, and origin allowlist bypasses. For JSONP hijacking deep dives, same-origin policy internals, honeypot de-anonymization, and CORS vs JSONP comparison, load the companion [SCENARIOS.md](./cors-cross-origin-misconfiguration-scenarios.md).
+# CORS Misconfiguration — Credentialed Origins, Reflection, and Trust Boundary Errors
 
 ### Extended Scenarios
 
@@ -18,7 +10,7 @@ Also load [SCENARIOS.md](./cors-cross-origin-misconfiguration-scenarios.md) when
 - CORS exploitation payloads — reflected origin with `credentials: include`, null origin via sandboxed iframe
 - Dual-site attack lab pattern — localhost:8981 (target) + localhost:8982 (attacker) testing setup
 
-## 1. WHEN TO LOAD THIS SKILL
+## 1. WHEN TO LOAD THIS document
 
 Load when:
 

@@ -1,6 +1,6 @@
 # Business Logic Vulnerability Checklist / 业务逻辑漏洞检查清单
 
-> Companion to [SKILL.md](./business-logic-vulnerabilities.md), [SCENARIOS.md](./business-logic-vulnerabilities-scenarios.md), [METHODOLOGY.md](./business-logic-vulnerabilities-methodology.md). Distilled from instructor-led classes and the original `逻辑漏洞checklist.pdf` curriculum, every entry below has a **why** (root cause) and a **verify** (how to reproduce).
+> Companion to [main document](./business-logic-vulnerabilities.md), [SCENARIOS.md](./business-logic-vulnerabilities-scenarios.md), [METHODOLOGY.md](./business-logic-vulnerabilities-methodology.md). Distilled from instructor-led classes and the original `逻辑漏洞checklist.pdf` curriculum, every entry below has a **why** (root cause) and a **verify** (how to reproduce).
 
 每条 checklist 都按 `Item | why | verify` 三栏组织。`why` 是漏洞的本质成因；`verify` 是给另一名工程师能 1:1 复现的最小步骤。
 
@@ -153,7 +153,7 @@
 | 礼品卡 / 兑换码并发兑换被拒绝 | 双花经典场景 | Burp 并行重放兑换请求 |
 | 抽奖次数 / 概率不可被前端控制 | 8.逻辑漏洞.pdf page_00009 类 | 抓包改 `chance_count`、`prize_id` |
 
-参考：逻辑漏洞checklist.pdf page_00006/00013、SKILL.md §4。
+参考：逻辑漏洞checklist.pdf page_00006/00013、main document §4。
 
 ---
 
@@ -164,7 +164,7 @@
 | 总金额服务端用单价×数量重算，不信任前端 `total` | 否则改 total 实付任意 | 抓包修改 `total_amount`，看实际扣款 |
 | 数量为负 / 0 / 浮点都被拒绝 | 8.逻辑漏洞.pdf page_00011 / 00012 | `quantity=-1`、`quantity=0`、`quantity=0.02` |
 | 库存为 0 / 接近 0 时正确并发处理 | 防超卖 | 多线程同时购买仅剩 1 件商品 |
-| 订单状态机仅允许合法跳转 | 否则可 PUT `status=paid`/`refunded`/`shipped` 直接跳 | 直接调状态变更 API（参考 SKILL.md §6） |
+| 订单状态机仅允许合法跳转 | 否则可 PUT `status=paid`/`refunded`/`shipped` 直接跳 | 直接调状态变更 API（参考 main document §6） |
 | 不允许从已发货 / 已完成订单回退到待支付 | 否则可"取消已发货订单刷退款" | 试图改 status 倒退 |
 | 订单 ID 不可枚举（UUID 而非自增） | 否则遍历可看他人订单 | 递增 `order_id=1..N` 看是否能拿别人订单数据 |
 | 订单详情接口独立做归属校验（不只在 ID 上做） | IDOR | 用 A token 访问 B 的订单 ID |
@@ -317,7 +317,7 @@ def queueRequests(target, wordlists):
 
 ## 16. File Upload / 文件上传业务逻辑
 
-> 仅针对"上传业务"自身的逻辑校验。Webshell / 解析漏洞 / 敏感文件读取等通用利用链请同时加载 `upload-insecure-files/SKILL.md`。
+> 仅针对"上传业务"自身的逻辑校验。Webshell / 解析漏洞 / 敏感文件读取等通用利用链请同时加载 `upload-insecure-files/main document`。
 
 | Item | why | verify |
 |---|---|---|
@@ -334,7 +334,7 @@ def queueRequests(target, wordlists):
 | 高并发上传不存在"上传中"窗口，可绕过病毒扫描或清理 | 高并发下 AV 来不及扫，恶意文件短暂可访问 | 用 Burp Intruder 并发上传同一恶意文件并并发请求该 URL，看是否抓到执行窗口 |
 | 上传接口同样受频率限制和身份验证 | 内网/后台上传是 webshell 主路径 | 删 cookie / 用低权限账号尝试上传，看是否拒绝 |
 
-参考：SKILL.md §11.8、`upload-insecure-files` skill。
+参考：main document §11.8、`upload-insecure-files.md`。
 
 ---
 
@@ -353,7 +353,7 @@ def queueRequests(target, wordlists):
 | 出网请求出口走"白名单 + 出口防火墙"策略 | 内部资产可被打到云元数据 / 内网中间件 | 用 `http://169.254.169.254/latest/meta-data/`（AWS）/ `http://metadata.google.internal/` 探云元数据 |
 | 盲注类漏洞日常排查标配带外平台（DNSLog / Collaborator / interactsh） | 单纯靠回显遗漏盲点 | 注入 payload 嵌入随机子域名，监控该域名是否被解析 |
 
-参考：SKILL.md §11.9。
+参考：main document §11.9。
 
 ---
 
@@ -371,6 +371,6 @@ def queueRequests(target, wordlists):
 ## References / 参考
 
 - [METHODOLOGY.md](./business-logic-vulnerabilities-methodology.md) — 五阶段方法论 / 单页决策树
-- [SKILL.md](./business-logic-vulnerabilities.md) — 业务逻辑漏洞 attack playbook
+- [main document](./business-logic-vulnerabilities.md) — 业务逻辑漏洞 attack playbook
 - [SCENARIOS.md](./business-logic-vulnerabilities-scenarios.md) — 支付/竞态/找回密码/枚举/上传细化场景
 - 蒸馏原始素材（外部）：业务逻辑漏洞 PDF 教材 / 业务逻辑漏洞 checklist 教材 / 业务逻辑漏洞审计课程录像 / 2022 业务逻辑漏洞专题课程

@@ -1,7 +1,5 @@
 # BloodHound Attack Paths & Cypher Queries
 
-> **AI LOAD INSTRUCTION**: Load this for common BloodHound attack paths, custom Cypher queries for Neo4j, and chain analysis techniques. Assumes the main [SKILL.md](./active-directory-acl-abuse.md) is already loaded for individual ACL abuse techniques.
-
 ---
 
 ## 1. BLOODHOUND DATA COLLECTION BEST PRACTICES
@@ -259,7 +257,7 @@ BloodHound data collected and imported
 │
 ├── Run "Shortest Paths from Owned to DA"
 │   ├── Direct path found? → follow the chain
-│   │   ├── ACL edge → exploit per SKILL.md §3
+│   │   ├── ACL edge → exploit per main document §3
 │   │   ├── Session edge → credential dump on that host
 │   │   └── AdminTo edge → lateral movement to host
 │   └── No path found?

@@ -1,12 +1,4 @@
----
-name: sandbox-escape-techniques
-description: >-
-  Sandbox escape playbook. Use when breaking out of Python sandbox, Lua sandbox, seccomp filter, chroot jail, container/Docker, browser sandbox, or namespace isolation to achieve unrestricted code execution or file access.
----
-
-# SKILL: Sandbox Escape — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert sandbox escape techniques across Python, Lua, seccomp, chroot, Docker/container, and browser sandbox contexts. Covers CTF pyjail patterns, seccomp architecture confusion, chroot fd leaks, namespace escape, and Mojo IPC abuse. Distilled from ctf-wiki sandbox sections and real-world container escapes. Base models often miss the distinction between sandbox types and apply wrong escape techniques.
+# Sandbox Escape — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 
@@ -237,7 +229,7 @@ What type of sandbox?
 ├── Container / Docker?
 │   ├── Privileged container? → mount host, load kernel module
 │   ├── Mounted docker.sock? → docker API → escape
-│   ├── See ../container-escape-techniques/SKILL.md
+│   ├── See ../container-escape-techniques/main document
 │   └── Kernel exploit → full escape
 │
 ├── Browser sandbox?

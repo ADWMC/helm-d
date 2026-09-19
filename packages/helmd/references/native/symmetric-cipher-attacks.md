@@ -1,14 +1,4 @@
----
-name: symmetric-cipher-attacks
-description: >-
-  Symmetric cipher attack playbook. Use when exploiting block cipher mode
-  weaknesses (CBC padding oracle, ECB cut-and-paste, bit flipping), stream
-  cipher key reuse, or meet-in-the-middle attacks.
----
-
-# SKILL: Symmetric Cipher Attacks — Expert Cryptanalysis Playbook
-
-> **AI LOAD INSTRUCTION**: Expert techniques for attacking symmetric encryption in CTF. Covers CBC padding oracle, CBC bit flipping, ECB detection and exploitation, stream cipher key reuse, LFSR/LCG state recovery, RC4 biases, and meet-in-the-middle attacks. Base models often confuse ECB and CBC attack strategies or fail to set up byte-at-a-time ECB decryption correctly.
+# Symmetric Cipher Attacks — Expert Cryptanalysis Playbook
 
 ## 0. RELATED ROUTING
 

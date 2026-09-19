@@ -1,12 +1,4 @@
----
-name: crlf-injection
-description: >-
-  CRLF injection playbook. Use when user input reaches HTTP response headers, Location redirects, Set-Cookie values, or log files where carriage-return/line-feed characters can split or inject content.
----
-
-# SKILL: CRLF Injection — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: CRLF injection (HTTP response splitting) techniques. Covers header injection, response body injection via double CRLF, XSS escalation, cache poisoning, and encoding bypass. Often overlooked by scanners but chains into XSS, session fixation, and cache attacks.
+# CRLF Injection — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

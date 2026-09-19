@@ -1,6 +1,6 @@
 # SQL Injection — Extended Scenarios & Real-World Cases
 
-> Companion to [SKILL.md](./sql-injection.md). Contains additional attack scenarios, CVE case studies, and injection techniques from real-world engagements.
+> Companion to [main document](./sql-injection.md). Contains additional attack scenarios, CVE case studies, and injection techniques from real-world engagements.
 
 ---
 

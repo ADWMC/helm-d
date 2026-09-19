@@ -1,6 +1,6 @@
 # SSTI — Extended Scenarios & Real-World Cases
 
-> Companion to [SKILL.md](./ssti.md). Contains additional CVE cases, PHP template exploitation, and expression language crossover scenarios.
+> Companion to [main document](./ssti.md). Contains additional CVE cases, PHP template exploitation, and expression language crossover scenarios.
 
 ---
 

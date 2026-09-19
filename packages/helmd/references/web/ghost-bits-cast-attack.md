@@ -1,19 +1,5 @@
----
-name: ghost-bits-cast-attack
-description: >-
-  Java "Ghost Bits" / Cast Attack playbook (Black Hat Asia 2026). Use when
-  attacking Java services where 16-bit char is silently narrowed to 8-bit byte
-  to bypass WAF/IDS for SQL injection, deserialization RCE, file upload
-  (Webshell), path traversal, CRLF injection, request smuggling, and SMTP
-  injection. Affects Tomcat, Spring, Jetty, Undertow, Vert.x, Jackson,
-  Fastjson, Apache Commons BCEL, Apache HttpClient, Angus Mail, JDK
-  HttpServer, Lettuce, Jodd, XMLWriter and re-enables many "patched" CVEs
-  through WAF bypass.
----
+# Ghost Bits / Cast Attack — Java char to byte Narrowing Playbook
 
-# SKILL: Ghost Bits / Cast Attack — Java char to byte Narrowing Playbook
-
-> **AI LOAD INSTRUCTION**: This is a Java-only injection-enabling primitive,
 > not a standalone vulnerability class. Whenever you see (1) a Java backend,
 > (2) a WAF/IDS in front of it, and (3) any of {SQLi, deser RCE, file upload,
 > path traversal, CRLF, request smuggling, SMTP injection} on the menu, ALWAYS

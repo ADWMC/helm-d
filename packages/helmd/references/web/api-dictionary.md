@@ -1,7 +1,7 @@
 > 融合来源：authorized-pentest-framework 的 API 字典累积规范。
 > 相关文档：
 - [pentest-web-checklist](./pentest-web-checklist.md)
-用于 SKILL.md §8 步骤 12 / §9。将测试中梳理出的 URL / API 路径沉淀为 dir 字典，随每次测试累积，作为后续目录爆破 / 接口探测的输入。
+用于 main document §8 步骤 12 / §9。将测试中梳理出的 URL / API 路径沉淀为 dir 字典，随每次测试累积，作为后续目录爆破 / 接口探测的输入。
 
 ## 存储位置
 

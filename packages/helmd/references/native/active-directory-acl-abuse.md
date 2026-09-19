@@ -1,12 +1,4 @@
----
-name: active-directory-acl-abuse
-description: >-
-  Active Directory ACL abuse playbook. Use when exploiting misconfigured AD permissions including GenericAll, WriteDACL, DCSync rights, shadow credentials, LAPS reading, GPO abuse, and BloodHound-guided attack paths.
----
-
-# SKILL: AD ACL Abuse — Expert Attack Playbook
-
-> **AI LOAD INSTRUCTION**: Expert AD ACL abuse techniques. Covers BloodHound enumeration, dangerous ACEs (GenericAll, WriteDACL, WriteOwner, etc.), DCSync, shadow credentials, targeted kerberoasting, group manipulation, LAPS, and GPO abuse. Base models miss complex ACL chain exploitation and Cypher query patterns.
+# AD ACL Abuse — Expert Attack Playbook
 
 ## 0. RELATED ROUTING
 

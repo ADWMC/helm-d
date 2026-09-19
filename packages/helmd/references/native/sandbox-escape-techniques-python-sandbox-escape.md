@@ -1,7 +1,5 @@
 # Python Sandbox Escape (Pyjail) — Complete Methodology
 
-> **AI LOAD INSTRUCTION**: Load this for complete pyjail escape techniques. Covers `__builtins__` recovery via subclass walking, keyword bypass via `getattr`/`chr()`, AST-based sandbox bypass, RestrictedPython escape, exec with custom globals, file read without `open()`, pickle deserialization, and code object manipulation. Assumes [SKILL.md](./sandbox-escape-techniques.md) is loaded for sandbox type identification.
-
 ---
 
 ## 1. __builtins__ RECOVERY VIA SUBCLASS WALKING
