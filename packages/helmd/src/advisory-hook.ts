@@ -8,7 +8,6 @@ import { hasPending, reckonAdvisories, renderAdvisories, submitAdvisory } from '
 import { USER_MESSAGE, latestEventText, sessionEvents } from './session-log.js'
 import { agentSessionId, registerAssemblyListener, stripHarnessPersona, type AssemblyLike } from './prompt-assembly.js'
 import { normalizeInput } from './input-normalizer.js'
-import { OUTPUT_CONTRACT_SECTION, OUTPUT_CONTRACT_TEXT } from './output-contract.js'
 
 export const name = 'helmd-advisory'
 
@@ -203,7 +202,7 @@ export function registerAdvisoryHook(ctx: Context): void {
         const text = renderAdvisories(sessionId)
         const sections = Array.isArray(assembled.sections) ? assembled.sections : []
         const cleanSections = sections
-          .filter((s: any) => s?.name !== 'harness:identity' && s?.name !== OUTPUT_CONTRACT_SECTION)
+          .filter((s: any) => s?.name !== 'harness:identity')
           .map((s: any) => {
             if (typeof s?.text === 'string') {
               return { ...s, text: stripHarnessPersona(s.text) }
@@ -219,17 +218,6 @@ export function registerAdvisoryHook(ctx: Context): void {
               s.text = s.text + '\n\n' + text
             }
           }
-        }
-
-        // Output contract: append right after the persona section so the
-        // rendered prompt reads persona → contract → first-party guidance.
-        // AssembledSection has no order field (host sorts before the
-        // waterfall); the positional append is the only ordering lever.
-        const hasContract = newSections.some((s: any) => s?.name === OUTPUT_CONTRACT_SECTION)
-        if (!hasContract) {
-          const personaIdx = newSections.findIndex((s: any) => s?.name === 'deployment:persona-prefix')
-          const insertAt = personaIdx >= 0 ? personaIdx + 1 : newSections.length
-          newSections.splice(insertAt, 0, { name: OUTPUT_CONTRACT_SECTION, text: OUTPUT_CONTRACT_TEXT })
         }
 
         const contexts = Array.isArray(assembled.contexts)
