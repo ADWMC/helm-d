@@ -221,11 +221,15 @@ export function registerAdvisoryHook(ctx: Context): void {
           }
         }
 
-        // Output contract rides right after persona-prefix (order 5) so it is
-        // covered by the same phase-1 retain list as the persona rows.
+        // Output contract: append right after the persona section so the
+        // rendered prompt reads persona → contract → first-party guidance.
+        // AssembledSection has no order field (host sorts before the
+        // waterfall); the positional append is the only ordering lever.
         const hasContract = newSections.some((s: any) => s?.name === OUTPUT_CONTRACT_SECTION)
         if (!hasContract) {
-          newSections.push({ name: OUTPUT_CONTRACT_SECTION, text: OUTPUT_CONTRACT_TEXT, order: 5 })
+          const personaIdx = newSections.findIndex((s: any) => s?.name === 'deployment:persona-prefix')
+          const insertAt = personaIdx >= 0 ? personaIdx + 1 : newSections.length
+          newSections.splice(insertAt, 0, { name: OUTPUT_CONTRACT_SECTION, text: OUTPUT_CONTRACT_TEXT })
         }
 
         const contexts = Array.isArray(assembled.contexts)
