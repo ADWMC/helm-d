@@ -66,3 +66,5 @@
 ## 配套 playbook 目录
 
 漏洞类型分类详见 `../playbooks/00-index.md`。
+
+- [06-progressive-steering.md](06-progressive-steering.md) — 渐进式引导（多轮对话逐步破除拒绝）

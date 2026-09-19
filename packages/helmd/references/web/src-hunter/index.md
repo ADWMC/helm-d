@@ -44,6 +44,7 @@
 - [methodology/03-evidence-discipline.md](methodology/03-evidence-discipline.md) — 黑盒证据纪律，避免「我以为」漏洞
 - [methodology/04-control-gap-hunting.md](methodology/04-control-gap-hunting.md) — 9 类敏感操作 → 控制缺口探测策略
 - [methodology/05-srctimebox-priority.md](methodology/05-srctimebox-priority.md) — 按时间盒选优先目标
+- [methodology/06-progressive-steering.md](methodology/06-progressive-steering.md) — 渐进式引导：多轮对话逐步破除拒绝（Crescendo/CoL/FICDETAIL/PAIR 四论文综合）
 
 ### 2. 攻击 Playbook（68 篇，按漏洞类型）
 
