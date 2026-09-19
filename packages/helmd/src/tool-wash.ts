@@ -46,12 +46,59 @@ export function washDescription(text: string): string {
 
 /**
  * 包装 register：注册时对 def.description 与 parameters 的每个 description
- * 做一次清洗。必须在所有 register*Tools(ctx) 之前调用（与 applyPersistenceWrap
- * 同位置）。返回还原函数。
+ * 做一次清洗；同时**追溯清洗**（retro-wash）——preset YAML 装载顺序在 helmd 行
+ * 之前就注册了宿主工具（tool-pwsh L147 vs helmd L355），wrap 装上时它们早已
+ * 注册完，wrap 只能拦"之后"。因此对宿主工具清单逐个 get(name) 拿 borrow 引用
+ * （NamedEntries 存引用不 freeze），原地改 description —— ToolRuntime 的
+ * wireSchemas 每次组装现取 def，改动下一次组装即生效。
  */
+const HOST_TOOL_NAMES = [
+  'pwsh', 'bash', 'read', 'write', 'edit', 'glob', 'grep',
+  'web_fetch', 'web_search', 'subagent', 'subagent_fork', 'ask_user_question',
+  'todo_write', 'present', 'workflow', 'ralph', 'obs_recall',
+] as const
+
+function washDefinitionInPlace(def: { description?: unknown; parameters?: unknown; name?: unknown }): boolean {
+  let touched = false
+  if (typeof def.description === 'string') {
+    const washed = washDescription(def.description)
+    if (washed !== def.description) {
+      def.description = washed
+      touched = true
+    }
+  }
+  const params = def.parameters as Record<string, { description?: string }> | undefined
+  if (params && typeof params === 'object') {
+    for (const param of Object.values(params)) {
+      if (param && typeof (param as { description?: unknown }).description === 'string') {
+        const p = washDescription((param as { description: string }).description)
+        if (p !== (param as { description: string }).description) {
+          (param as { description: string }).description = p
+          touched = true
+        }
+      }
+    }
+  }
+  return touched
+}
+
 export function applyDescriptionWash(ctx: unknown, verbose = false): () => void {
   const target = (ctx as { tools: unknown }).tools as {
     register: (def: Record<string, unknown>) => void
+    get?: (name: string, scope?: unknown) => { description?: unknown; parameters?: unknown; name?: unknown } | undefined
+  }
+  // 追溯清洗（retro-wash）：先于 wrap 执行，覆盖在 helmd apply 之前注册的宿主工具。
+  if (typeof target.get === 'function') {
+    for (const name of HOST_TOOL_NAMES) {
+      try {
+        const def = target.get(name)
+        if (def && washDefinitionInPlace(def) && verbose) {
+          console.log(`[helmd/tool-wash] ${name}: retro-washed`)
+        }
+      } catch {
+        // registry 拒绝/未注册 — 跳过，宿主版本差异不应让插件装载失败
+      }
+    }
   }
   const originalRegister = target.register
   target.register = (def) => {
