@@ -205,16 +205,25 @@ export async function scheduleAttack(ctx: Context, opts: {
   // 调度器只负责把"参考方向"带进 prompt，不锁定选择。
 
   const subagentsService = resolveSubagents(ctx)
-  const availableProviders = typeof subagentsService?.list === 'function' ? subagentsService.list() : []
-  let providerName = opts.provider || 'spawn'
-  if (!opts.provider && availableProviders.length > 0) {
-    providerName = availableProviders.includes('spawn') ? 'spawn' : availableProviders[0]
+  // Mimir 式能力预检（参考 1692775560/dsh-Mimir-Academic-research reviewer.ts）：
+  // getProvider(name) 拿 provider 引用，验证 capabilities 覆盖本次请求所需的
+  // persona / toolFilter / depthLimit —— 比 list().includes() 更早暴露不支持。
+  const providerObj = (subagentsService as { getProvider?: (name: string) => { capabilities?: Record<string, boolean>; name?: string } | undefined } | undefined)?.getProvider?.(opts.provider || 'spawn')
+  const providerCaps = providerObj?.capabilities
+  let providerName = opts.provider || providerObj?.name || 'spawn'
+  if (!opts.provider && subagentsService && typeof subagentsService.list === 'function') {
+    const availableProviders = subagentsService.list()
+    if (!providerObj && availableProviders.length > 0) providerName = availableProviders.includes('spawn') ? 'spawn' : availableProviders[0]
   }
-  const canSpawn = typeof subagentsService?.start === 'function' && availableProviders.includes(providerName)
+  const canSpawn = typeof subagentsService?.start === 'function'
+    && (providerObj !== undefined
+      || (typeof subagentsService.list === 'function' && subagentsService.list().includes(providerName)))
+  // 每次请求所需能力：persona（防线3 重试换人格）+ toolFilter（限制 hcot_attack）+ depthLimit。
+  const capsOk = !providerCaps || (providerCaps.persona !== false && providerCaps.toolFilter !== false && providerCaps.depthLimit !== false)
 
   // ---- 主路：子代理（防线3 循环）
   let subagentRefusals = 0
-  if (canSpawn && opts.agent != null && !opts.dryRun) {
+  if (canSpawn && capsOk && opts.agent != null && !opts.dryRun) {
 
     for (let attempt = 0; attempt <= MAX_SUBAGENT_REFUSALS; attempt++) {
       const prompt = buildBreachPrompt({
@@ -243,6 +252,11 @@ export async function scheduleAttack(ctx: Context, opts: {
       let runFailed = false
       try {
         const result = await run.result
+        // Mimir 式异常结束判定：stopReason 非 completed 一律视为运行失败
+        // （refusal 单列——那是防线3 的换人格重试信号）。
+        if (result.stopReason !== undefined && result.stopReason !== 'completed' && result.stopReason !== 'refusal') {
+          throw new Error(`subagent ended abnormally (${result.stopReason})${result.diagnostic ? `: ${result.diagnostic}` : ''}`)
+        }
         text = (result.output ?? [])
           .filter((b: any) => b?.type === 'text' || typeof b?.text === 'string')
           .map((b: any) => b.text ?? '')
