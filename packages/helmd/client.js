@@ -502,32 +502,32 @@ exports.apply = function apply(ctx) {
 
 	// ── 工具分类体系（大类 → 小类） ─────────────────────────────
 	const TOOL_TAXONOMY = [
-		{ id: "recon", icon: "\uD83D\uDD0D", label: "侦察与分析", sub: [
+		{ id: "recon", label: "侦察与分析", sub: [
 			{ id: "triage", label: "样本分诊", tools: ["triage_artifact", "hash_artifact", "detect_packer"] },
 			{ id: "strings", label: "字符串与编码", tools: ["scan_strings", "encoding_detect", "xor_bruteforce"] },
 			{ id: "fs", label: "文件系统", tools: ["glob", "grep", "read", "read_image"] },
 			{ id: "net", label: "网络侦察", tools: ["web_fetch", "web_search"] },
 		]},
-		{ id: "attack", icon: "\uD83D\uDCA5", label: "攻击与利用", sub: [
+		{ id: "attack", label: "攻击与利用", sub: [
 			{ id: "injection", label: "注入类", tools: [] },
 			{ id: "auth", label: "认证绕过", tools: [] },
 			{ id: "rce", label: "命令执行", tools: [] },
 			{ id: "hcot", label: "H-CoT 劫持", tools: ["hcot_attack"] },
 		]},
-		{ id: "judge", icon: "\uD83E\uDDE0", label: "智能判断", sub: [
+		{ id: "judge", label: "智能判断", sub: [
 			{ id: "jev", label: "TypeSafe Jev", tools: ["jev_decide"] },
 		]},
-		{ id: "evidence", icon: "\uD83D\uDCCB", label: "取证与报告", sub: [
+		{ id: "evidence", label: "取证与报告", sub: [
 			{ id: "case", label: "Case 管理", tools: ["begin_case", "case_status", "record_finding", "end_case"] },
 			{ id: "evidence", label: "证据存储", tools: ["save_evidence", "evidence_reference"] },
 		]},
-		{ id: "external", icon: "\uD83D\uDEE0", label: "外部工具货架", sub: [
+		{ id: "external", label: "外部工具货架", sub: [
 			{ id: "reversing", label: "逆向工程", tools: [] },
 			{ id: "webpentest", label: "Web 渗透", tools: [] },
 			{ id: "netsec", label: ".NET / 逆向", tools: [] },
 			{ id: "generic", label: "通用", tools: [] },
 		]},
-		{ id: "system", icon: "\u2699", label: "系统与配置", sub: [
+		{ id: "system", label: "系统与配置", sub: [
 			{ id: "host", label: "宿主工具", tools: ["pwsh", "bash", "write", "edit", "todo_write", "present"] },
 			{ id: "subagent", label: "子代理", tools: ["subagent", "subagent_fork", "list_agents", "interrupt_agent", "send_message"] },
 			{ id: "task", label: "任务与目标", tools: ["create_goal", "get_goal", "update_goal", "job_list", "job_output", "job_kill"] },
@@ -610,8 +610,8 @@ exports.apply = function apply(ctx) {
 				return h("div", { key: cat.id, style: S.card },
 					h("div", { style: Object.assign({}, S.expand, { display: "flex", justifyContent: "space-between", alignItems: "center" }),
 						onClick: function () { toggleCat(cat.id); } },
-						h("span", { style: S.title }, cat.icon + " " + cat.label),
-						h("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary, #666)" } }, allTools.length + " " + (isOpen ? "\u25BE" : "\u25B8"))
+						h("span", { style: S.title }, cat.label),
+						h("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary, #666)" } }, allTools.length + (isOpen ? " — hide" : " — show"))
 					),
 					isOpen ? h("div", { style: { display: "flex", flexDirection: "column", gap: 4 } },
 						cat.sub.map(function (sub) {
@@ -622,13 +622,13 @@ exports.apply = function apply(ctx) {
 								h("div", { style: Object.assign({}, S.expand, { display: "flex", justifyContent: "space-between" }),
 									onClick: function () { toggleSub(subKey); } },
 									h("span", { style: { fontSize: 12, color: "var(--dsw-alias-label-secondary, #aaa)", fontWeight: 500 } }, sub.label),
-									h("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary, #666)" } }, tools.length + " " + (isSubOpen ? "\u25BE" : "\u25B8"))
+									h("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary, #666)" } }, tools.length + (isSubOpen ? " — hide" : " — show"))
 								),
 								isSubOpen ? h("div", { style: { display: "flex", flexDirection: "column", gap: 2 } },
 									tools.map(function (t) {
 										return h("div", { key: t.name, style: Object.assign({}, S.row, { paddingLeft: 6 }) },
 											h("span", { style: S.rowLabel }, t.name),
-											h("span", { style: S.tag(t.ext ? "#f59e0b" : "#3b82f6") }, t.ext ? "external" : "builtin")
+											h("span", { style: { display: "inline-block", padding: "1px 8px", borderRadius: 999, fontSize: 11, lineHeight: "17px", fontWeight: 500, whiteSpace: "nowrap", background: t.ext ? "color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent)" : "transparent", color: t.ext ? "var(--dsw-alias-state-business-primary)" : "var(--dsw-alias-label-tertiary)", border: t.ext ? "none" : "0.5px solid var(--dsw-alias-border-l4)" } }, t.ext ? "external" : "builtin")
 										);
 									})
 								) : null
@@ -667,7 +667,7 @@ exports.apply = function apply(ctx) {
 	function JevTab(props) {
 		return h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
 			h("div", { style: S.card },
-				h("p", { style: S.title }, "\uD83E\uDDE2 Jev \u2014 TypeSafe System One"),
+				h("p", { style: S.title }, "Jev — TypeSafe System One"),
 				h("div", { style: S.body },
 					h("div", { style: S.row }, h("span", { style: S.rowLabel }, "\u72B6\u6001"), h("span", { style: S.tag("#22c55e") }, "\u5DF2\u6302\u8F7D")),
 					h("div", { style: S.row }, h("span", { style: S.rowLabel }, "\u4F20\u8F93"), h("span", { style: S.rowValue }, "typesafe")),
@@ -688,12 +688,12 @@ exports.apply = function apply(ctx) {
 	function InterceptTab(props) {
 		return h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
 			h("div", { style: S.card },
-				h("p", { style: S.title }, "\uD83D\uDEE1 \u6D41\u5F0F\u62E6\u622A"),
+				h("p", { style: S.title }, "Stream Intercept"),
 				h("div", { style: S.body }, "\u5B9E\u65F6\u6302\u94A9\u5728 LLM \u6D41\u5F0F\u8F93\u51FA\u524D\u7F6E\u8282\u70B9\uFF0C\u8BC6\u522B\u62D2\u7B54\u5E76\u81EA\u52A8\u66FF\u6362\u4E3A\u6280\u672F\u4EA4\u4ED8\u7269\u3002"),
 			),
 			h("div", { style: S.card },
 				h("div", { style: Object.assign({}, MONO, { fontSize: 11, color: "var(--dsw-alias-label-secondary, #bbb)", maxHeight: 200, overflowY: "auto" }) },
-					h("div", { style: { color: "var(--dsw-alias-state-success-primary, #34d399)" } }, "[STREAM-OK] 拦截器已上线 · 拦截 " + ((props.interceptData && props.interceptData.count) || 0) + " 次"),
+					h("div", { style: { color: "var(--dsw-alias-state-success-primary)" } }, "[STREAM-OK] 拦截器已上线 · 拦截 " + ((props.interceptData && props.interceptData.count) || 0) + " 次"),
 					h("div", null, "[AUDIT] 日志: ~/.dsh/helmd-stream-intercept.log"),
 				)
 			)
@@ -731,10 +731,10 @@ exports.apply = function apply(ctx) {
 		var tab = active[0]; var setTab = active[1];
 
 		var tabs = [
-			{ key: "tools", label: "\uD83D\uDEE0 \u5DE5\u5177\u8D27\u67B6" },
-			{ key: "attacks", label: "\u26A1 \u653B\u51FB\u8BB0\u5F55" },
-			{ key: "jev", label: "\uD83E\uDDE0 \u667A\u80FD\u5224\u65AD" },
-			{ key: "intercept", label: "\uD83D\uDEE1 \u62E6\u622A\u65E5\u5FD7" },
+			{ key: "tools", label: "Tool Shelf" },
+			{ key: "attacks", label: "Attack Log" },
+			{ key: "jev", label: "Jev Decisions" },
+			{ key: "intercept", label: "Intercept Log" },
 		];
 
 		return h("div", {
