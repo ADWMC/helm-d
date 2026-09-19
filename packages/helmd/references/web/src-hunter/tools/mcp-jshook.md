@@ -1,8 +1,8 @@
 # MCP 工具集成 — jshookmcp
 
-> 本文档是 src-hunter skill 调用本地 MCP 服务器的工具地图。
+> 本文档是 src-hunter 文档调用本地 MCP 服务器的工具地图。**前提：需已安装并启动 [jshookmcp](https://github.com/MyuriKanao/src-hunter-skill) MCP 服务器（本环境默认未装）——未安装时本文档仅作能力清单参考。**
 
-src-hunter 是黑盒漏洞挖掘 skill,默认假设你只有一个 URL,没有源码、没有内部信息。jshookmcp 把浏览器自动化、CDP 调试、网络拦截、JS hook、反混淆、Frida 内存取证、WASM 逆向、Source map 重构整合到一个 MCP server 中,直接服务于 hunt 阶段的"看代码 / 跑 payload / 拦数据 / 反调试 / 反混淆"五件事。
+src-hunter 是黑盒漏洞挖掘文档集,默认假设你只有一个 URL,没有源码、没有内部信息。jshookmcp 把浏览器自动化、CDP 调试、网络拦截、JS hook、反混淆、Frida 内存取证、WASM 逆向、Source map 重构整合到一个 MCP server 中,直接服务于 hunt 阶段的"看代码 / 跑 payload / 拦数据 / 反调试 / 反混淆"五件事。
 
 工具引用使用 `mcp__jshook__<tool>` 完整 MCP 协议命名。所有工具名以 `.omc/tool-manifest.json`(jshookmcp 0.3.0 实际 `search_tools` 返回值)为准,**不臆造**。
 

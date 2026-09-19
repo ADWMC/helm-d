@@ -30,7 +30,7 @@
 4. **Hunt** — 按信号选 playbook，**Read 该文件后再出 payload**（不准凭记忆生成）
 5. **Report** — 读 `templates/report-submission.md` 出三段式
 
-流程细节与反幻觉硬约束见上游 `SKILL.md` 对应章节，已内化到下面的方法论文件。
+流程细节与反幻觉硬约束见上游仓库对应章节，已内化到下面的方法论文件。
 
 ---
 
