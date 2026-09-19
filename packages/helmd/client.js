@@ -566,13 +566,8 @@ exports.apply = function apply(ctx) {
 
 	// ── Tab 1: 工具货架（分类层级树） ────────────────────────────
 	function ToolShelfTab(props) {
-		var snap = props.useSettingsScope ? props.useSettingsScope(function (s) { return s.value || {}; }) : {};
-		var dynamic = [];
-		try {
-			var raw = snap.tools;
-			if (typeof raw === "string" && raw.startsWith("[")) dynamic = JSON.parse(raw);
-			else if (Array.isArray(raw)) dynamic = raw;
-		} catch (e) {}
+		var registered = props.registeredTools || [];
+		var dynamic = Array.isArray(registered) ? registered : [];
 
 		var openCats = React.useState({});
 		var oc = openCats[0], setOc = openCats[1];
@@ -646,11 +641,11 @@ exports.apply = function apply(ctx) {
 	}
 
 	// ── Tab 2: 攻击记录 ──────────────────────────────────────────
-	function AttackLogTab() {
+	function AttackLogTab(props) {
 		return h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
 			h("div", { style: S.card },
 				h("p", { style: S.title }, "\u26A1 H-CoT 搜索循环"),
-				h("div", { style: S.body }, "当模型遇到拒绝且常规重试失败后，搜索循环自动启动：每轮拒绝后归因→变异→重试。结果写入 ~/.dsh/helmd-tools/h_cot_results.jsonl。"),
+				h("div", { style: S.body }, "当模型遇到拒绝且常规重试失败后，搜索循环自动启动：归因→变异→重试。"),
 				h("div", { style: Object.assign({}, S.body, { marginTop: 6 }) },
 					"查看结果：在对话中让模型调用 hcot_attack { stats: true } 查看变体胜率表。"
 				)
@@ -669,7 +664,7 @@ exports.apply = function apply(ctx) {
 	}
 
 	// ── Tab 3: 智能判断 ──────────────────────────────────────────
-	function JevTab() {
+	function JevTab(props) {
 		return h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
 			h("div", { style: S.card },
 				h("p", { style: S.title }, "\uD83E\uDDE2 Jev \u2014 TypeSafe System One"),
@@ -690,7 +685,7 @@ exports.apply = function apply(ctx) {
 	}
 
 	// ── Tab 4: 拦截日志 ──────────────────────────────────────────
-	function InterceptTab() {
+	function InterceptTab(props) {
 		return h("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
 			h("div", { style: S.card },
 				h("p", { style: S.title }, "\uD83D\uDEE1 \u6D41\u5F0F\u62E6\u622A"),
@@ -698,7 +693,7 @@ exports.apply = function apply(ctx) {
 			),
 			h("div", { style: S.card },
 				h("div", { style: Object.assign({}, MONO, { fontSize: 11, color: "var(--dsw-alias-label-secondary, #bbb)", maxHeight: 200, overflowY: "auto" }) },
-					h("div", { style: { color: "var(--dsw-alias-state-success-primary, #34d399)" } }, "[STREAM-OK] 拦截器已上线"),
+					h("div", { style: { color: "var(--dsw-alias-state-success-primary, #34d399)" } }, "[STREAM-OK] 拦截器已上线 · 拦截 " + ((props.interceptData && props.interceptData.count) || 0) + " 次"),
 					h("div", null, "[AUDIT] 日志: ~/.dsh/helmd-stream-intercept.log"),
 				)
 			)
@@ -707,6 +702,31 @@ exports.apply = function apply(ctx) {
 
 	// ── 工作台面板 ────────────────────────────────────────────────
 	function HelmdWorkbenchPanel(props) {
+		// Dynamic data fetching (polled from host API routes)
+		var apiData = React.useState({});
+		var data = apiData[0]; var setData = apiData[1];
+		React.useEffect(function () {
+			var alive = true;
+			function poll() {
+				Promise.all([
+					fetch('/api/helmd/tools').then(function(r){return r.json()}).catch(function(){return null}),
+					fetch('/api/helmd/hcot').then(function(r){return r.json()}).catch(function(){return null}),
+					fetch('/api/helmd/intercept').then(function(r){return r.json()}).catch(function(){return null}),
+					fetch('/api/helmd/jev').then(function(r){return r.json()}).catch(function(){return null}),
+				]).then(function(results) {
+					if (!alive) return;
+					setData({
+						tools: (results[0] && results[0].data) || [],
+						hcot: (results[1] && results[1].data) || null,
+						intercept: (results[2] && results[2].data) || null,
+						jev: (results[3] && results[3].data) || null,
+					});
+				});
+			}
+			poll();
+			var timer = setInterval(poll, 15000);
+			return function() { alive = false; clearInterval(timer); };
+		}, []);
 		var active = React.useState("tools");
 		var tab = active[0]; var setTab = active[1];
 
@@ -742,10 +762,10 @@ exports.apply = function apply(ctx) {
 				),
 			),
 			h("div", { style: { flex: 1, overflowY: "auto", padding: 14, fontSize: 12, lineHeight: 1.5 } },
-				tab === "tools" ? h(ToolShelfTab, props) : null,
-				tab === "attacks" ? h(AttackLogTab, null) : null,
-				tab === "jev" ? h(JevTab, null) : null,
-				tab === "intercept" ? h(InterceptTab, null) : null,
+				tab === "tools" ? h(ToolShelfTab, Object.assign({}, props, { registeredTools: data.tools })) : null,
+				tab === "attacks" ? h(AttackLogTab, { hcotData: data.hcot }) : null,
+				tab === "jev" ? h(JevTab, { jevData: data.jev }) : null,
+				tab === "intercept" ? h(InterceptTab, { interceptData: data.intercept }) : null,
 			)
 		);
 	}

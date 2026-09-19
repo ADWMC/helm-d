@@ -19,9 +19,10 @@ import { registerEvidenceTools } from './tools/evidence.js'
 import { registerToolboxTools } from './tools/toolbox.js'
 import { registerLedgerTool } from './ledger.js'
 import { registerIcaContext } from './ica-context.js'
+import { registerHelmdApi } from './api-routes.js'
 
 export const name = 'helmd'
-export const inject = ['tools', 'systemPrompt']
+export const inject = ['tools', 'systemPrompt', 'webServer']
 
 export function apply(ctx: Context): void {
   // Description wash FIRST: normalize any "denial is final" tool wording before
@@ -72,6 +73,9 @@ export function apply(ctx: Context): void {
     registerAiSecurityTools(ctx)
     registerEvidenceTools(ctx)
     registerToolboxTools(ctx)
+
+    // Dynamic API routes for workbench UI
+    registerHelmdApi(ctx)
   } finally {
     unwrap()
     unwash()
