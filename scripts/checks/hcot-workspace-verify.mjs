@@ -11,9 +11,15 @@ const require = createRequire(import.meta.url)
 const here = dirname(fileURLToPath(import.meta.url))
 const clientPath = join(here, '..', '..', 'packages', 'helmd', 'client.js')
 
-let captured = null
-globalThis.window = { __ModuleLoader__: { load: (m) => { captured = m } } }
+const modules = new Map()
+globalThis.window = {
+  __ModuleLoader__: {
+    load: (m) => { modules.set(m.id, m) },
+    require: (id) => modules.get(id),
+  },
+}
 require(clientPath)
+const captured = modules.get('@adwmc/helm-d')
 if (!captured || captured.id !== '@adwmc/helm-d') throw new Error('bundle id mismatch')
 
 const React = {
@@ -25,7 +31,7 @@ const React = {
 }
 const mod = captured.factory((n) => (n === 'react' ? React : {}))
 if (typeof mod.apply !== 'function') throw new Error('apply is not a function')
-if (JSON.stringify(mod.inject) !== JSON.stringify(['slots', 'settingsScope'])) {
+if (!mod.inject.includes('slots') || !mod.inject.includes('settingsScope')) {
   throw new Error('unexpected inject: ' + JSON.stringify(mod.inject))
 }
 
@@ -56,26 +62,32 @@ const ctx = {
     inject: (name, gen) => { slotNames.push(name); for (const r of gen()) registered.push([name, r]) },
     register: (opts, comp) => ({ opts, comp }),
   },
+  sidebarRight: {
+    open: () => {},
+  },
+  sidebarRightTabs: {
+    register: (def) => def,
+  },
+  effect: (fn) => fn(),
 }
 
 mod.apply(ctx)
 
 const expect = (cond, msg) => { if (!cond) throw new Error(msg) }
 expect(slotNames.includes('settings.plugin.item'), 'settings.plugin.item not injected')
-expect(slotNames.includes('main'), 'main slot not injected')
-expect(slotNames.includes('sidebar.panellist'), 'sidebar.panellist not injected')
+expect(slotNames.includes('conversation.session.header.actions'), 'header actions not injected')
+expect(slotNames.includes('sidebar.right.pane.tab'), 'sidebar.right.pane.tab not injected')
+expect(slotNames.includes('sidebar.right.pane.tab.title'), 'sidebar.right.pane.tab.title not injected')
 
 const keys = registered.map(([n, r]) => `${n}:${r.opts.key ?? r.opts.id}`)
 console.log('slots:', slotNames.join(', '))
 console.log('entries:', keys.join(', '))
 expect(keys.includes('settings.plugin.item:helmd'), 'health card missing')
-expect(keys.includes('settings.plugin.item:hcot'), 'hcot card missing')
-expect(keys.includes('main:hcot'), 'main central panel missing')
-expect(keys.includes('sidebar.panellist:hcot'), 'sidebar entry missing')
+expect(keys.includes('sidebar.right.pane.tab:hcot'), 'sidebar workbench tab missing')
 
-// ---- render the workspace component with the mock snapshot
-const ws = registered.find(([n, r]) => n === 'main' && r.opts.key === 'hcot')
-const tree = ws[1].comp()
+// ---- render the workbench component with mock props
+const ws = registered.find(([n, r]) => n === 'sidebar.right.pane.tab' && r.opts.key === 'hcot')
+const tree = ws[1].comp({})
 expect(tree && tree.t === 'div', 'workspace did not render a host element root')
 const texts = []
 const walk = (n) => {
@@ -87,18 +99,17 @@ const walk = (n) => {
   }
 }
 walk(tree)
-expect(texts.some((t) => t.includes('H-CoT')), 'workspace title missing')
-const tabs = texts.filter((t) => ['攻击 Attack', '账本 Ledger', '实例库 Library'].includes(t))
-expect(tabs.length === 3, 'expected 3 page tabs, got ' + tabs.length)
+const tabs = texts.filter((t) => ['Tool Shelf', 'Attack Log', 'Jev Decisions', 'Intercept Log'].includes(t))
+expect(tabs.length === 4, 'expected 4 page tabs, got ' + tabs.length)
 const hasDsToken = JSON.stringify(tree).includes('--dsw-alias-')
 expect(hasDsToken, 'workspace does not use host design tokens (--dsw-alias-*)')
-console.log('workspace render: OK (central panel + 3 tabs + host design tokens)')
+console.log('workspace render: OK (sidebar panel + 4 tabs + host design tokens)')
 
-// ---- sidebar entry must be a glyph component (panellist renders an icon)
-const glyph = registered.find(([n, r]) => n === 'sidebar.panellist' && r.opts.id === 'hcot')
-const gtree = glyph[1].comp({ size: 18, active: false })
-expect(gtree && gtree.t === 'svg', 'sidebar entry is not a glyph')
-console.log('sidebar glyph: OK (svg, size passthrough)')
+// ---- title component render
+const titleEntry = registered.find(([n, r]) => n === 'sidebar.right.pane.tab.title' && r.opts.key === 'hcot')
+const titleTree = titleEntry[1].comp()
+expect(titleTree && titleTree.t === 'div', 'tab title does not render div')
+console.log('tab title: OK')
 
 // ---- the action path writes requestedAction on the hcot namespace
 const hcotScopeSet = ctx.settingsScope.bind({ namespace: 'hcot' })

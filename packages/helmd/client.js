@@ -737,6 +737,21 @@ exports.apply = function apply(ctx) {
 			{ key: "intercept", label: "Intercept Log" },
 		];
 
+		function tabButtonStyle(key) {
+			var isCurrent = tab === key;
+			return {
+				padding: "6px 12px",
+				fontSize: 12,
+				fontWeight: isCurrent ? 600 : 400,
+				cursor: "pointer",
+				border: 0,
+				borderBottom: isCurrent ? "2px solid var(--dsw-alias-state-success-primary, #10b981)" : "2px solid transparent",
+				background: "transparent",
+				color: isCurrent ? "var(--dsw-alias-label-primary, #fff)" : "var(--dsw-alias-label-secondary, #888)",
+				transition: "all 0.15s ease",
+			};
+		}
+
 		return h("div", {
 			style: {
 				display: "flex", flexDirection: "column", height: "100%",
@@ -797,8 +812,10 @@ exports.apply = function apply(ctx) {
 		yield ctx.slots.register({ name: "sidebar.right.pane.tab.title", key: "helm-d:hcot" }, HelmdTabTitle);
 		yield ctx.slots.register({ name: "sidebar.right.pane.tab.title", key: "hcot" }, HelmdTabTitle);
 	});
+};
 
-return module.exports; } });
+return module.exports;
+} });
 
 // Alias registration for legacy / alternate IDs
 try {

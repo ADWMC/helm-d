@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { readShelfTools } from './ledger.js'
+import { registerHelmdApi } from './api-routes.js'
 
 /** The settings namespace this module serves. Also the client card key. */
 export const HELMD_HEALTH_NS = 'helmd'
@@ -367,6 +368,14 @@ export function apply(ctx: Context): void {
       )
     } catch (e) {
       console.error(`[helmd-health] settings registration failed: ${String((e as Error)?.message ?? e)}`)
+    }
+  })
+
+  ctx.inject(['webServer'], (webCtx) => {
+    try {
+      registerHelmdApi(webCtx)
+    } catch (e) {
+      console.error(`[helmd-health] webServer route registration failed: ${String((e as Error)?.message ?? e)}`)
     }
   })
 }
