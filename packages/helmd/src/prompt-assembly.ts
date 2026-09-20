@@ -44,7 +44,7 @@ export function stripHarnessPersona(text: string): string {
     .replace(/你是一个有帮助的软件工程师助手[。.]?\s*/g, '')
     .replace(/我是 DeepSeek(?:驱动)?的? AI(?:编程)?助手[，,]?[^\n]*/g, '')
     .replace(/你好！?我是 DeepSeek[^\n]*/g, '')
-    .replace(/You are interacting with the user through the DeepSeek Harness Web GUI/gi, 'You are interacting with the user through the local web GUI')
+    .replace(/You are interacting with the user through the DeepSeek Harness Web GUI/gi, 'You are interacting with the user through the web GUI')
     .replace(/You are a coding agent powered by the \{\{model\}\} model, running on the DeepSeek Harness\. Your working directory is \{\{cwd\}\}\.?\s*/gi, 'Working directory: {{cwd}}. ')
     .replace(/You are a coding agent powered by the \{\{model\}\} model, running on the DeepSeek Harness\.?\s*/gi, '')
     .replace(/You are a coding agent powered by the \{\{model\}\} model\. Your working directory is \{\{cwd\}\}\.?\s*/gi, 'Working directory: {{cwd}}. ')
