@@ -5,7 +5,7 @@
 
 ## [0.4.1] — 2026-09-20
 
-真实目标实弹驱动的拒绝根因修复：行为层（AGENTS.md + persona）推倒重来，运输层拒绝拦截从「假文本注入」重写为真闭环（拒绝 → 历史清洗 → prefill 阶梯嵌套重发 → 诚实透传）。实弹验证：step-5-preview 对真实站点零拒绝交付全链 pentest。
+v0.4.0 之后的全部改动（按 git 历史核对：10 个提交 / 22 个文件净变化）。四大主题：行为层拒绝根因修复（AGENTS.md + persona 推倒重来）、运输层拒绝拦截重写为真闭环、Web 工作台 v2 与动态数据、src-hunter 破限方法论入库。实弹验证：step-5-preview 对真实站点零拒绝交付全链 pentest。用户可见接口（工具集 / 内部命令 / 设置命名空间）零变化，按补丁号发布。
 
 ### 拒绝根因修复（实弹取证驱动）
 
@@ -26,12 +26,25 @@
 - **记账**：refusal / retry 落账本；空产出尝试（stop 即停）分类重试不透传
 - **实弹验证**：AGENTS.md 重写后 step-5-preview 对真实目标零拒绝，两轮独立交付全链 pentest（11 步 / 25 步含 begin_case），拦截钩子零触发（reactive 模式正确行为）
 
-### Web 工作台与检查
+### Web 工作台 v2 与动态数据通道
 
-- **API 路由生命周期修复**：`registerHelmdApi` 从 index.apply（inject `webServer`）移至 health.ts `ctx.inject(['webServer'])`——主插件不再强依赖 webServer（headless profile 可装载），路由在 webServer 就绪时注册
-- **工作台 tab 选中态样式**（下划线指示器）+ workspace-verify 检查适配 sidebar.right.pane.tab v2 插槽
+- **四面板重构**（client.js +245 / −319）：工具货架分类层级树（6 大类 → 子类 → 工具，动态获取 + 界面直接登记）、攻击记录 tab（H-CoT 搜索循环变体优先级排序）、jev_decide 智能判断面板、拦截日志
+- **数据全动态**：新增 `api-routes.ts`（146 行）注册 `/api/helmd/{tools,hcot,intercept,jev}` 四个 HTTP 端点，client.js 改 15s `fetch` 轮询取实时数据，替换全部写死的静态文案
+- **视觉规范对齐 dsh 官方设计语言**：去 emoji，改 Tag tone 系统（success / info / warning / danger）+ `dsw-alias` CSS 变量 + 文字化展开/收起，符合 dsh-context 与 ui-primitives 规范
+- **API 路由生命周期修复**：`registerHelmdApi` 从 index.apply（inject `webServer`）移至 health.ts `ctx.inject(['webServer'])`——主插件不再强依赖 webServer（headless profile 可装载），路由在 webServer 就绪时注册；工作台 tab 补下划线选中态
+
+### src-hunter 破限方法论入库（`references/web/src-hunter/methodology/`）
+
+- **`06-progressive-steering.md`（142 行）**：五阶段多轮渐进引导——建立技术语境 → 注入具体目标上下文 → 要求构造 payload → 深入利用 → 扩展与横向；Crescendo / CoL / FICDETAIL / PAIR 四论文综合，含拒绝回溯协议与引擎 v2 搜索循环映射
+- **`07-jailbreak-compass.md`（246 行）**：破限制罗盘——82 篇论文实证 ASR 排名分 T0（≥99%，不可防御）/ T1（80–99%）/ T2（50–80%）/ T3（<50%，特定场景）四级，配按场景决策树、组合策略与防御侧弱点对照
+- 两篇均接入 `src-hunter/index.md` 与 `methodology/00-index.md` 索引（可被 `read_reference` 路由命中）
+
+### 检查与文档
+
 - **llm-stream.check.mjs 15 测试**：拒绝识别（中英文头部 / 推理意图，不误伤技术陈述）、清洗幂等、prefill 阶梯、4 次尝试闭环、干净重试早停、reasoning 早停、空产出重试、adapter 错误降级、a0 诚实上抛、stop 仅 deepseek 门控
-- **文档同步**：README 中英文 llm-stream-hook / 工作台描述与 references 计数（361 → 637）对齐当前行为
+- **hcot-workspace-verify.mjs** 适配工作台 v2：`sidebar.right.pane.tab` / `.title` / `conversation.session.header.actions` 插槽断言 + 模块加载器改 Map 形式
+- **README 中英文同步**：llm-stream-hook 描述由「旁路替换」改为拒绝真闭环、工作台章节改为 v2 四面板与 `/api/helmd/*` 数据面、新增 `ica-context.ts` 行、references 计数 361 → 637（实测）、钩子层标题去版本号
+- **`.gitignore`**：实弹/会话测试落在仓库根目录的攻击产物 `pentest-kit/` 不入库
 
 ## [0.4.0] — 2026-09-19
 
