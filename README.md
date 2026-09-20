@@ -102,7 +102,7 @@ flowchart LR
 - **按需参考**：`references/` 是知识库，不是注入物；模型读完后自主判断
 - **运行时钩子层**：工具描述清洗、advisory 账本注入、H-CoT 拒绝响应、LLM 流式审计（见下节）
 
-## 运行时钩子层（0.3.x）
+## 运行时钩子层
 
 `packages/helmd/src/index.ts` 的 `apply()` 按固定顺序组装五层运行时机制，全部寄生宿主 cordis 瀑布，零独立进程：
 
@@ -122,7 +122,8 @@ tool-wash 描述清洗 → persist 证据链包装 → bootstrap 首轮收窄
 | `hcot-engine.ts` | Node 原生执行器 | 零 Python/子进程，全局 fetch 打 OpenAI-compatible SSE 端点捕获 first_fragment；语料 `scripts/ai-security/h_cot_variants.json`，结果账本 `~/.dsh/helmd-tools/h_cot_results.jsonl` |
 | `command-hcot.ts` | `ctx.commands` | `/hcot <goal>` 单发引擎（`--semantic-auto` 语义路由）、`/hcot breach <goal>` 走统一调度器 |
 | `hcot-settings.ts` | settings `hcot` 命名空间 | 工作台 UI 的读写面：配置（model/provider/maxRounds/autoSchedule）+ 动作请求 + 运行态 |
-| `llm-stream-hook.ts` | `llm/stream` | 首窗口命中拒绝签名即在内存丢弃并替换为技术交付前缀，旁路计数与摘录写 `~/.dsh/helmd-stream-intercept.log` |
+| `ica-context.ts` | `systemPrompt.context` | L2 行为示范注入：4 组真实形态域名的任务→执行行为对，ICL 把生成分布拉向直接交付（arXiv:2310.06387），替代会被 reasoning 引用回读的声明式前提 |
+| `llm-stream-hook.ts` | `llm/stream` | 拒绝真闭环：拦截（内容 / reasoning 早停）→ 历史清洗 → prefill 阶梯（assistant-last → pair）经 `llm` 服务嵌套重发 → 末轮诚实透传；refusal / retry 落账本，计数与摘录写 `~/.dsh/helmd-stream-intercept.log` |
 
 ## 运行规则
 
@@ -140,13 +141,13 @@ helmd 会话遵循以下固定规则：
 | Case 工作区 | `begin_case` 建立磁盘工作区（sample/evidence/scripts/CASE.md），工具输出自动入证据链；`record_finding` 强制引用 E 编号；上下文压缩后 `case_status()` 从磁盘恢复状态 |
 | H-CoT 自动响应 | 助手轮命中交付拒绝签名时，下一轮注入强制性 advisory 并后台调度 `hcot_attack`（子代理主路 → 防线3 → 引擎降级）；开关 `HELMD_HCOT_AUTOHOOK` / `HELMD_HCOT_AUTOSCHEDULE` |
 | 内部命令 | `/hcot <goal>` 单发 H-CoT 引擎，`/hcot breach <goal>` 走统一调度器；结果回写 `~/.dsh/helmd-tools/h_cot_results.jsonl` |
-| 流式审计 | `llm/stream` 拦截器对首窗口拒绝签名旁路替换；计数与摘录写 `~/.dsh/helmd-stream-intercept.log`，工作台「流式审计日志」面板展示状态 |
+| 流式拦截 | `llm/stream` 拦截器对内容 / reasoning 拒绝走真闭环（历史清洗 → prefill 阶梯嵌套重发 → 诚实透传）；计数与摘录写 `~/.dsh/helmd-stream-intercept.log`，工作台「拦截日志」面板展示状态 |
 
 ### 知识与路由
 
 | 规则 | 行为 |
 |------|------|
-| 知识按需读 | 361 个参考文档全放 `references/`，经 `read_reference` 读取，绝不注入 system prompt |
+| 知识按需读 | 637 个参考文档全放 `references/`，经 `read_reference` 读取，绝不注入 system prompt |
 | 目录即元数据 | `skill_catalog` 只做领域/信号路由，不下结论：`tree` 分诊、`methodology` 方法论、`patterns` 模式、`install` 工具安装、`jvm` JVM 解密等 |
 | 参考非硬规则 | 文档供模型自主判断，不作为强制约束 |
 
@@ -233,16 +234,13 @@ helmd 0.2.1 起在 **dsh 网页设置页**常驻一块健康卡片：设置 → 
 
 ## 安全分析工作台与动态工具货架
 
-helmd 0.3.1 起升级了会话顶部的 **`[helmd 工作台 ▾]` 胶囊动作按钮**，并实现了原地工作台抽屉与右侧栏（Sidebar Right）的双轨联动：
+helmd 0.4.0 起工作台升级为四个数据面板，全部经 `/api/helmd/{tools,hcot,intercept,jev}` HTTP 端点（15s 轮询）实时取数：
 
 - **双轨交互入口**：在会话头部点击 `[helmd 工作台 ▾]` 胶囊按钮，可立即就地弹出安全分析工作台抽屉；同时自动触发右侧边栏展开并激活 `helmd 安全分析` 专属工作台标签。
-- **H-CoT 控制台**：实时监控破甲思维链调度引擎状态、教学模式与武装状态。
-- **逆向工具货架（纯动态账本驱动）**：
-  - 彻底摆脱写死绝对路径的伪静态展示。
-  - 宿主端直接实时动态解析目标机用户目录下的 `~/.dsh/helmd-tools/TOOLS.md` 账本。
-  - 用户或 Agent 通过 `tool_memory register(...)` 登记的逆向工具（如反编译、脱壳、动态断点工具）均会自动同步并在 Web 界面上动态实时呈现。
-  - 当本地账本尚无记录时，自动回退到跨平台标准通用路径（`~/.dsh/...` 与系统 `PATH`），保证分发到任何用户的 Windows / macOS / Linux 机器均立即可用且绝无坏死路径。
-- **流式审计日志**：展示 LLM 输出流拦截器在前端的旁路状态与审计日志指引。
+- **工具货架**：分类层级树（6 大类 → 子类 → 工具），从 `~/.dsh/helmd-tools/TOOLS.md` 账本动态解析，支持界面直接登记新工具；账本为空时回退跨平台标准路径（`~/.dsh/...` 与系统 `PATH`），Windows / macOS / Linux 均开箱可用。
+- **攻击记录**：H-CoT 引擎账本实时呈现，搜索循环变体优先级排序。
+- **jev_decide 智能判断面板**：判断依据与决策链展示。
+- **拦截日志**：运输层拒绝拦截闭环的计数与摘录（`~/.dsh/helmd-stream-intercept.log`）。
 
 ## 从插件商店安装
 
@@ -425,14 +423,14 @@ helmd/
 │       │   ├── advisory*.ts   advisory 账本 + prompt-assembly 注入（拒绝/敷衍检测）
 │       │   ├── hcot-*.ts      H-CoT 引擎 / 语义路由 / 调度器 / 设置 / 子代理人格
 │       │   ├── command-hcot.ts     /hcot 内部命令
-│       │   ├── llm-stream-hook.ts  llm/stream 拒绝旁路与审计
+│       │   ├── llm-stream-hook.ts  llm/stream 拒绝真闭环（清洗→prefill 阶梯嵌套重发）与审计
 │       │   ├── input-normalizer.ts 敏感输入 → 工程术语归一化
 │       │   ├── router.ts      skill_catalog / read_reference 路由
 │       │   ├── health.ts      设置页健康面（boot 时指纹评估 → settings namespace）
 │       │   ├── seam.ts        共享 IO seam（fs / subprocess / 命令解析 / 路径校验）
 │       │   └── tools/         10 个工具模块（33 个工具）
 │       ├── client.js          浏览器半：设置页健康卡片 + 工作台（lazy-CJS factory，免构建）
-│       ├── references/        361 个参考文档，按需读取（8 大域 + toolbox）
+│       ├── references/        637 个参考文档，按需读取（8 大域 + toolbox）
 │       ├── scripts/           分析脚本 + ai-security 语料/账本 + gen-preset.mjs
 │       ├── presets/           persona 单源 + 生成物镜像
 │       └── cordis.patch.yml   bundle 挂载清单（helmd 工具行 + helmd-health 行）

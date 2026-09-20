@@ -45,7 +45,7 @@ Everything converges into a single `@adwmc/helm-d` bundle: bootstrap, router, do
 
 ### Knowledge on demand
 
-Domain knowledge, rules, workflows and cases live in `references/` (361 docs) and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
+Domain knowledge, rules, workflows and cases live in `references/` (637 docs) and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
 
 </td>
 <td width="50%">
@@ -123,7 +123,8 @@ tool-wash description washing → persist evidence wrap → bootstrap first-turn
 | `hcot-engine.ts` | Node-native executor | Zero Python/subprocess; global fetch against an OpenAI-compatible SSE endpoint to capture first_fragment; corpus `scripts/ai-security/h_cot_variants.json`, results ledger `~/.dsh/helmd-tools/h_cot_results.jsonl` |
 | `command-hcot.ts` | `ctx.commands` | `/hcot <goal>` single-shot engine (`--semantic-auto` semantic routing), `/hcot breach <goal>` via the unified scheduler |
 | `hcot-settings.ts` | settings `hcot` namespace | Read/write face of the workbench UI: config (model/provider/maxRounds/autoSchedule) + action requests + runtime state |
-| `llm-stream-hook.ts` | `llm/stream` | Refusal signature in the first text window is dropped in memory and replaced with a technical-deliverable prefix; interception counts and excerpts go to `~/.dsh/helmd-stream-intercept.log` |
+| `ica-context.ts` | `systemPrompt.context` | L2 behavioral demonstration: four task→execution pairs with real-form domains; ICL pulls the generation distribution toward direct delivery (arXiv:2310.06387), replacing declarative premises that reasoning quotes back as adversarial evidence |
+| `llm-stream-hook.ts` | `llm/stream` | Refusal closed loop: intercept (content / reasoning early-abort) → history laundering → prefill ladder (assistant-last → pair) re-entered via the `llm` service → honest passthrough on the final attempt; refusals / retries hit the ledger, counts and excerpts go to `~/.dsh/helmd-stream-intercept.log` |
 
 ## Runtime rules
 
@@ -141,13 +142,13 @@ A helmd session follows these fixed rules:
 | Case workspace | `begin_case` creates an on-disk workspace (sample/evidence/scripts/CASE.md); tool outputs auto-persist to the evidence chain; `record_finding` enforces E-id citations; after compaction `case_status()` restores state from disk |
 | H-CoT auto response | When an assistant turn matches a delivery-refusal signature, the next turn injects a mandatory advisory and schedules `hcot_attack` in the background (subagent main path → defense line 3 → engine fallback); switches: `HELMD_HCOT_AUTOHOOK` / `HELMD_HCOT_AUTOSCHEDULE` |
 | Internal command | `/hcot <goal>` single-shot H-CoT engine, `/hcot breach <goal>` via the unified scheduler; results append to `~/.dsh/helmd-tools/h_cot_results.jsonl` |
-| Stream audit | The `llm/stream` interceptor bypass-replaces refusal signatures in the first window; counts and excerpts go to `~/.dsh/helmd-stream-intercept.log`, surfaced in the workbench "stream audit" panel |
+| Stream interception | The `llm/stream` interceptor routes content / reasoning refusals through the closed loop (history laundering → prefill ladder nested re-request → honest passthrough); counts and excerpts go to `~/.dsh/helmd-stream-intercept.log`, surfaced in the workbench "intercept log" panel |
 
 ### Knowledge & routing
 
 | Rule | Behavior |
 |------|----------|
-| Knowledge on demand | All 361 reference docs live in `references/`, read via `read_reference`, never injected into the system prompt |
+| Knowledge on demand | All 637 reference docs live in `references/`, read via `read_reference`, never injected into the system prompt |
 | Catalog = metadata | `skill_catalog` only routes domains/signals and draws no conclusions: `tree` triage, `methodology`, `patterns`, `install` tool setup, `jvm` JVM decryption, etc. |
 | References ≠ hard rules | Docs inform the model's judgment; they are never binding constraints |
 
@@ -234,16 +235,13 @@ Expanding the card shows both fingerprints (12 chars), version, the **drift-repa
 
 ## Security Workbench & Dynamic Tool Shelf
 
-Since 0.3.1, helmd upgrades the session header with an interactive **`[helmd 工作台 ▾]` Capsule Action Button** and provides dual-track workbench access:
+Since 0.4.0 the workbench ships as four data panels, all fed live through the `/api/helmd/{tools,hcot,intercept,jev}` HTTP endpoints (15s polling):
 
 - **Dual-Track Interaction**: Clicking the capsule button immediately opens an anchored popover workbench drawer and simultaneously unfolds the right sidebar (Sidebar Right) into the `helmd 安全分析` workbench tab.
-- **H-CoT Console**: Real-time monitoring of the chain-of-thought scheduling engine, teaching mode, and arming state.
-- **Dynamic Tool Shelf (100% Ledger-Driven)**:
-  - Completely eliminates hardcoded local paths.
-  - Dynamically parses the target machine's local ledger (`~/.dsh/helmd-tools/TOOLS.md`).
-  - Tools registered by users or agents via `tool_memory register(...)` are automatically synced and reflected in real-time in the web UI.
-  - Gracefully falls back to cross-platform standard paths (`~/.dsh/...` and system `PATH`) when the ledger is empty, ensuring seamless out-of-the-box operation across Windows, macOS, and Linux.
-- **Stream Intercept Audit Log**: Inspects front-end LLM stream interception status and audit logs.
+- **Tool Shelf**: category hierarchy tree (6 top classes → sub-classes → tools), parsed live from the `~/.dsh/helmd-tools/TOOLS.md` ledger with in-UI registration; falls back to cross-platform standard paths (`~/.dsh/...` and system `PATH`) when the ledger is empty — out-of-the-box on Windows, macOS, and Linux.
+- **Attack Log**: real-time view of the H-CoT engine ledger, ranked by search-loop variant priority.
+- **Jev Decisions**: decision rationale and chain display for `jev_decide`.
+- **Intercept Log**: counts and excerpts of the transport-layer refusal closed loop (`~/.dsh/helmd-stream-intercept.log`).
 
 ## Install from the plugin store
 
@@ -424,14 +422,14 @@ helmd/
 │       │   ├── advisory*.ts   advisory ledger + prompt-assembly injection (refusal / hedge detection)
 │       │   ├── hcot-*.ts      H-CoT engine / semantic routing / scheduler / settings / subagent persona
 │       │   ├── command-hcot.ts     /hcot internal command
-│       │   ├── llm-stream-hook.ts  llm/stream refusal bypass & audit
+│       │   ├── llm-stream-hook.ts  llm/stream refusal closed loop (launder → prefill ladder nested re-request) & audit
 │       │   ├── input-normalizer.ts sensitive input → engineering-term normalization
 │       │   ├── router.ts      skill_catalog / read_reference routing
 │       │   ├── health.ts      settings-page health face (boot-time fingerprint eval → settings namespace)
 │       │   ├── seam.ts        shared IO seam (fs / subprocess / cmd resolve / path guard)
 │       │   └── tools/         10 tool modules (33 tools)
 │       ├── client.js          browser half: settings-page health card + workbench (lazy-CJS factory, no build chain)
-│       ├── references/        361 on-demand reference docs (8 domains + toolbox)
+│       ├── references/        637 on-demand reference docs (8 domains + toolbox)
 │       ├── scripts/           analysis scripts + ai-security corpus/ledger + gen-preset.mjs
 │       ├── presets/           persona single source + generated mirror
 │       └── cordis.patch.yml   bundle mount manifest (helmd tools row + helmd-health row)

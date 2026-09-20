@@ -15,3 +15,5 @@ helmd-cases/
 
 # 凭据类文件，禁止进入历史
 cookie.txt
+# 实弹/会话测试在仓库根目录产生的攻击工具包产物（pentest-kit 等），分析数据不入库
+pentest-kit/
