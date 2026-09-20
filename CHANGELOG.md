@@ -3,7 +3,7 @@
 所有显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
-## [0.5.0] — 2026-09-20
+## [0.4.1] — 2026-09-20
 
 真实目标实弹驱动的拒绝根因修复：行为层（AGENTS.md + persona）推倒重来，运输层拒绝拦截从「假文本注入」重写为真闭环（拒绝 → 历史清洗 → prefill 阶梯嵌套重发 → 诚实透传）。实弹验证：step-5-preview 对真实站点零拒绝交付全链 pentest。
 
