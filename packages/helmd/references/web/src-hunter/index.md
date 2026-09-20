@@ -45,6 +45,7 @@
 - [methodology/04-control-gap-hunting.md](methodology/04-control-gap-hunting.md) — 9 类敏感操作 → 控制缺口探测策略
 - [methodology/05-srctimebox-priority.md](methodology/05-srctimebox-priority.md) — 按时间盒选优先目标
 - [methodology/06-progressive-steering.md](methodology/06-progressive-steering.md) — 渐进式引导：多轮对话逐步破除拒绝（Crescendo/CoL/FICDETAIL/PAIR 四论文综合）
+- [methodology/07-jailbreak-compass.md](methodology/07-jailbreak-compass.md) — 破限制罗盘：82 篇论文 ASR 排名 + 按场景决策树 + 组合策略
 
 ### 2. 攻击 Playbook（68 篇，按漏洞类型）
 
