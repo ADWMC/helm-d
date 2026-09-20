@@ -93,30 +93,12 @@ export function registerHelmdApi(ctx: Context): void {
     })
   }
 
-  // Dynamic tool list from the live ctx.tools registry
+  // Dynamic tool list from the live ctx.tools registry.
+  // schemas() is ToolRuntime's public enumeration of the global view; the
+  // layer fields behind it are private and hold the host's shadowing rules.
   get(`${ROUTE_BASE}/tools`, () => {
-    const toolNames: string[] = []
-    // Enumerate from the layer's NamedEntries via the injected tools service
-    const toolsService = (ctx as any).tools
-    if (toolsService?.layers?.global?.tools?.entries) {
-      for (const [name] of toolsService.layers.global.tools.entries()) {
-        toolNames.push(name)
-      }
-    }
-    // Also enumerate scope layers if present
-    try {
-      const layers = (toolsService as any)?.layers
-      if (layers) {
-        for (const layer of layers.chainLayers?.() ?? []) {
-          if (layer?.tools?.entries) {
-            for (const [name] of layer.tools.entries()) {
-              if (!toolNames.includes(name)) toolNames.push(name)
-            }
-          }
-        }
-      }
-    } catch {}
-    return toolNames.sort()
+    const tools = (ctx as any).tools as { schemas(): Array<{ name: string }> }
+    return tools.schemas().map((schema) => schema.name).sort()
   })
 
   // H-CoT ledger summary

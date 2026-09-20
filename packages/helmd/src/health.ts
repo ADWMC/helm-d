@@ -371,7 +371,10 @@ export function apply(ctx: Context): void {
     }
   })
 
-  ctx.inject(['webServer'], (webCtx) => {
+  // tools 必须在列：api-routes 的 /api/helmd/tools 读 ctx.tools，cordis 的注入守卫
+  // 会对未声明的服务抛 `cannot get property "tools" without inject`（路由处理器
+  // 接住后对外表现为 HTTP 500）。
+  ctx.inject(['webServer', 'tools'], (webCtx) => {
     try {
       registerHelmdApi(webCtx)
     } catch (e) {
