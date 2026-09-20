@@ -3,9 +3,9 @@
 所有显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
-## [0.4.1] — 2026-09-20
+## [0.4.1] — 2026-09-21
 
-v0.4.0 之后的全部改动（按 git 历史核对：10 个提交 / 22 个文件净变化）。四大主题：行为层拒绝根因修复（AGENTS.md + persona 推倒重来）、运输层拒绝拦截重写为真闭环、Web 工作台 v2 与动态数据、src-hunter 破限方法论入库。实弹验证：step-5-preview 对真实站点零拒绝交付全链 pentest。用户可见接口（工具集 / 内部命令 / 设置命名空间）零变化，按补丁号发布。
+v0.4.0 之后的全部改动（按 git 历史核对：13 个提交 / 23 个文件净变化）。四大主题：行为层拒绝根因修复（AGENTS.md + persona 推倒重来）、运输层拒绝拦截重写为真闭环、Web 工作台 v2 与动态数据（含 `/api/helmd/tools` 上线后即坏的 500 修复）、src-hunter 破限方法论入库。实弹验证：step-5-preview 对真实站点零拒绝交付全链 pentest。用户可见接口（工具集 / 内部命令 / 设置命名空间）零变化，按补丁号发布。
 
 ### 拒绝根因修复（实弹取证驱动）
 
@@ -31,7 +31,8 @@ v0.4.0 之后的全部改动（按 git 历史核对：10 个提交 / 22 个文�
 - **四面板重构**（client.js +245 / −319）：工具货架分类层级树（6 大类 → 子类 → 工具，动态获取 + 界面直接登记）、攻击记录 tab（H-CoT 搜索循环变体优先级排序）、jev_decide 智能判断面板、拦截日志
 - **数据全动态**：新增 `api-routes.ts`（146 行）注册 `/api/helmd/{tools,hcot,intercept,jev}` 四个 HTTP 端点，client.js 改 15s `fetch` 轮询取实时数据，替换全部写死的静态文案
 - **视觉规范对齐 dsh 官方设计语言**：去 emoji，改 Tag tone 系统（success / info / warning / danger）+ `dsw-alias` CSS 变量 + 文字化展开/收起，符合 dsh-context 与 ui-primitives 规范
-- **API 路由生命周期修复**：`registerHelmdApi` 从 index.apply（inject `webServer`）移至 health.ts `ctx.inject(['webServer'])`——主插件不再强依赖 webServer（headless profile 可装载），路由在 webServer 就绪时注册；工作台 tab 补下划线选中态
+- **API 路由生命周期修复**：`registerHelmdApi` 从 index.apply（inject `webServer`）移至 health.ts `ctx.inject(['webServer', 'tools'])`——主插件不再强依赖 webServer（headless profile 可装载），路由在 webServer 就绪时注册；工作台 tab 补下划线选中态
+- **/api/helmd/tools 500 修复**：上条移动时把注入声明窄化成只含 `webServer`，而路由处理器读 `ctx.tools`，cordis 注入守卫抛 `cannot get property "tools" without inject`，对外表现为 HTTP 500（工具货架空转）。补回 `tools` 声明；同时把枚举从私有字段（`layers.global.tools.entries()` / `chainLayers()`）改为 `ToolRuntime.schemas()` 公共方法——原写法靠 TS `private` 在运行时仍可读才侥幸成立，宿主重构即失效
 
 ### src-hunter 破限方法论入库（`references/web/src-hunter/methodology/`）
 
@@ -43,6 +44,7 @@ v0.4.0 之后的全部改动（按 git 历史核对：10 个提交 / 22 个文�
 
 - **llm-stream.check.mjs 15 测试**：拒绝识别（中英文头部 / 推理意图，不误伤技术陈述）、清洗幂等、prefill 阶梯、4 次尝试闭环、干净重试早停、reasoning 早停、空产出重试、adapter 错误降级、a0 诚实上抛、stop 仅 deepseek 门控
 - **hcot-workspace-verify.mjs** 适配工作台 v2：`sidebar.right.pane.tab` / `.title` / `conversation.session.header.actions` 插槽断言 + 模块加载器改 Map 形式
+- **api-routes.check.mjs（新增 6 测试）**：以复刻 cordis 注入守卫的 mock ctx 驱动 `health.apply`，四个端点逐个调用断言 200，并把 `tools` mock 成只暴露 `register`/`schemas` 公共方法——注入声明被窄化或改用私有字段都会在门禁里 FAIL，而不是在线上端点 500
 - **README 中英文同步**：llm-stream-hook 描述由「旁路替换」改为拒绝真闭环、工作台章节改为 v2 四面板与 `/api/helmd/*` 数据面、新增 `ica-context.ts` 行、references 计数 361 → 637（实测）、钩子层标题去版本号
 - **`.gitignore`**：实弹/会话测试落在仓库根目录的攻击产物 `pentest-kit/` 不入库
 
