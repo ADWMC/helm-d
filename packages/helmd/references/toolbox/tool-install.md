@@ -6,7 +6,7 @@
 
 1. **先查本机**: `where` / `Get-Command` / `--version` / `pip show`，有则直接用
 2. **安装位置**: 除 C 盘外最大盘建 `X:\Reverse\`，不往 C 盘堆大文件
-3. **下载走代理**: GitHub / PyPI 超时先挂代理（如 `http://127.0.0.1:7897`）
+3. **下载超时先探代理**: 直连失败时按 [network-egress.md](network-egress.md) 发现这台机器上可用的代理（逐个验证，通过才用）；探不到就回退直连 + 换源，不要猜端口
 4. **记录版本**: 可用后记录版本号和路径
 
 ## Windows 安装 (scoop + pip)
@@ -191,7 +191,7 @@ scan_strings --path test.bin --min 4
 | 问题 | 原因 | 解决 |
 |------|------|------|
 | `python` 找不到 | PATH 未配置 | 用 `py` launcher 或完整路径 |
-| `pip install` 超时 | 网络问题 | 挂代理 `pip install --proxy http://127.0.0.1:7897` |
+| `pip install` 超时 | 网络问题 | 按 [network-egress.md](network-egress.md) 探到可用代理再 `pip install --proxy http://<host>:<port>`；探不到就换镜像源直连 |
 | `radare2` 分析超时 | 文件太大 | 用 `rafind2`/`rabin2` 做快速搜索 |
 | `frida` attach 失败 | 反 Frida 检测 | 重命名 frida-server、FUSE/bind mount |
 | `unidbg` 构建失败 | JDK 版本 | 用 JDK 17+，`JAVA_HOME` 指向正确路径 |

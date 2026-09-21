@@ -12,9 +12,9 @@ const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../refere
 // 信号 -> 首选工具 | 替代 | 存证格式（按分类分组）
 const rules: Record<string, string> = {
   // 0. 总则：工具获取
-  tool: '工具获取: 先查本机(where/Get-Command/--version) → 有则直接用并记版本路径 → 无则除 C 盘外最大盘建 X:\\Reverse\\ 下载 → 下载走代理',
-  install: '工具获取: 先查本机 → 无则除 C 外最大盘 X:\\Reverse\\ → 走代理下载',
-  download: '工具获取: 先查本机 → 无则除 C 外最大盘 X:\\Reverse\\ → 走代理下载',
+  tool: '工具获取: 先查本机(where/Get-Command/--version) → 有则直接用并记版本路径 → 无则除 C 盘外最大盘建 X:\\Reverse\\ 下载 → 超时先探本机可用代理(验证通过才挂)，探不到就直连+换源',
+  install: '工具获取: 先查本机 → 无则除 C 外最大盘 X:\\Reverse\\ → 超时先探本机可用代理，探不到就直连+换源',
+  download: '工具获取: 先查本机 → 无则除 C 外最大盘 X:\\Reverse\\ → 超时先探本机可用代理，探不到就直连+换源',
 
   // 1. 分诊 triage
 

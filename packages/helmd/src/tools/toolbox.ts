@@ -9,9 +9,12 @@ const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../ref
 // 信号 -> 首选工具 | 替代 | 存证格式（按分类分组）
 const rules: Record<string, string> = {
   // 0. 总则：工具获取
-  tool: '工具获取: 先查本机(where/Get-Command/--version) → 有则直接用并记版本路径 → 无则除 C 盘外最大盘建 X:\\Reverse\\ 下载 → 下载走代理 → 详见 references/toolbox/tool-install.md',
-  install: '工具获取: 先查本机 → 无则除 C 外最大盘 X:\\Reverse\\ → 走代理下载 → 详见 references/toolbox/tool-install.md',
-  download: '工具获取: 先查本机 → 无则除 C 外最大盘 X:\\Reverse\\ → 走代理下载 → 详见 references/toolbox/tool-install.md',
+  tool: '工具获取: 先查本机(where/Get-Command/--version) → 有则直接用并记版本路径 → 无则除 C 盘外最大盘建 X:\\Reverse\\ 下载 → 超时先探本机代理，探不到就直连 → 详见 references/toolbox/tool-install.md',
+  install: '工具获取: 先查本机 → 无则除 C 外最大盘 X:\\Reverse\\ → 超时先探本机代理，探不到就直连 → 详见 references/toolbox/tool-install.md',
+  download: '工具获取: 先查本机 → 无则除 C 外最大盘 X:\\Reverse\\ → 超时先探本机代理，探不到就直连 → 详见 references/toolbox/tool-install.md',
+  proxy: '出站通道: 先直连一次 → 失败则探环境变量/系统设置/回环监听端口，逐个用控制请求验证 → 全部失败回退直连+换源 → 靶机与内网地址永不走代理 → 详见 references/toolbox/network-egress.md',
+  timeout: '出站通道: 直连失败后探本机可用代理(验证通过才用)，探不到就直连+换源，不要猜端口 → 详见 references/toolbox/network-egress.md',
+  network: '出站通道: 直连优先，失败后按 环境变量→系统设置→回环端口 发现代理并验证，全部失败回退直连+换源 → 详见 references/toolbox/network-egress.md',
   setup: '环境配置: scoop install apktool/jadx/adb + pip install frida/capstone/unicorn → 详见 references/toolbox/tool-install.md',
   env: '环境配置: scoop install apktool/jadx/adb + pip install frida/capstone/unicorn → 详见 references/toolbox/tool-install.md',
 

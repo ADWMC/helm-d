@@ -8,7 +8,12 @@
 
 1. **环境判断**：先查本机是否已有该工具（`where` / `Get-Command` / `--version` / `pip show`），有则直接调用，记录版本与路径。
 2. **本机没有**：选除 C 盘外剩余空间最大的盘，创建 `X:\Reverse\` 放工具，不往 C 盘堆大文件。
-3. **下载尽量走代理**（如 `http://127.0.0.1:7897`）；GitHub / PyPI 超时先挂代理再试。
+3. **下载优先直连**：超时再发现这台机器上可用的代理，验证通过才挂；探不到就直连 + 换源（镜像站 / 已下载离线包）。不预设端口与地址，换机器要重新探：
+   - 环境变量 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`（含小写）；
+   - 系统代理设置（Windows `HKCU:\...\Internet Settings` 的 `ProxyEnable`/`ProxyServer`、`netsh winhttp show proxy`；macOS `scutil --proxy`；GNOME `gsettings get org.gnome.system.proxy.*`）；
+   - 回环上正在监听的端口逐个试（Windows `Get-NetTCPConnection -State Listen`，`LocalAddress` 过滤要含 `::`；macOS `lsof -nP -iTCP -sTCP:LISTEN`；Linux `ss -ltnH`）。
+   - 逐个用控制请求验证：`curl -s -o NUL -w '%{http_code}' --max-time 6 -x http://<host>:<port> https://api.github.com`，拿到 `200/301/401/403` 才算可用代理；`000`/超时/拒绝不是。
+   - 任务指定的靶机与内网地址一律直连，不走代理。
 4. **调用测试**：脚本类 `--help` 试跑；构建类先查工具链（cargo / cmake / maven / gcc）；跑不起来记录原因。
 5. **记录结果**：可用 / 需构建 / 需修复，写回本表「本机工具状态」。
 

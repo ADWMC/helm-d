@@ -519,7 +519,7 @@ if b'/proc/self/maps' in data and b' r-xp ' in data:
 | scoop shim 调 jadx/apktool 无输出 | .bat/.cmd shim 在 git-bash 下静默失败 | shim 指向原生可执行文件 (jadx) 或用 `java -jar apktool.jar` |
 | scoop mingw 有 strings/readelf 但找不到 | scoop 不自动创建 binutils shim | 手动从 `scoop/apps/mingw/current/bin/` 复制到 `scoop/shims/` |
 | adb pull 失败 "No such file or directory" | Git Bash/MSYS 自动转换 Windows 路径为 POSIX | Windows 上用 `adb exec-out shell cat /remote/path > local_file`，避免路径转换 |
-| pwntools `remote()` 直连被拒 | Windows 防火墙或网络策略阻止出站 TCP | 用 SOCKS5 代理: `s = socks.socksocket(); s.set_proxy(socks.SOCKS5, '127.0.0.1', 7897); s.connect(...); r = remote.fromsocket(s)` |
+| pwntools `remote()` 直连被拒 | Windows 防火墙或网络策略阻止出站 TCP | 先探这台机器上可用的代理（环境变量 / 系统代理设置 / 回环监听端口逐个试，`curl -x` 拿得到状态码才算可用），再走 SOCKS5: `s = socks.socksocket(); s.set_proxy(socks.SOCKS5, '<proxy_host>', <proxy_port>); s.connect(...); r = remote.fromsocket(s)`；探不到就直连+换路径，不要预设端口 |
 | tcache key 全零（bytes 8-15 = 0） | glibc 版本编译差异，key 机制可能禁用 | 不能依赖 key 做堆泄露，只能用 fd_encoded。先用 leak 测试 bytes 8-15 是否非零 |
 | `read()` 返回0后无法继续交互 | 关闭 stdin write-end 后程序后续 scanf 也收到 EOF | 仅在一次性泄露时使用 `r.shutdown('send')`，之后必须重连 |
 | 无 GUI 服务器无法动态分析 GUI 程序 | headless 环境无法运行 Windows GUI 程序 | 让用户在本地抓包（Fiddler/Charles）或用 x64dbg/Frida，把网络请求内容发回来分析 |

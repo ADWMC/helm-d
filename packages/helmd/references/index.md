@@ -8,6 +8,7 @@
 - [toolbox/methodology.md](toolbox/methodology.md) — 分析方法论：标准流程、工具选择与实战案例
 - [toolbox/patterns.md](toolbox/patterns.md) — 常见保护器签名、反分析技术与 Patch 模式速查表
 - [toolbox/tool-install.md](toolbox/tool-install.md) — 逆向工具安装、环境配置与验证指南
+- [toolbox/network-egress.md](toolbox/network-egress.md) — 出站通道：本机代理发现与直连回退（不预设端口，换机器可用）
 - [evidence/reporting.md](evidence/reporting.md) — 标准化证据链与分析报告输出模板
 
 ## 垂直领域索引

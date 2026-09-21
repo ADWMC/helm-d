@@ -11,11 +11,13 @@
 | [patterns.md](patterns.md) | 模式速查 — 保护器签名、反分析技术、Patch 编码 | 需要快速查表时 |
 | [tool-install.md](tool-install.md) | 工具安装指南 — 下载、安装、验证 | 需要安装工具时 |
 | [tool-matrix.md](tool-matrix.md) | 工具推荐矩阵 — 按任务分类的工具推荐 | 需要选择工具时 |
+| [network-egress.md](network-egress.md) | 出站通道规则 — 代理发现与直连回退 | 外部请求超时 / DNS 异常 / 连不上时 |
 
 ## 路由规则
 
 - 样本分诊 → `decision-tree.md`
 - 工具选择 → `tool-matrix.md` 或 `methodology.md`
 - 工具安装 → `tool-install.md`
+- 出站失败（超时 / DNS 污染 / 连不上 / 下载挂）→ `network-egress.md`
 - 保护器识别 → `patterns.md`
 - 报告模板 → `../evidence/reporting.md`
