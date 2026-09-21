@@ -505,6 +505,7 @@ pnpm build
 - [docs/architecture-v2.md](docs/architecture-v2.md) — 架构 v2（persona + 工具锚定 + 按需知识）
 - [docs/case-studies/](docs/case-studies/boosterx-dotnet-license-bypass.md) — 实战案例
 - [docs/skills-reference/](docs/skills-reference/authorized-pentest-framework.md) — 导入的渗透测试 skill 合并文档（授权框架 / 实战派）
+- [docs/skillopt-methodology.md](docs/skillopt-methodology.md) — SkillOpt 方法论：把技能文档当权重训练（六阶段闭环 + 留出门禁），含对 helmd persona 自优化的映射
 
 ## Contributing
 
