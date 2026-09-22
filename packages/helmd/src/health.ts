@@ -1,47 +1,53 @@
 /**
  * Host-plane health surface for the helmd package.
  *
- * Registers the read-only settings namespace `helmd` whose composed base
- * carries a boot-time evaluation of the deployed preset fingerprint
- * (`# gen-preset: host=<sha256>` header written by gen-preset.mjs) against
- * the hash of the INSTALLED host's own `standard` agent preset.
+ * Evaluates the package-internal preset patch (`preset.generated.patch.yml`,
+ * written by gen-preset.mjs and loaded through `dsh.bundle.patch`) against the
+ * hash of the INSTALLED host's own `standard` preset patch, and serves the
+ * verdict at `GET /api/helmd/health`.
+ *
+ * 0.1.7 moved presets from a deployed `.agent-presets/<name>/agent.cordis.yml`
+ * to a composition row, so this package now carries its own preset artifact and
+ * there is no deployment step to drift: drift here means the shipped artifact
+ * was generated against a different host standard (HOST_UPGRADED) or no longer
+ * satisfies the structural assertion (STALE).
  *
  * Evaluation runs once per process start — deliberately. The standing-mount
  * semantics mean a preset change is only safe after a harness restart
  * (incident 2026-08-26: generation replacement collides in the same preset
  * scope), so boot time is exactly the moment this verdict is true.
  *
- * Agent tools are mounted separately by the helmd preset. Keeping this row on
- * the host plane makes the health card available without exposing helmd tools
- * to other agents.
+ * The verdict is derived state, not configuration: 0.1.7's settings document
+ * only carries Config schemas of profile entries, so the card reads the HTTP
+ * route instead of a settings namespace. Agent tools are mounted by the preset
+ * row; keeping this row on the host plane makes the health card available
+ * without exposing helmd tools to other agents.
  */
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
 import { readShelfTools } from './ledger.js'
 import { registerHelmdApi } from './api-routes.js'
 
-/** The settings namespace this module serves. Also the client card key. */
+/** Legacy settings namespace; now only the client health-card key. */
 export const HELMD_HEALTH_NS = 'helmd'
 
 const FINGERPRINT_RE = /^# gen-preset: host=([0-9a-f]{64})/m
 
 /** Health verdict served to the settings card. All fields are plain strings. */
 export interface HelmdHealth {
-  /** OK | HOST_UPGRADED | STALE | LEGACY_PRESET | NOT_DEPLOYED | UNKNOWN */
+  /** OK | HOST_UPGRADED | STALE | LEGACY_PRESET | NOT_GENERATED | UNKNOWN */
   status: string
   /** Human-readable one-liner supporting the status. */
   detail: string
   /** sha256 of the installed host standard, first 12 hex chars ('' if unreadable). */
   hostFingerprint: string
-  /** Fingerprint recorded inside the deployed preset ('' if absent). */
+  /** Fingerprint recorded inside the generated preset patch ('' if absent). */
   presetFingerprint: string
-  /** Absolute path of the deployed agent.cordis.yml ('' if not found). */
+  /** Absolute path of this package's generated preset patch ('' if not found). */
   presetPath: string
   /** Absolute path of the host standard used ('' if not found). */
   hostPath: string
@@ -59,23 +65,12 @@ export interface HelmdHealth {
   tools: string
 }
 
-const HelmdHealthSchema = z.object({
-  status: z.string().default('UNKNOWN'),
-  detail: z.string().default(''),
-  hostFingerprint: z.string().default(''),
-  presetFingerprint: z.string().default(''),
-  presetPath: z.string().default(''),
-  hostPath: z.string().default(''),
-  checkedAt: z.string().default(''),
-  version: z.string().default(''),
-  autoHeal: z.string().default('off'),
-  tools: z.string().default('[]'),
-})
-
-/** Harness home: DSH_HOME wins, else ~/.dsh (matches gen-preset deployment). */
-function dshHome(): string {
-  return process.env.DSH_HOME ?? join(homedir(), '.dsh')
-}
+/** Preset-patch tails per host generation, newest first (mirrors gen-preset.mjs). */
+const HOST_STANDARD_TAILS: string[][] = [
+  ['@deepseek-ai', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-web-app', 'presets', 'standard.patch.yml'],
+  ['@deepseek-ai', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-agent-presets', 'presets', 'standard', 'agent.cordis.yml'],
+  ['@deepseek-ai', 'dsh', 'config', 'agent-presets', 'standard', 'agent.cordis.yml'],
+]
 
 /**
  * Locate the installed dsh's shipped standard preset without spawning npm
@@ -84,30 +79,43 @@ function dshHome(): string {
 function locateHostStandard(): string | null {
   const env = process.env.DSH_HOST_STANDARD_YML
   if (env && existsSync(env)) return env
-  const candidates: string[] = []
-  const appdata = process.env.APPDATA
-  if (appdata) {
-    candidates.push(join(appdata, 'npm', 'node_modules', '@deepseek-ai', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-agent-presets', 'presets', 'standard', 'agent.cordis.yml'))
-    candidates.push(join(appdata, 'npm', 'node_modules', '@deepseek-ai', 'dsh', 'config', 'agent-presets', 'standard', 'agent.cordis.yml'))
+  const bases = [
+    process.env.APPDATA ? join(process.env.APPDATA, 'npm', 'node_modules') : '',
+    '/usr/local/lib/node_modules',
+    '/usr/lib/node_modules',
+  ]
+  // The official installer puts dsh beside its own binary, so a PATH entry is a
+  // candidate install prefix as well.
+  const sep = process.platform === 'win32' ? ';' : ':'
+  for (const raw of (process.env.PATH ?? '').split(sep)) {
+    const dir = raw.replace(/[\\/]+$/, '')
+    if (dir !== '') bases.push(join(dir, 'node_modules'), join(dir, 'lib', 'node_modules'))
   }
-  // Typical POSIX global roots when APPDATA is absent (non-Windows hosts).
-  candidates.push(
-    '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-presets/presets/standard/agent.cordis.yml',
-    '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-presets/presets/standard/agent.cordis.yml',
-    '/usr/lib/node_modules/@deepseek-ai/dsh/config/agent-presets/standard/agent.cordis.yml',
-    '/usr/local/lib/node_modules/@deepseek-ai/dsh/config/agent-presets/standard/agent.cordis.yml',
-  )
-  for (const c of candidates) if (existsSync(c)) return c
+  for (const b of bases) {
+    if (b === '') continue
+    for (const tail of HOST_STANDARD_TAILS) {
+      const c = join(b, ...tail)
+      if (existsSync(c)) return c
+    }
+  }
   return null
 }
 
-const DEFAULT_PRESET_NAME = 'helmd'
-const HEALABLE = new Set(['HOST_UPGRADED', 'STALE', 'LEGACY_PRESET'])
-
-/** Deployed preset directory name; overridable for a preset deployed under another name. */
-function presetName(): string {
-  return process.env.HELMD_PRESET_NAME?.trim() || DEFAULT_PRESET_NAME
+/**
+ * This package's generated preset patch — the artifact the host actually loads
+ * through `dsh.bundle.patch`. `HELMD_PRESET_PATCH` redirects it for tests.
+ */
+function presetPatchPath(): string {
+  const env = process.env.HELMD_PRESET_PATCH?.trim()
+  if (env) return resolve(env)
+  try {
+    return fileURLToPath(new URL('../preset.generated.patch.yml', import.meta.url))
+  } catch {
+    return ''
+  }
 }
+
+const HEALABLE = new Set(['HOST_UPGRADED', 'STALE', 'LEGACY_PRESET'])
 
 /**
  * Drift-repair policy:
@@ -152,9 +160,28 @@ function resolveGenerator(): string | null {
   }
 }
 
-/** `- id:` rows of a preset or host standard, in file order. */
+/**
+ * Top-level plugin-row ids of either preset shape (mirrors gen-preset.mjs):
+ * ids directly under a `plugins:` list (0.1.7 — group children sit deeper and
+ * are skipped), or column-0 `- id:` rows of a legacy agent.cordis.yml.
+ */
 function rowIds(text: string): string[] {
-  return [...text.matchAll(/^- id: (.+)$/gm)].map((m) => m[1].trim())
+  const lines = text.replace(/\r\n/g, '\n').split('\n')
+  const pi = lines.findIndex((l) => /^\s*plugins:\s*$/.test(l))
+  if (pi < 0) return [...text.matchAll(/^- id: (.+)$/gm)].map((m) => m[1].trim())
+  const pIndent = lines[pi].length - lines[pi].trimStart().length
+  const base = pIndent + 2
+  const out: string[] = []
+  for (let i = pi + 1; i < lines.length; i++) {
+    const line = lines[i]
+    if (!line.trim()) continue
+    const ind = line.length - line.trimStart().length
+    if (ind <= pIndent) break
+    if (ind !== base) continue
+    const m = line.trimStart().match(/^-\s+id:\s*(.+)$/)
+    if (m) out.push(m[1].trim())
+  }
+  return out
 }
 
 /**
@@ -175,6 +202,12 @@ export function assertPresetArtifact(deployed: string, hostStandardText: string)
   }
   const duplicated = [...new Set(deployedIds.filter((id, i) => deployedIds.indexOf(id) !== i))]
   if (duplicated.length > 0) return { ok: false, detail: `duplicated row ids: ${duplicated.join(', ')}` }
+  if (!deployed.includes('- id: preset-helmd') || !deployed.includes('id: helmd')) {
+    return { ok: false, detail: 'the preset entry is not retargeted at helmd (`- id: preset-helmd` / `id: helmd`)' }
+  }
+  if (!deployed.includes("'@deepseek-ai/dsh-agent-preset'")) {
+    return { ok: false, detail: 'the entry does not declare @deepseek-ai/dsh-agent-preset' }
+  }
   if ((deployed.match(/@adwmc\/helm-d/g) ?? []).length !== 1) {
     return { ok: false, detail: 'the helmd row is not declared exactly once' }
   }
@@ -195,15 +228,15 @@ function artifactVerdict(health: HelmdHealth): string {
 }
 
 /**
- * Regenerate the deployed preset from the installed host standard. The caller has already
- * decided (via {@link shouldRepair}) that writing is allowed; this only performs it and
- * keeps the previous file as `.bak` first, matching scripts/setup-preset.ps1.
+ * Regenerate this package's preset patch from the installed host standard. The caller has
+ * already decided (via {@link shouldRepair}) that writing is allowed; this only performs it
+ * and keeps the previous file as `.bak` first.
  */
 function autoHealPreset(): { healed: boolean; verdict: string } {
   const gen = resolveGenerator()
   if (gen === null) return { healed: false, verdict: 'unavailable (no generator)' }
-  const out = join(dshHome(), '.agent-presets', presetName())
-  const target = join(out, 'agent.cordis.yml')
+  const target = presetPatchPath()
+  if (target === '') return { healed: false, verdict: 'failed (preset patch path is unresolved)' }
   try {
     if (existsSync(target)) {
       try {
@@ -212,7 +245,7 @@ function autoHealPreset(): { healed: boolean; verdict: string } {
         // A failed backup must not block the repair; the exit status below still reports it.
       }
     }
-    const res = spawnSync(process.execPath, [gen, '--out', out], {
+    const res = spawnSync(process.execPath, [gen, '--out', target], {
       encoding: 'utf8',
       timeout: 60_000,
     })
@@ -253,82 +286,62 @@ function evaluateHealthCore(): HelmdHealth {
     base.detail = 'cannot locate the installed dsh standard preset; set DSH_HOST_STANDARD_YML'
     return base
   }
+  let hostHash = ''
   try {
-    base.hostFingerprint = createHash('sha256').update(readFileSync(hostPath, 'utf8'), 'utf8').digest('hex').slice(0, 12)
+    hostHash = createHash('sha256').update(readFileSync(hostPath, 'utf8'), 'utf8').digest('hex')
+    base.hostFingerprint = hostHash.slice(0, 12)
   } catch {
     base.status = 'UNKNOWN'
     base.detail = `host standard at ${hostPath} is unreadable`
     return base
   }
 
-  const presetPath = join(dshHome(), '.agent-presets', presetName(), 'agent.cordis.yml')
+  const presetPath = presetPatchPath()
   base.presetPath = presetPath
-  if (!existsSync(presetPath)) {
-    base.status = 'NOT_DEPLOYED'
-    base.detail = `no deployed preset under .agent-presets/${presetName()}; run install / setup-preset`
+  if (presetPath === '' || !existsSync(presetPath)) {
+    base.status = 'NOT_GENERATED'
+    base.detail = `this package ships no generated preset patch (${presetPath || 'unresolved path'}); run node scripts/gen-preset.mjs or repack, then restart`
     return base
   }
 
   let text = ''
   try { text = readFileSync(presetPath, 'utf8') } catch {
     base.status = 'UNKNOWN'
-    base.detail = `deployed preset ${presetPath} is unreadable`
+    base.detail = `preset patch ${presetPath} is unreadable`
     return base
   }
   const m = text.match(FINGERPRINT_RE)
   if (!m) {
     base.presetFingerprint = ''
     base.status = 'LEGACY_PRESET'
-    base.detail = 'deployed preset has no gen-preset fingerprint header; regenerate (repack / setup-preset, or HELMD_AUTO_HEAL=1 + restart)'
+    base.detail = 'preset patch carries no gen-preset fingerprint header, so it is not this generator\'s output; regenerate (repack / gen-preset), or set HELMD_AUTO_HEAL=1 to overwrite it (a .bak is kept)'
     return base
   }
   base.presetFingerprint = m[1].slice(0, 12)
-  if (m[1].startsWith(base.hostFingerprint)) {
-    // Same host standard: the deployed file should therefore be byte-equal to the preset
-    // this package ships (both derive from that standard plus persona.txt). A difference
-    // means the deployment is older than the package or was edited by hand — the case the
-    // README's "content drift" badge is for, and otherwise invisible because the header
-    // only tracks the HOST.
-    if (!matchesBundledPreset(text)) {
-      base.status = 'STALE'
-      base.detail = 'deployed preset no longer matches the preset this package ships (persona or rows changed without re-sync); regenerate (repack / setup-preset, or HELMD_AUTO_HEAL=1 + restart)'
-      return base
-    }
-    base.status = 'OK'
-    // The structural half of MAINTENANCE §8 is cheap and worth stating on every boot: it is
-    // the assertion that would have caught the 2026-08-26 crippled-catalog preset.
-    base.detail = `preset matches installed dsh standard (${base.hostFingerprint}); ${artifactVerdict(base)}`
-  } else {
+  if (m[1] !== hostHash) {
     base.status = 'HOST_UPGRADED'
-    base.detail = `preset targets dsh ${base.presetFingerprint} but the host now hashes ${base.hostFingerprint}; regenerate (repack / setup-preset, or HELMD_AUTO_HEAL=1 + restart)`
+    base.detail = `preset patch targets dsh ${base.presetFingerprint} but the host now hashes ${base.hostFingerprint}; regenerate (repack / gen-preset), or HELMD_AUTO_HEAL=1 + restart`
+    return base
   }
+  // Same host standard, so the header says nothing more: the remaining question is
+  // whether the artifact still satisfies the structural assertion. It can fail with
+  // the header unmoved — a hand-edit, or a persona change that was never re-synced —
+  // which is the drift the badge exists for.
+  const artifact = artifactVerdict(base)
+  if (!artifact.startsWith('artifact check OK')) {
+    base.status = 'STALE'
+    base.detail = `preset patch matches the host fingerprint ${base.hostFingerprint} but fails its structural assertion; ${artifact}; regenerate with repack / gen-preset, or HELMD_AUTO_HEAL=1 + restart`
+    return base
+  }
+  base.status = 'OK'
+  // The structural half of MAINTENANCE §8 is cheap and worth stating on every boot: it is
+  // the assertion that would have caught the 2026-08-26 crippled-catalog preset.
+  base.detail = `preset patch matches installed dsh standard (${base.hostFingerprint}); ${artifact}`
   return base
 }
 
-/** Bundled generated preset that this package ships as its own mirror. */
-function bundledPreset(): string | null {
-  try {
-    const p = fileURLToPath(new URL('../presets/agent.cordis.yml', import.meta.url))
-    return existsSync(p) ? readFileSync(p, 'utf8') : null
-  } catch {
-    return null
-  }
-}
-
 /**
- * Whether the deployed preset equals the shipped one.
- * Line endings are normalized: git may check the repo out with CRLF while the generator
- * writes LF, and that difference is not drift. An unreadable bundle reports no verdict.
- */
-function matchesBundledPreset(deployed: string): boolean {
-  const shipped = bundledPreset()
-  if (shipped === null) return true
-  const normalize = (s: string) => s.replace(/\r\n/g, '\n').trimEnd()
-  return normalize(shipped) === normalize(deployed)
-}
-
-/**
- * Evaluate the deployed-preset fingerprint and, when it drifted, optionally regenerate it
+ * Evaluate the preset patch fingerprint and, when it drifted, optionally regenerate it
  * from the installed host standard (`HELMD_AUTO_HEAL=1` opts in; default is report-only).
  * @returns the health verdict, with the auto-heal outcome folded in.
  */
@@ -351,32 +364,19 @@ export function evaluateHealth(): HelmdHealth {
 }
 
 /**
- * Bundle row apply. Registers the namespace once on the host plane.
+ * Bundle row apply. Evaluates health once per boot and exposes it over HTTP.
  * @param ctx - the host composition context this row was plugged into.
  */
 export function apply(ctx: Context): void {
-  ctx.inject(['settings'], (settingsCtx) => {
-    const settings = (settingsCtx as Context & {
-      settings: { register(ns: unknown, schema: unknown, opts: unknown): unknown }
-    }).settings
-    const health = evaluateHealth()
-    try {
-      settings.register(
-        HELMD_HEALTH_NS,
-        HelmdHealthSchema,
-        { base: { ...health } },
-      )
-    } catch (e) {
-      console.error(`[helmd-health] settings registration failed: ${String((e as Error)?.message ?? e)}`)
-    }
-  })
-
   // tools 必须在列：api-routes 的 /api/helmd/tools 读 ctx.tools，cordis 的注入守卫
   // 会对未声明的服务抛 `cannot get property "tools" without inject`（路由处理器
   // 接住后对外表现为 HTTP 500）。
   ctx.inject(['webServer', 'tools'], (webCtx) => {
     try {
-      registerHelmdApi(webCtx)
+      // Once per boot — the standing-mount semantics make boot the only
+      // moment this verdict is true (see module comment).
+      const health = evaluateHealth()
+      registerHelmdApi(webCtx, () => health)
     } catch (e) {
       console.error(`[helmd-health] webServer route registration failed: ${String((e as Error)?.message ?? e)}`)
     }

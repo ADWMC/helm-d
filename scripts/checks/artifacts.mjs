@@ -2,7 +2,7 @@
 // package plus helm-d's built output. One responsibility: locate and load them, or
 // report their absence so a check can skip instead of guessing.
 import { existsSync, realpathSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 export const repoRoot = join(import.meta.dirname, '..', '..')
@@ -51,27 +51,58 @@ export function hostSessionEntry() {
     seen.add(key)
     const entry = join(root, ...SESSION_TAIL)
     if (existsSync(entry)) {
-      // pnpm-style trees expose the package through a symlink; resolve it so
-      // the relative `../..` walks in hostStandardEntry() still land correctly.
+      // pnpm-style trees expose the package through a symlink; resolve it so the
+      // entry names a real file even when its directory does not. hostStandardEntry()
+      // walks ancestors rather than counting levels, so this is convenience only.
       try { return realpathSync(entry) } catch { return entry }
     }
   }
   return null
 }
 
-/** The host's shipped `standard` agent preset, or null when it cannot be located. */
+/** Host `standard` preset tails, newest host generation first. */
+const HOST_STANDARD_TAILS = [
+  // dsh >= 0.1.7: `standard` is a web-app preset patch, not an agent.cordis.yml
+  ['@deepseek-ai', 'dsh-web-app', 'presets', 'standard.patch.yml'],
+  ['@deepseek-ai', 'dsh-agent-presets', 'presets', 'standard', 'agent.cordis.yml'],
+  ['dsh-agent-presets', 'presets', 'standard', 'agent.cordis.yml'],
+  ['config', 'agent-presets', 'standard', 'agent.cordis.yml'],
+]
+
+/** Every ancestor directory of a file, nearest first. */
+function ancestors(file) {
+  const out = []
+  let dir = dirname(file)
+  for (;;) {
+    out.push(dir)
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return out
+}
+
+/**
+ * The host's shipped `standard` agent preset, or null when it cannot be located.
+ *
+ * Probed by walking `dsh-session`'s ancestors instead of counting `../..` levels:
+ * npm hoists differently per host version and install method (0.1.7 keeps
+ * `dsh-web-app` inside `@deepseek-ai/dsh/node_modules`), and a fixed depth
+ * silently reported "no host" on the layout it wasn't written for.
+ */
 export function hostStandardEntry() {
   const override = process.env.DSH_HOST_STANDARD_YML
   if (override && existsSync(override)) return override
   const entry = hostSessionEntry()
   if (entry === null) return null
-  const candidates = [
-    // <global>/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-session/lib/index.js → the presets package
-    join(entry, '..', '..', '..', '..', '@deepseek-ai', 'dsh-agent-presets', 'presets', 'standard', 'agent.cordis.yml'),
-    join(entry, '..', '..', '..', '..', 'dsh-agent-presets', 'presets', 'standard', 'agent.cordis.yml'),
-    join(entry, '..', '..', '..', '..', 'dsh', 'config', 'agent-presets', 'standard', 'agent.cordis.yml'),
-  ]
-  return candidates.find((candidate) => existsSync(candidate)) ?? null
+  const dirs = ancestors(entry)
+  for (const tail of HOST_STANDARD_TAILS) {
+    for (const dir of dirs) {
+      const candidate = join(dir, ...tail)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return null
 }
 
 /** helm-d's built composition root, or null when the build is missing. */
