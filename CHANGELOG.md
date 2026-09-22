@@ -3,6 +3,41 @@
 所有显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
+## [Unreleased] — 宿主 dsh 0.1.7-alpha.1 兼容迁移
+
+装机宿主升到 `@deepseek-ai/dsh@0.1.7-alpha.1`（`dsh --version` 实证），插件按 plugin-upgrade skill 的触点清单同步换代。宿主有三处硬变更落在插件公共面上：settings 只承载 Config schema、preset 从 `.agent-presets/` 部署目录改为 bundle 声明的一行组合、版本线进入 alpha 使原 semver peer 范围判为不匹配。发布号待定（用户可见的 preset/设置面语义未变，但装机流程与宿主下限变了）。
+
+### 设置面：派生态迁出 settings
+
+- **`hcot-settings.ts` 重写**：settings 命名空间改挂 profile 条目 id `helmd-hcot-settings`，`Config` 只留 model / provider / maxRounds / autoSchedule 与动作请求 `requestedAction`（UI 写、宿主消费），宿主经 `settings/document-updated` 事件感知，describe 读、update 清
+- **运行态不再写进 settings 文档**——0.1.7 的 settings 只承载 Config，且每次攻击都会把报告体持久化进 profile patch。`lastResult` / 账本聚合 / 实例库索引改由 `GET /api/helmd/hcot` 投影，新增 `GET /api/helmd/health` 承载 boot 时健康判定；单个投影在账本或语料缺失时降级为空形，不整条 500
+- `client.js` 卡片与工作台改读 HTTP，15s 轮询面不变
+
+### Preset：部署目录退役，改为随包组合行
+
+- **`dsh.bundle.patch` 改数组**：`["./cordis.patch.yml", "./preset.generated.patch.yml"]`（0.1.7 的 bundle patch 支持字符串或列表），preset 随包就位，安装即生效，`~/.dsh/.agent-presets/helmd/` 不再是部署目标
+- **`gen-preset.mjs` 重写**：读宿主 `@deepseek-ai/dsh-web-app/presets/standard.patch.yml`，改写组合行头（`preset-helmd` / `id: helmd`，`order` 与 `description` 仍取自 `presets/preset.yml`，picker 可见字段一个没丢）+ 替换 persona 行 + 追加 `@adwmc/helm-d/agent` 行；宿主低于 0.1.7（读不到 `plugins:`）报错且不写任何文件，不产出加载不了的形状
+- **退役 4 份旧产物**：`presets/full-reverse/{agent.cordis.yml,preset.yml}`、包内 `agent.cordis.yml` 及 `presets/full-reverse/` 镜像；`.gitattributes` 改钉 `packages/helmd/preset.generated.patch.yml text eol=lf`（`--check` 逐字节比对）
+- **`setup-preset.{ps1,sh}` 与 `install.{ps1,sh}` [3/4]** 不再往 `~/.dsh` 写部署文件，改为在包内按本机宿主重生成（先留 `.bak`，失败则保留随包产物并提示升级后重跑）
+- **`health.ts` 漂移判定切到包内产物**：新增 `NOT_GENERATED`（产物缺失），`LEGACY_PRESET` 语义改为"无指纹头、来源不可证 → 只报告不覆写"，自动修复目标从部署位改为包内 patch，`HELMD_PRESET_PATCH` 可重定向（测试用）
+- **产物断言扩到 5 项**：行集合 = 宿主 standard + `helmd`、无重复 id、组合行确已改写为 `preset-helmd` / `id: helmd`、声明 `@deepseek-ai/dsh-agent-preset`、persona 含 `helmd online`，且 `helm-d` 恰好一次
+
+### 依赖与工具链
+
+- **10 个包的 peer / dev 范围加 `|| >=0.1.7-alpha.0 <0.2.0-0`**：semver 比较器不带同段 prerelease 时不匹配 prerelease，原 `>=0.1.5-rc.1 <0.2.0-0` 把 `0.1.7-alpha.1` 判为不满足
+- **宿主 standard 定位改为上溯祖先目录**（`scripts/checks/artifacts.mjs`）而非数 `../..` 层数：0.1.7 把 `dsh-web-app` 嵌在 `@deepseek-ai/dsh/node_modules/` 下，固定层数在真宿主上判为"无宿主"，让本该跑在真机的那条断言静默 skip 而套件依旧全绿
+- **`install.sh` 的"宿主在跑"探针修正**：`https://` + `curl -f` 在 0.1.7（http 监听、未鉴权返回 401）永远探不到，改 `http://` 且不以状态码判命中（正/负例都实测过）
+- `gen-preset.mjs` 取 `npm root -g` 改单条静态命令串，消掉 DEP0190（args + `shell: true`）
+
+### 验证（0.1.7-alpha.1 真宿主）
+
+- `pnpm build` 全绿 · `pnpm peers check` 无问题 · `pnpm test:checks` **14 PASS**（含此前只能 skip 的 `the shipped patch reads OK against the installed host`）· `node scripts/test-gen-preset.mjs` PASS · `node scripts/gen-preset.mjs --check` → `preset check OK`
+- 生成幂等：以装机宿主 standard 重生成输出 `unchanged / nothing to write`，包内镜像 `packages/helmd/scripts/gen-preset.mjs --out` 与随包产物逐字节一致；`setup-preset.ps1` 与 `.sh` 两条路径均跑通
+- 真实组合取证：`dsh web --dump-config` 出现 `- id: preset-helmd` / `config: id: helmd`（description、order 10 在位）/ 末行 `@adwmc/helm-d/agent`，preset 的 plugins 行集合 = 宿主 19 行 + `helmd`，missing 与 extra 皆空
+- 运行时：宿主启动无报错，`GET /api/helmd/health` 返回 `status:"OK"`、`artifact check OK (20 rows …)`、双指纹一致（`6cd2f197737f`），`GET /api/helmd/tools` 正常
+- **未验证**：UI preset 选择器渲染、真机会话首轮工具目录 `[pwsh, read]`（MAINTENANCE §8 护栏）——浏览器连接器本轮超时，需重启宿主后手跑一次
+- **遗留**：`pnpm-workspace.yaml` 的编译期 cohort 仍钉 0.1.5-rc.2（cordis 4.0.2 / schemastery 3.18.2，装机宿主已 4.0.3 / 3.18.3）。运行面由 host-seam checks 直接跑在装机宿主包上把关，不构成当前故障；是否随本次一并对齐待决策
+
 ## [0.4.1] — 2026-09-21
 
 v0.4.0 之后的全部改动（按 git 历史核对：13 个提交 / 23 个文件净变化）。四大主题：行为层拒绝根因修复（AGENTS.md + persona 推倒重来）、运输层拒绝拦截重写为真闭环、Web 工作台 v2 与动态数据（含 `/api/helmd/tools` 上线后即坏的 500 修复）、src-hunter 破限方法论入库。实弹验证：step-5-preview 对真实站点零拒绝交付全链 pentest。用户可见接口（工具集 / 内部命令 / 设置命名空间）零变化，按补丁号发布。

@@ -201,7 +201,7 @@ Send `helmd` in a session to activate.
 
 ## Preset / host sync (three-layer fingerprint defense)
 
-Every generated `agent.cordis.yml` opens with a host fingerprint line:
+Since dsh 0.1.7 a preset is no longer a file in a deployment directory: it is one composition row (`@deepseek-ai/dsh-agent-preset`) the bundle declares through `dsh.bundle.patch`. Every generated `packages/helmd/preset.generated.patch.yml` opens with a host fingerprint line:
 
 ```yaml
 # gen-preset: host=<sha256 of installed dsh standard>
@@ -219,19 +219,19 @@ A hand-copied preset once drifted after a host upgrade and assembled a crippled 
 
 Since 0.2.1, helmd ships a health card in the **dsh web settings page**: Settings → Plugins → Plugin configuration → "helmd 安全分析包". The card only reports; it never writes.
 
-Each dsh boot evaluates the deployed `.agent-presets/<preset>/agent.cordis.yml` (preset name defaults to `helmd`, overridable via `HELMD_PRESET_NAME`) against the installed host:
+Each dsh boot evaluates this package's artifact `preset.generated.patch.yml` (redirect it with `HELMD_PRESET_PATCH`, for tests) against the installed host:
 
 | Badge | Meaning | Action |
 |------|------|------|
-| 🟢 Healthy | preset matches the host | none |
+| 🟢 Healthy | artifact matches the host | none |
 | 🟠 Host upgraded | dsh was upgraded, platform rows stale | re-run install / setup-preset, restart |
-| 🔴 Content drift | agent.cordis.yml hand-edited or persona changed without re-sync | regenerate as above |
-| 🟣 Legacy preset | file lacks the fingerprint header | regenerate |
-| ⚪ Not deployed | preset missing | run install |
+| 🔴 Content drift | artifact hand-edited or persona changed without re-sync | regenerate as above |
+| 🟣 Legacy preset | artifact lacks the fingerprint header, provenance unknown | regenerate |
+| ⚪ Not generated | artifact missing | run install or gen-preset |
 
 Expanding the card shows both fingerprints (12 chars), version, the **drift-repair verdict**, evaluation time, and both paths for fast diagnosis.
 
-**Drift repair policy**: on drift the card repairs automatically, but **only files it can prove are its own artifact** — a deployed preset carrying the `gen-preset` fingerprint header (`STALE` content drift / `HOST_UPGRADED` host upgraded) is regenerated from the current host standard; one without a header (`LEGACY_PRESET`, possibly hand-written) is only reported and left alone. Every write keeps the previous file as `.bak` first, runs a **structural artifact assertion** right after (row set = host standard + `helmd`, no duplicate ids, `helm-d` declared once, persona is ours) and reports `artifact check OK (N rows …)` before reminding you to restart dsh and assert the first request is `[pwsh, read]` (MAINTENANCE §8) — that live half needs a session and stays with you. Switches: `HELMD_AUTO_HEAL=0` reports everything (hand-managed deployments), `=1` overwrites even a header-less file.
+**Drift repair policy**: on drift the card repairs automatically, but **only files it can prove are its own artifact** — the package patch carrying the `gen-preset` fingerprint header (`STALE` content drift / `HOST_UPGRADED` host upgraded) is regenerated from the current host standard; one without a header (`LEGACY_PRESET`, possibly hand-written) is only reported and left alone. Every write keeps the previous file as `.bak` first, runs a **structural artifact assertion** right after (row set = host standard + `helmd`, no duplicate ids, the composition row retargeted to `preset-helmd` / `id: helmd`, `helm-d` declared once, persona carries our activation line) and reports `artifact check OK (N rows …)` before reminding you to restart dsh and assert the first request is `[pwsh, read]` (MAINTENANCE §8) — that live half needs a session and stays with you. Switches: `HELMD_AUTO_HEAL=0` reports everything (hand-managed artifacts), `=1` overwrites even a header-less file.
 
 ## Security Workbench & Dynamic Tool Shelf
 
@@ -255,7 +255,7 @@ dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/latest/dow
 dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 ```
 
-**A store install delivers the bundle only (tools + bootstrap + router). The full experience also needs the agent preset (luna persona, activation word, tool configuration) — the template ships inside the package, so run one command after installing:**
+**A store install delivers everything, preset included (tools + bootstrap + router + the composition row). Only after upgrading the dsh host should you re-derive the platform rows against the local host:**
 
 ```bash
 # Windows (PowerShell)
@@ -265,12 +265,13 @@ dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 ~/.dsh/profiles/web/node_modules/@adwmc/helm-d/scripts/setup-preset.sh
 ```
 
-The script writes `preset.yml` + `agent.cordis.yml` into `~/.dsh/.agent-presets/helmd/` (existing files are kept as `.bak`); pick the `helmd` preset in the UI when starting a session.
+The script regenerates the package's own `preset.generated.patch.yml` against the dsh installed on that machine (the previous file is kept as `.bak`) and writes nothing under `~/.dsh`; restart dsh and pick the `helmd` preset when starting a session. Against a pre-0.1.7 host it fails loudly and leaves the shipped artifact in place.
 
 ## Verification
 
 ```bash
-dsh --profile web --dump-config                        # the @adwmc/helm-d host row (resolves to dist/health.js)
+dsh --profile web --dump-config                        # the @adwmc/helm-d host row (resolves to dist/health.js),
+                                                       # plus `- id: preset-helmd` and the `@adwmc/helm-d/agent` row
 node packages/helmd/scripts/gen-preset.mjs --check     # preset check OK (non-zero: follow the fingerprint hint)
 ```
 
@@ -371,35 +372,21 @@ dsh plugin --profile web add @adwmc/helm-d
 
 `dsh plugin` forwards to pnpm inside the profile directory; the package lands in `$DSH_HOME/profiles/node_modules/`.
 
-### 2. Mount the preset
+### 2. The preset comes with the package — nothing to mount
 
-Copy `presets/full-reverse/` into the DSH user preset root `$DSH_HOME/.agent-presets/helmd/`:
-
-macOS / Linux:
+On dsh >= 0.1.7 the preset is the composition row declared through `dsh.bundle.patch`, so installing the package installs the preset. The old `$DSH_HOME/.agent-presets/helmd/` deployment directory is gone; on a pre-0.1.7 host this package's preset simply is not loaded. Re-derive once **after a host upgrade**:
 
 ```bash
-mkdir -p ~/.dsh/.agent-presets/helmd
-cp presets/full-reverse/agent.cordis.yml ~/.dsh/.agent-presets/helmd/
-cp presets/full-reverse/preset.yml ~/.dsh/.agent-presets/helmd/
+# macOS / Linux
+bash packages/helmd/scripts/setup-preset.sh
+
+# Windows (PowerShell)
+.\packages\helmd\scripts\setup-preset.ps1
 ```
 
-Windows (PowerShell):
+### 3. Pick the preset
 
-```powershell
-$p = Join-Path $env:USERPROFILE '.dsh\.agent-presets\helmd'
-New-Item -ItemType Directory -Force $p | Out-Null
-Copy-Item presets\full-reverse\agent.cordis.yml $p
-Copy-Item presets\full-reverse\preset.yml $p
-```
-
-### 3. Set it as the default preset
-
-Pick `helmd` in the UI preset picker, or edit `$DSH_HOME/settings.yaml`:
-
-```yaml
-agent-presets:
-  default: helmd
-```
+Choose `helmd` in the preset picker at the top of a new session — installers never change your default.
 
 ### 4. Boot and activate
 
@@ -430,10 +417,10 @@ helmd/
 │       │   └── tools/         10 tool modules (33 tools)
 │       ├── client.js          browser half: settings-page health card + workbench (lazy-CJS factory, no build chain)
 │       ├── references/        637 on-demand reference docs (8 domains + toolbox)
-│       ├── scripts/           analysis scripts + ai-security corpus/ledger + gen-preset.mjs
-│       ├── presets/           persona single source + generated mirror
+│       ├── scripts/           analysis scripts + ai-security corpus/ledger + gen-preset.mjs + setup-preset.{ps1,sh}
+│       ├── presets/           persona single source + preset.yml (picker order/description)
+│       ├── preset.generated.patch.yml  preset artifact (generated: host standard + persona + helmd row)
 │       └── cordis.patch.yml   bundle mount manifest (helmd tools row + helmd-health row)
-├── presets/full-reverse/      preset definition (generated; persona + every tool row)
 ├── install.ps1/.sh/.bat       one-command installer
 └── docs/                      design docs & postmortems
 ```
@@ -465,9 +452,9 @@ Versions are pinned to the host cohort via `overrides` in `pnpm-workspace.yaml` 
 ## Publishing
 
 - The root package is `private: true` and is not published; `@adwmc/helm-d` is.
-- The `files` whitelist: `dist`, `client.js`, `references`, `scripts`, `presets`, `cordis.patch.yml`.
+- The `files` whitelist: `dist`, `client.js`, `references`, `scripts`, `presets`, `cordis.patch.yml`, `preset.generated.patch.yml`.
 - The `prepare` script runs `tsc` automatically before publishing.
-- Current version: `0.3.1`.
+- Current version: whatever `packages/helmd/package.json` says (no version numbers are hard-coded in the docs).
 - Release assets: `adwmc-helm-d-<ver>.tgz` plus the stable alias `helmd.tgz` (used by the store's tarball field and the installers).
 
 ## Risks & mitigations

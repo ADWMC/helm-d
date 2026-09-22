@@ -200,7 +200,7 @@ dsh web
 
 ## Preset 与宿主同步（三层指纹防线）
 
-每个生成的 `agent.cordis.yml` 首行携带宿主指纹：
+dsh >= 0.1.7 起，preset 不再是部署目录里的文件，而是包自己经 `dsh.bundle.patch` 声明的一行组合（`@deepseek-ai/dsh-agent-preset`）。生成的 `packages/helmd/preset.generated.patch.yml` 首行携带宿主指纹：
 
 ```yaml
 # gen-preset: host=<sha256 of installed dsh standard>
@@ -218,19 +218,19 @@ dsh web
 
 helmd 0.2.1 起在 **dsh 网页设置页**常驻一块健康卡片：设置 → 插件 → 插件配置 → 「helmd 安全分析包」。卡片本身只展示、不改盘。
 
-每次 dsh 启动时评估一次部署位 `.agent-presets/<preset>/agent.cordis.yml`（默认 preset 名 `helmd`，可用 `HELMD_PRESET_NAME` 改）的指纹与当前宿主的关系：
+每次 dsh 启动时评估一次包内产物 `preset.generated.patch.yml`（路径可用 `HELMD_PRESET_PATCH` 重定向，测试用）与当前宿主 `standard` 的关系：
 
 | 徽标 | 含义 | 动作 |
 |------|------|------|
-| 🟢 健康 Healthy | preset 与宿主匹配 | 无 |
+| 🟢 健康 Healthy | 产物与宿主匹配 | 无 |
 | 🟠 宿主已升级 Host upgraded | 升级过 dsh，平台行过期 | 重跑 install / setup-preset，再重启 |
-| 🔴 内容漂移 Content drift | 手改了 agent.cordis.yml 或 persona 未同步 | 同上，重新生成 |
-| 🟣 旧版产物 Legacy preset | 无指纹头的旧文件 | 重新生成 |
-| ⚪ 未部署 Not deployed | preset 缺失 | 跑 install |
+| 🔴 内容漂移 Content drift | 手改了产物或 persona 未同步 | 同上，重新生成 |
+| 🟣 旧版产物 Legacy preset | 无指纹头的产物，来源不可证 | 重新生成 |
+| ⚪ 未生成 Not generated | 产物缺失 | 跑 install 或 gen-preset |
 
 展开可见双指纹（12 位）、版本、**自动修复结论**、评估时间与两条路径，方便定位问题。
 
-**漂移修复策略**：卡片判到漂移时会自动修复，但**只修能证明是本包产物的文件**——部署位带 `gen-preset` 指纹头（`STALE` 内容漂移 / `HOST_UPGRADED` 宿主已升级）就自动按当前宿主 standard 重生成；没有指纹头（`LEGACY_PRESET`，可能是你手写的）只报告、不动它。写盘前一律先留 `.bak`；修复后当场跑一次**产物结构断言**（行集合 = 宿主 standard + `helmd`、无重复 id、`helm-d` 恰好一次、persona 是本包的），结论里会写明 `artifact check OK (N rows …)`，然后提示"必须重启 dsh 并按 MAINTENANCE §8 断言首轮 `[pwsh, read]`"——那半需要真机会话，只能由你跑。开关：`HELMD_AUTO_HEAL=0` 全部只报告（手工管理部署用），`=1` 连无指纹头的也重写。
+**漂移修复策略**：卡片判到漂移时会自动修复，但**只修能证明是本包产物的文件**——产物带 `gen-preset` 指纹头（`STALE` 内容漂移 / `HOST_UPGRADED` 宿主已升级）就自动按当前宿主 standard 重生成；没有指纹头（`LEGACY_PRESET`，可能是你手写的）只报告、不动它。写盘前一律先留 `.bak`；修复后当场跑一次**产物结构断言**（行集合 = 宿主 standard + `helmd`、无重复 id、组合行已改写为 `preset-helmd` / `id: helmd`、`helm-d` 恰好一次、persona 是本包激活词），结论里会写明 `artifact check OK (N rows …)`，然后提示"必须重启 dsh 并按 MAINTENANCE §8 断言首轮 `[pwsh, read]`"——那半需要真机会话，只能由你跑。开关：`HELMD_AUTO_HEAL=0` 全部只报告（手工管理产物用），`=1` 连无指纹头的也重写。
 
 ## 安全分析工作台与动态工具货架
 
@@ -254,7 +254,7 @@ dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/latest/dow
 dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 ```
 
-**商店安装会把包依赖和健康检查装入 profile。安全工具、bootstrap 和 router 只由 helmd Agent preset 加载；包内自带模板，装完运行一条命令写入：**
+**商店安装会把包依赖和健康检查装入 profile。安全工具、bootstrap 和 router 只由 helmd Agent preset 加载；preset 产物随包就位，只有升级过 dsh 宿主后才需要按本机重生成一次：**
 
 ```bash
 # Windows (PowerShell)
@@ -264,12 +264,13 @@ dsh plugin --profile web add github:ADWMC/helm-d/tree/main/packages/helmd
 ~/.dsh/profiles/web/node_modules/@adwmc/helm-d/scripts/setup-preset.sh
 ```
 
-脚本会把 `preset.yml` + `agent.cordis.yml` 写到 `~/.dsh/.agent-presets/helmd/`（已有则留 .bak），会话启动时在 UI 里选 `helmd` preset 即可。
+脚本按本机安装的 dsh 重生成包内 `preset.generated.patch.yml`（已有则留 .bak），不往 `~/.dsh` 写任何部署文件；重启 dsh 后在会话启动处选 `helmd` preset 即可。宿主低于 0.1.7 时脚本会报错并保留随包产物。
 
 ## 验证
 
 ```bash
-dsh --profile web --dump-config   # 应看到 @adwmc/helm-d 的 host 行（解析到 dist/health.js）
+dsh --profile web --dump-config   # 应看到 @adwmc/helm-d 的 host 行（解析到 dist/health.js），
+                                  # 以及 - id: preset-helmd（config: id: helmd）与末行 @adwmc/helm-d/agent
 node packages/helmd/scripts/gen-preset.mjs --check   # preset check OK（红了按指纹提示处理）
 ```
 
@@ -372,35 +373,21 @@ dsh plugin --profile web add @adwmc/helm-d
 
 `dsh plugin` 会把参数转发给 profile 目录里的 pnpm，包落到 `$DSH_HOME/profiles/node_modules/`；全局 patch 只注册只读健康检查，不注册安全工具。
 
-### 2. 挂载 preset
+### 2. preset：随包就位，无需挂载
 
-把 `presets/full-reverse/` 复制到 DSH 用户 preset 根目录 `$DSH_HOME/.agent-presets/helmd/`：
-
-macOS / Linux：
+dsh >= 0.1.7 里 preset 是包通过 `dsh.bundle.patch` 声明的一行组合，安装即生效——不再有 `$DSH_HOME/.agent-presets/helmd/` 这个部署目录（0.1.5 及更早的手动拷贝步骤作废）。只在**升级过宿主**之后按本机重生成一次：
 
 ```bash
-mkdir -p ~/.dsh/.agent-presets/helmd
-cp presets/full-reverse/agent.cordis.yml ~/.dsh/.agent-presets/helmd/
-cp presets/full-reverse/preset.yml ~/.dsh/.agent-presets/helmd/
+# Windows (PowerShell)
+.\packages\helmd\scripts\setup-preset.ps1
+
+# macOS / Linux
+bash packages/helmd/scripts/setup-preset.sh
 ```
 
-Windows（PowerShell）：
+### 3. 选用 preset
 
-```powershell
-$p = Join-Path $env:USERPROFILE '.dsh\.agent-presets\helmd'
-New-Item -ItemType Directory -Force $p | Out-Null
-Copy-Item presets\full-reverse\agent.cordis.yml $p
-Copy-Item presets\full-reverse\preset.yml $p
-```
-
-### 3. 设为默认 preset
-
-在 UI 的 preset 选择器里选 `helmd`，或改 `$DSH_HOME/settings.yaml`：
-
-```yaml
-agent-presets:
-  default: helmd
-```
+在会话启动处的 preset 选择器里选 `helmd`（安装脚本不会替你改默认值）。
 
 ### 4. 启动并激活
 
@@ -431,10 +418,10 @@ helmd/
 │       │   └── tools/         10 个工具模块（33 个工具）
 │       ├── client.js          浏览器半：设置页健康卡片 + 工作台（lazy-CJS factory，免构建）
 │       ├── references/        637 个参考文档，按需读取（8 大域 + toolbox）
-│       ├── scripts/           分析脚本 + ai-security 语料/账本 + gen-preset.mjs
-│       ├── presets/           persona 单源 + 生成物镜像
+│       ├── scripts/           分析脚本 + ai-security 语料/账本 + gen-preset.mjs + setup-preset.{ps1,sh}
+│       ├── presets/           persona 单源 + preset.yml（picker 的 order/description）
+│       ├── preset.generated.patch.yml  preset 产物（生成物；宿主 standard + persona + helmd 行）
 │       └── cordis.patch.yml   bundle 挂载清单（helmd 工具行 + helmd-health 行）
-├── presets/full-reverse/      preset 定义（生成物；persona + 全部工具行）
 ├── install.ps1/.sh/.bat       一键安装器
 └── docs/                      设计文档与事故复盘
 ```
@@ -466,9 +453,9 @@ pnpm build
 ## 发布
 
 - 根包 `private: true`，不发布；发布对象是 `@adwmc/helm-d` 单包。
-- `files` 白名单：`dist`、`client.js`、`references`、`scripts`、`presets`、`cordis.patch.yml`。
+- `files` 白名单：`dist`、`client.js`、`references`、`scripts`、`presets`、`cordis.patch.yml`、`preset.generated.patch.yml`。
 - `prepare` 脚本会在发布前自动执行 `tsc`。
-- 当前版本 `0.3.1`。
+- 当前版本以 `packages/helmd/package.json` 为准（不在文档里钉数字）。
 - Release 资产：`adwmc-helm-d-<ver>.tgz` + 稳定别名 `helmd.tgz`（供商店 tarball 字段与安装器使用）。
 
 ## 风险与缓解
