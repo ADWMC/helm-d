@@ -1,49 +1,37 @@
 #!/usr/bin/env bash
-# scripts/setup-preset.sh -- write the helmd agent preset from the files
-# shipped inside this bundle. Run after ANY install method (store, URL, local
-# tarball) to get the full persona + tool configuration.
+# scripts/setup-preset.sh -- re-derive this package's preset patch against the
+# dsh host installed on THIS machine.
 #
-# Usage: ./scripts/setup-preset.sh [preset-name]   (default: helmd)
+# dsh >= 0.1.7 changed the model: a preset is one composition row
+# (@deepseek-ai/dsh-agent-preset) that the bundle declares through
+# dsh.bundle.patch, so there is no `.agent-presets/<name>/` deployment left and
+# nothing to copy. The artifact lives inside the package
+# (preset.generated.patch.yml); this script only regenerates it from the local
+# host's own standard preset, which is what a host upgrade requires.
+#
+# Usage: ./scripts/setup-preset.sh
 
 set -euo pipefail
 
-PRESET="${1:-helmd}"
-DSH_HOME="${DSH_HOME:-$HOME/.dsh}"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC="$SCRIPT_DIR/../presets"
+TARGET="$SCRIPT_DIR/../preset.generated.patch.yml"
+GEN_SCRIPT="$SCRIPT_DIR/gen-preset.mjs"
 
-if [ ! -f "$SRC/agent.cordis.yml" ]; then
-  echo "preset templates not found at $SRC (run from inside the installed package)"
+command -v node >/dev/null 2>&1 || {
+  echo "node is required to regenerate the preset patch (gen-preset.mjs reads the installed dsh standard)"
+  exit 1
+}
+[ -f "$GEN_SCRIPT" ] || { echo "generator not found at $GEN_SCRIPT (run from inside the installed package)"; exit 1; }
+
+[ -f "$TARGET" ] && { cp "$TARGET" "$TARGET.bak"; echo "  kept $TARGET.bak"; }
+
+# gen-preset asserts the artifact's shape and writes nothing when the host
+# predates 0.1.7 or the assertion fails, so a non-zero exit leaves the current
+# patch untouched.
+if ! node "$GEN_SCRIPT" --out "$TARGET"; then
+  echo "gen-preset failed; $TARGET was left as-is"
   exit 1
 fi
 
-PRESET_DIR="$DSH_HOME/.agent-presets/$PRESET"
-mkdir -p "$PRESET_DIR"
-
-# Regenerate against the LOCAL host inside this run: platform rows must match
-# the installed dsh, not the release snapshot. Fall back to snapshot when node
-# or the generator is unavailable.
-GEN_SCRIPT="$SCRIPT_DIR/gen-preset.mjs"
-GENERATED=false
-if command -v node >/dev/null 2>&1 && [ -f "$GEN_SCRIPT" ]; then
-  if node "$GEN_SCRIPT" --out "$PRESET_DIR" && [ -f "$PRESET_DIR/agent.cordis.yml" ]; then
-    GENERATED=true
-    echo "  [gen] preset regenerated from local dsh standard (match this host)"
-  else
-    echo "  [gen] generator failed; falling back to snapshot"
-  fi
-fi
-
-for f in preset.yml agent.cordis.yml; do
-  if [ -f "$PRESET_DIR/$f" ]; then cp "$PRESET_DIR/$f" "$PRESET_DIR/$f.bak"; fi
-  if [ "$f" = "agent.cordis.yml" ] && [ "$GENERATED" = "true" ]; then
-    echo "  kept generated $f"
-  else
-    cp "$SRC/$f" "$PRESET_DIR/$f"
-    echo "  wrote $f"
-  fi
-done
-echo "[done] preset '$PRESET' written to $PRESET_DIR"
-echo "NOTE: if dsh is currently running, restart it after a changed preset so its standing mount reloads cleanly."
-echo "pick '$PRESET' in the UI preset picker when starting a session."
+echo "[done] preset patch re-derived from the installed dsh standard"
+echo "[next] restart dsh, then assert the first request's tool catalog (MAINTENANCE section 8)"

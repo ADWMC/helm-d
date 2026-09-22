@@ -6,9 +6,8 @@
 # permanent false STALE on a clean checkout.
 * text=auto eol=lf
 
-# Generated agent presets are compared byte-for-byte by gen-preset --check.
-presets/full-reverse/agent.cordis.yml text eol=lf
-packages/helmd/presets/agent.cordis.yml text eol=lf
+# The generated bundle preset patch is compared byte-for-byte by gen-preset --check.
+packages/helmd/preset.generated.patch.yml text eol=lf
 
 # Not text: keep these byte-exact on every platform.
 *.tgz binary

@@ -17,3 +17,7 @@ helmd-cases/
 cookie.txt
 # 实弹/会话测试在仓库根目录产生的攻击工具包产物（pentest-kit 等），分析数据不入库
 pentest-kit/
+
+# dsh-upgrade-audit npm 模式产物（两版宿主包树快照，不入库）
+tmp/
+
