@@ -19,11 +19,11 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1 <0.2.0-0"
+    "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1 <0.2.0-0 || >=0.1.7-alpha.0 <0.2.0-0"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1 <0.2.0-0"
+    "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1 <0.2.0-0 || >=0.1.7-alpha.0 <0.2.0-0"
   },
   "engines": {
     "node": ">=22.19.0"
