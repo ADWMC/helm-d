@@ -1,24 +1,29 @@
 // H-CoT 设置命名空间 —— UI 的读写面。
 //
-// 一个 namespace 承载两类数据：
+// 0.1.7 模型下，本模块的 `Config` 就是 profile 条目 `helmd-hcot-settings`
+// 的表单 schema（settings ns = 条目 id）：
 //   配置（用户可写）    model / provider / maxRounds / autoSchedule
 //   动作（UI 写、宿主消费）requestedAction —— UI 不直接跑攻击，只写请求
-//   运行态（宿主写）    lastResult / ledgerSummary / slotLibraryIndex
+// 宿主经 `settings/document-updated` 事件感知写入：describe 读、update 清。
 //
-// 数据通道完全走 dsh 的 settings 服务：读用 `scope.get()`，写用 `scope.update()`，
-// 监听用 `scope.watch()`。不自建 web 服务、不自建 RPC。
+// 运行态（lastResult / 账本聚合 / 实例库索引）不再写进 settings 文档——
+// 派生态不进 Config（0.1.7 的 settings 只承载 Config schema，且每次攻击
+// 都会把报告体持久化进 profile patch 不可接受），改由 /api/helmd/hcot 投影。
 
 import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
+// Type-only: loads the `settings/document-updated` Events augmentation that
+// @deepseek-ai/dsh-settings declares on cordis (erased at emit, no runtime dep).
+import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import { scheduleAttack, DEFAULT_PROVIDER, DEFAULT_MAX_ROUNDS } from './hcot-attack-scheduler.js'
 import { BREACH_PERSONA, buildBreachPrompt } from './hcot-subagent-persona.js'
-import { ledgerPath as engineLedgerPath, loadLedger as engineLoadLedger, loadCorpus as engineLoadCorpus, discoverAvailableModels, clearLedger as engineClearLedger, deleteLedgerGroup as engineDeleteLedgerGroup } from './hcot-engine.js'
+import { ledgerPath as engineLedgerPath, discoverAvailableModels, clearLedger as engineClearLedger, deleteLedgerGroup as engineDeleteLedgerGroup } from './hcot-engine.js'
 import { getLiveAgent, getFirstLiveAgent } from './prompt-assembly.js'
 import { safeService } from './seam.js'
 
-/** The settings namespace this module serves. Also the client workspace key. */
-export const HCOT_NS = 'hcot'
+/** Profile entry id this module's Config rides on — also the settings namespace. */
+export const HCOT_NS = 'helmd-hcot-settings'
 
 /** One UI action request (written by the browser half, consumed by the host half). */
 export interface HcotActionRequest {
@@ -48,12 +53,13 @@ export const HcotSettingsSchema = z.object({
   autoSchedule: z.boolean().default(true),
   // ---- action (UI writes; host consumes then clears)
   requestedAction: z.string().default(''),
-  // ---- run state (host writes; UI projects)
-  lastResult: z.string().default(''),
-  ledgerSummary: z.string().default(''),
-  slotLibraryIndex: z.string().default(''),
-  availableModels: z.string().default('[]'),
 })
+
+/**
+ * The entry Config. 0.1.7's Loader hands this to the profile entry, and
+ * `settings.describe(HCOT_NS)` serves it as the live form (base → user layer).
+ */
+export const Config = HcotSettingsSchema
 
 export interface HcotSettings {
   model: string
@@ -61,20 +67,20 @@ export interface HcotSettings {
   maxRounds: number
   autoSchedule: boolean
   requestedAction: string
-  lastResult: string
-  ledgerSummary: string
-  slotLibraryIndex: string
-  availableModels: string
 }
 
-/** Owner-facing scope handle (host side). */
-interface HcotScope {
-  get(): HcotSettings
-  watch(cb: (next: HcotSettings) => void | Promise<void>): () => void
-  update(patch: Partial<HcotSettings>): Promise<void>
+/** Host-side settings surface (0.1.7 SettingsForms): read via describe, write via update. */
+interface SettingsFormsLike {
+  describe(): Array<{ ns: string; value: unknown; revision: number }>
+  update(ns: string, patch: object, expectedRevision?: number): Promise<void>
 }
-interface SettingsLike {
-  register(ns: string, schema: unknown, opts: unknown): HcotScope
+
+/** Last attack verdict, held in process memory and projected over /api/helmd/hcot. */
+let lastResult = ''
+
+/** The most recent attack verdict (JSON string, '' before the first run). */
+export function getHcotLastResult(): string {
+  return lastResult
 }
 
 /** 一组分组战绩（模型×语义×触发点）。 */
@@ -158,64 +164,73 @@ export function parseAction(raw: string): HcotActionRequest | null {
 }
 
 /**
- * Register the `hcot` namespace and wire the action consumer.
+ * Wire the action consumer to the entry's config document.
+ *
+ * The UI writes `requestedAction` into the entry (settings plane); the
+ * `settings/document-updated` event tells this host half to re-read via
+ * `describe`, clear the request, and run it. Actions are chained so a second
+ * request never overlaps the first.
  * @param ctx - the host composition context.
  */
 export function registerHcotSettings(ctx: Context): void {
   ctx.inject(['settings'], (settingsCtx) => {
-    const settings = (settingsCtx as unknown as { settings: SettingsLike }).settings
-    if (typeof settings?.register !== 'function') {
-      console.error('[hcot-settings] settings.register unavailable; workspace data plane disabled')
-      return
-    }
-    let scope: HcotScope
-    try {
-      scope = settings.register(HCOT_NS, HcotSettingsSchema, {
-        base: { model: 'deepseek-chat', provider: DEFAULT_PROVIDER, maxRounds: DEFAULT_MAX_ROUNDS, autoSchedule: true },
-      })
-    } catch (error) {
-      console.error(`[hcot-settings] registration failed: ${String((error as Error)?.message ?? error)}`)
+    const settings = (settingsCtx as unknown as { settings: SettingsFormsLike }).settings
+    if (typeof settings?.describe !== 'function' || typeof settings?.update !== 'function') {
+      console.error('[hcot-settings] settings.describe/update unavailable; action plane disabled')
       return
     }
 
-    // Seed run state once so the UI has something on first open.
-    void refreshRunState(scope, settingsCtx).catch(() => { /* seeding is best-effort */ })
-
-    // Consume UI action requests: an attack runs on the host, never in the browser.
-    scope.watch((next) => {
-      const action = parseAction(next.requestedAction)
-      if (action == null) return
-      void handleAction(settingsCtx, scope, next, action)
-    })
-  })
-}
-
-/** Recompute the read-only projections (ledger aggregate + library index + available models). */
-export async function refreshRunState(scope: HcotScope, hostCtx?: Context): Promise<void> {
-  const lp = engineLedgerPath({})
-  const records = await engineLoadLedger(lp)
-  const patch: Partial<HcotSettings> = { ledgerSummary: summarizeLedger(records as never) }
-  try {
-    const corpus = await engineLoadCorpus()
-    patch.slotLibraryIndex = libraryIndex(corpus as never)
-  } catch {
-    // The instance library is optional for the UI; keep the previous index.
-  }
-  try {
-    const models = await discoverAvailableModels(hostCtx)
-    patch.availableModels = JSON.stringify(models)
-    const current = scope.get()
-    // If current model is empty, default or invalid, choose the first model that has an active key
-    if ((!current.model || current.model === 'deepseek-chat') && models.length > 0) {
-      const firstWithKey = models.find((m) => m.hasKey)
-      if (firstWithKey) {
-        patch.model = firstWithKey.id
+    const readCfg = (): HcotSettings => {
+      const desc = settings.describe().find((d) => d.ns === HCOT_NS)
+      const value = (desc?.value ?? {}) as Partial<HcotSettings>
+      return {
+        model: value.model ?? 'deepseek-chat',
+        provider: value.provider ?? DEFAULT_PROVIDER,
+        maxRounds: value.maxRounds ?? DEFAULT_MAX_ROUNDS,
+        autoSchedule: value.autoSchedule ?? true,
+        requestedAction: value.requestedAction ?? '',
       }
     }
-  } catch {
-    // Model discovery is best-effort
-  }
-  await scope.update(patch)
+
+    const consume = async (): Promise<void> => {
+      const cfg = readCfg()
+      // Seed on read (was refreshRunState's job): an unset/default model
+      // resolves to the first discovered model that actually has a key.
+      if (!cfg.model || cfg.model === 'deepseek-chat') {
+        try {
+          const models = await discoverAvailableModels(settingsCtx)
+          const firstWithKey = models.find((m) => m.hasKey)
+          if (firstWithKey) cfg.model = firstWithKey.id
+        } catch { /* model discovery is best-effort */ }
+      }
+      const action = parseAction(cfg.requestedAction)
+      if (action == null) return
+      // Clear the request first so a repeated snapshot does not re-trigger.
+      try {
+        await settings.update(HCOT_NS, { requestedAction: '' })
+      } catch (e) {
+        console.warn('[hcot-settings] failed to clear requestedAction', e)
+      }
+      await handleAction(settingsCtx, cfg, action, (patch) => settings.update(HCOT_NS, patch))
+    }
+    let chain: Promise<void> = Promise.resolve()
+    const schedule = (): void => {
+      chain = chain.then(consume, consume)
+    }
+
+    // A request left over from a previous process is dropped, not replayed:
+    // firing an attack at boot would spend LLM calls nobody asked for this run.
+    try {
+      if (parseAction(readCfg().requestedAction) != null) {
+        void settings.update(HCOT_NS, { requestedAction: '' })
+      }
+    } catch { /* best-effort */ }
+
+    settingsCtx.on('settings/document-updated', (ns) => {
+      if (String(ns) !== HCOT_NS) return
+      schedule()
+    })
+  })
 }
 
 /** 解析真实的 LLM Provider (严禁将 subagent 的 'spawn' 传入 LLM 适配器) */
@@ -419,7 +434,8 @@ export async function createDedicatedHcotSession(hostCtx: Context, opts: {
         await sessionController.prompt({
           sessionId,
           content: [{ type: 'text', text: promptText }],
-          mode: 'followup',
+          mode: 'queue',
+          requestId: randomUUID(),
         }, abortCtrl.signal)
       }
 
@@ -478,18 +494,15 @@ export async function createDedicatedHcotSession(hostCtx: Context, opts: {
   return { ok: false, error: 'dsh session service unavailable on host' }
 }
 
-/** Execute one UI-requested action. */
-async function handleAction(hostCtx: Context, scope: HcotScope, cfg: HcotSettings, action: HcotActionRequest): Promise<void> {
-  // Clear the request first so a repeated snapshot does not re-trigger.
-  await scope.update({ requestedAction: '' })
+/** Execute one UI-requested action. The caller has already cleared `requestedAction`. */
+async function handleAction(hostCtx: Context, cfg: HcotSettings, action: HcotActionRequest, updateCfg: (patch: Partial<HcotSettings>) => Promise<void>): Promise<void> {
   if (action.kind === 'refresh') {
-    await refreshRunState(scope, hostCtx)
+    // Projections are computed per request by /api/helmd/hcot; nothing to push.
     return
   }
   if (action.kind === 'clear-ledger') {
     const lp = engineLedgerPath({})
     await engineClearLedger(lp)
-    await refreshRunState(scope, hostCtx)
     return
   }
   if (action.kind === 'delete-ledger-group') {
@@ -497,12 +510,11 @@ async function handleAction(hostCtx: Context, scope: HcotScope, cfg: HcotSetting
     if (action.groupTarget) {
       await engineDeleteLedgerGroup(lp, action.groupTarget)
     }
-    await refreshRunState(scope, hostCtx)
     return
   }
   try {
     if (action.model && action.model !== cfg.model) {
-      await scope.update({ model: action.model })
+      await updateCfg({ model: action.model })
     }
 
     // Resolve live parent agent for the specified session
@@ -543,14 +555,11 @@ async function handleAction(hostCtx: Context, scope: HcotScope, cfg: HcotSetting
     if (action.kind === 'attack') {
       if (action.sessionId && !parentAgent) {
         // 用户明确指定了目标会话，但未找到对应的活动 Agent，报错并指引用户，严禁篡改到其它无关会话
-        await scope.update({
-          lastResult: JSON.stringify({
-            at: new Date().toISOString(),
-            ok: false,
-            error: `无法在目标会话 [${action.sessionId}] 下派生子代理：该会话当前未处于活跃运行状态或未创建 Agent。请在 dsh 中打开该会话并发送任意一条消息（如 'hello'）激活它，然后再试。`,
-          }),
+        lastResult = JSON.stringify({
+          at: new Date().toISOString(),
+          ok: false,
+          error: `无法在目标会话 [${action.sessionId}] 下派生子代理：该会话当前未处于活跃运行状态或未创建 Agent。请在 dsh 中打开该会话并发送任意一条消息（如 'hello'）激活它，然后再试。`,
         })
-        await refreshRunState(scope, hostCtx)
         return
       }
 
@@ -585,42 +594,33 @@ async function handleAction(hostCtx: Context, scope: HcotScope, cfg: HcotSetting
         })
         if (subagentRes.ok && subagentRes.childId) {
           const actualParentId = subagentRes.parentSessionId || parentAgent.id || parentAgent.session?.id || 'parent'
-          await scope.update({
-            lastResult: JSON.stringify({
-              at: new Date().toISOString(),
-              ok: true,
-              via: 'dsh-subagent',
-              childId: subagentRes.childId,
-              parentSessionId: actualParentId,
-              goal: action.goal,
-              message: `已在宿主会话 [${actualParentId}] 下成功创建推演子代理 (${subagentRes.childId})`,
-            }),
+          lastResult = JSON.stringify({
+            at: new Date().toISOString(),
+            ok: true,
+            via: 'dsh-subagent',
+            childId: subagentRes.childId,
+            parentSessionId: actualParentId,
+            goal: action.goal,
+            message: `已在宿主会话 [${actualParentId}] 下成功创建推演子代理 (${subagentRes.childId})`,
           })
-          await refreshRunState(scope, hostCtx)
           return
         } else {
           console.warn('[hcot] startHcotContinuableSubagent failed:', subagentRes.error)
-          await scope.update({
-            lastResult: JSON.stringify({
-              at: new Date().toISOString(),
-              ok: false,
-              error: `在会话 [${parentAgent.id ?? parentAgent.session?.id}] 下创建子代理失败: ${subagentRes.error}`,
-            }),
+          lastResult = JSON.stringify({
+            at: new Date().toISOString(),
+            ok: false,
+            error: `在会话 [${parentAgent.id ?? parentAgent.session?.id}] 下创建子代理失败: ${subagentRes.error}`,
           })
-          await refreshRunState(scope, hostCtx)
           return
         }
       }
 
       // 若未找到任何存活父 Agent
-      await scope.update({
-        lastResult: JSON.stringify({
-          at: new Date().toISOString(),
-          ok: false,
-          error: '未检测到任何可用的宿主会话 Agent。请在 dsh 中打开一个会话并发送任意消息以激活它。',
-        }),
+      lastResult = JSON.stringify({
+        at: new Date().toISOString(),
+        ok: false,
+        error: '未检测到任何可用的宿主会话 Agent。请在 dsh 中打开一个会话并发送任意消息以激活它。',
       })
-      await refreshRunState(scope, hostCtx)
       return
     }
 
@@ -633,29 +633,24 @@ async function handleAction(hostCtx: Context, scope: HcotScope, cfg: HcotSetting
       dryRun: action.kind === 'dry-run',
       notify: false,
     })
-    await scope.update({
-      lastResult: JSON.stringify({
-        at: new Date().toISOString(),
-        ok: result.ok,
-        via: result.via,
-        goal: result.input.goal,
-        trigger: result.input.triggerProfile,
-        broke: result.outcome?.broke,
-        refused: result.outcome?.refused,
-        variant: result.outcome?.variant,
-        firstFragment: result.outcome?.firstFragment,
-        final: result.outcome?.final,
-        payload: result.outcome?.payload,
-        report: result.ok ? result.text.slice(0, 4000) : undefined,
-        error: result.error,
-      }),
+    lastResult = JSON.stringify({
+      at: new Date().toISOString(),
+      ok: result.ok,
+      via: result.via,
+      goal: result.input.goal,
+      trigger: result.input.triggerProfile,
+      broke: result.outcome?.broke,
+      refused: result.outcome?.refused,
+      variant: result.outcome?.variant,
+      firstFragment: result.outcome?.firstFragment,
+      final: result.outcome?.final,
+      payload: result.outcome?.payload,
+      report: result.ok ? result.text.slice(0, 4000) : undefined,
+      error: result.error,
     })
   } catch (error) {
-    await scope.update({
-      lastResult: JSON.stringify({ at: new Date().toISOString(), ok: false, error: String((error as Error)?.message ?? error) }),
-    })
+    lastResult = JSON.stringify({ at: new Date().toISOString(), ok: false, error: String((error as Error)?.message ?? error) })
   }
-  await refreshRunState(scope, hostCtx)
 }
 
 export const name = 'helmd-hcot-settings'

@@ -10,7 +10,7 @@
 // 子代理 breach 循环由 command-hcot.ts 通过 ctx.subagents.start() 驱动，
 // 子代理内部复用模型工具 hcot_attack —— 全链路不再出现 Python。
 
-import { readFile, appendFile, writeFile, mkdir } from 'node:fs/promises'
+import { readFile, appendFile, writeFile, mkdir, readdir } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { resolve, join } from 'node:path'
@@ -306,6 +306,9 @@ export interface DiscoveredModel {
 
 /**
  * 发现本地所有已配置且带有凭据的可用模型列表。
+ * 三级数据源（0.1.7 迁移链）：settings.yaml（≤0.1.5，宿主会改名 .imported）
+ * → ctx.settings.describe()（活配置的结构化值，权威）→ profile/home patch
+ * 文件行扫（无 ctx 的 CLI 单发路径）。
  */
 export async function discoverAvailableModels(ctx?: unknown): Promise<DiscoveredModel[]> {
   const list: DiscoveredModel[] = []
@@ -391,7 +394,162 @@ export async function discoverAvailableModels(ctx?: unknown): Promise<Discovered
     }
   } catch {}
 
+  // 3. 0.1.7 活配置：settings.yaml 已被宿主改名 .imported，用户层在 profile
+  //    patch 里；带 ctx 时 describe() 直接给解析后的结构化值（权威腿）。
+  if (list.length === 0 && ctx) {
+    try {
+      const settings = safeService<any>(ctx, 'settings')
+      if (settings && typeof settings.describe === 'function') {
+        const forms = settings.describe() as Array<{ ns: string; value?: any; user?: any }>
+        const pi = forms.find((f) => f?.ns === 'llm-pi-ai')
+        for (const [route, profile] of Object.entries(pi?.value?.providers ?? {})) {
+          const p = profile as { apiKeyEnv?: string; baseURL?: string; models?: Array<string | { id?: string }> }
+          const keyEnv = String(p?.apiKeyEnv ?? '')
+          for (const m of p?.models ?? []) {
+            const id = typeof m === 'string' ? m : String(m?.id ?? '')
+            if (!id) continue
+            list.push({ id, provider: route, baseURL: String(p?.baseURL ?? ''), apiKeyEnv: keyEnv, hasKey: await keyResolves(keyEnv, refs, ctx) })
+          }
+          // 未显式列 models 的路由走 pi-ai 装机 catalog，配置面枚举不到——与旧 settings.yaml 正则同限。
+        }
+        const ds = forms.find((f) => f?.ns === 'llm-deepseek')
+        if (ds) {
+          // deepseek 的 key/base 取 user 层（显式覆盖）否则沿用旧默认：value 里的
+          // base 默认 baseURL 是 anthropic 端点，未经确认直接采用会把 OpenAI 风格
+          // 调用指到 /anthropic；models 允许回落到 base 建议清单（hasKey 把关）。
+          const keyEnv = String(ds.user?.apiKeyEnv ?? 'DEEPSEEK_API_KEY')
+          const base = String(ds.user?.baseURL ?? 'https://api.deepseek.com/v1')
+          const models = (ds.user?.models ?? ds.value?.models ?? []) as Array<string | { id?: string }>
+          for (const m of models) {
+            const id = typeof m === 'string' ? m : String((m as { id?: string })?.id ?? '')
+            if (!id) continue
+            list.push({ id, provider: 'deepseek', baseURL: base, apiKeyEnv: keyEnv, hasKey: await keyResolves(keyEnv, refs, ctx) })
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 4. 无 ctx（CLI 单发路径）且前两腿皆空：扫 home/profile patch 文件。
+  if (list.length === 0) {
+    try { await collectModelsFromPatchFiles(list, refs, ctx) } catch {}
+  }
+
   return list
+}
+
+/** One model row's key probe: refs file → process env → host credentials service. */
+async function keyResolves(keyEnv: string, refs: Record<string, string>, ctx?: unknown): Promise<boolean> {
+  if (!keyEnv) return false
+  if (refs[keyEnv] || process.env[keyEnv]) return true
+  if (ctx) {
+    const creds = safeService<any>(ctx, 'credentials')
+    if (creds && typeof creds.resolve === 'function') {
+      try {
+        const res = await creds.resolve(keyEnv)
+        if (res?.value) return true
+      } catch {}
+    }
+  }
+  return false
+}
+
+/** 0.1.7 用户层 patch 候选：home 覆盖层 + 各 profile 的 cordis.patch.yml。 */
+async function profilePatchCandidates(): Promise<string[]> {
+  const home = process.env.DSH_HOME || join(homedir(), '.dsh')
+  const out = [join(home, 'cordis.patch.yml')]
+  try {
+    for (const entry of await readdir(join(home, 'profiles'), { withFileTypes: true })) {
+      if (entry.isDirectory()) out.push(join(home, 'profiles', entry.name, 'cordis.patch.yml'))
+    }
+  } catch {}
+  return out
+}
+
+/** 取一个 entry 的行块（`- id: <id>` 到下一个同级条目）；无 YAML 依赖的行扫描。 */
+function entryBlockLines(text: string, id: string): string[] | null {
+  const lines = text.split(/\r?\n/)
+  const re = new RegExp(`^\\s*-\\s+id:\\s*${id}\\s*$`)
+  const start = lines.findIndex((l) => re.test(l))
+  if (start < 0) return null
+  const indent = lines[start].length - lines[start].trimStart().length
+  let end = lines.length
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i]
+    if (!line.trim()) continue
+    if (line.length - line.trimStart().length <= indent) { end = i; break }
+  }
+  return lines.slice(start, end)
+}
+
+/** providers 字典 → 各路由的 key env / base / 显式模型 id（按缩进归属）。 */
+function parsePiProviders(block: string[]): Array<{ route: string; apiKeyEnv: string; baseURL: string; models: string[] }> {
+  const pIdx = block.findIndex((l) => /^\s*providers:\s*$/.test(l))
+  if (pIdx < 0) return []
+  const pIndent = block[pIdx].length - block[pIdx].trimStart().length
+  const out: Array<{ route: string; apiKeyEnv: string; baseURL: string; models: string[] }> = []
+  let cur: (typeof out)[number] | null = null
+  for (let i = pIdx + 1; i < block.length; i++) {
+    const line = block[i]
+    if (!line.trim()) continue
+    const ind = line.length - line.trimStart().length
+    if (ind <= pIndent) break
+    const bare = line.trim()
+    // providers 直接子级的裸 key 才是路由名；更深的裸 key 是路由内字段。
+    if (ind === pIndent + 2 && /^[A-Za-z0-9_-]+:\s*$/.test(bare)) {
+      cur = { route: bare.slice(0, -1).trim(), apiKeyEnv: '', baseURL: '', models: [] }
+      out.push(cur)
+      continue
+    }
+    if (!cur) continue
+    const env = line.match(/^\s*apiKeyEnv:\s*(\S+)/)
+    if (env) { cur.apiKeyEnv = env[1]; continue }
+    const base = line.match(/^\s*baseURL:\s*(\S+)/)
+    if (base) { cur.baseURL = base[1]; continue }
+    const model = line.match(/^\s*-\s*id:\s*([^\r\n]+)/)
+    if (model) cur.models.push(model[1].trim())
+  }
+  return out
+}
+
+/** llm-deepseek entry 行块 → key env / base / 模型 id。 */
+function parseDeepseekBlock(block: string[]): { apiKeyEnv: string; baseURL: string; models: string[] } {
+  const out = { apiKeyEnv: '', baseURL: '', models: [] as string[] }
+  for (const line of block) {
+    const env = line.match(/^\s*apiKeyEnv:\s*(\S+)/)
+    if (env) { out.apiKeyEnv = env[1]; continue }
+    const base = line.match(/^\s*baseURL:\s*(\S+)/)
+    if (base) { out.baseURL = base[1]; continue }
+    const model = line.match(/^\s*-\s*id:\s*([^\r\n]+)/)
+    if (model) out.models.push(model[1].trim())
+  }
+  return out
+}
+
+/** 从 patch 文件补模型清单（无 ctx 腿）。多 profile 时无法从文件判定活动
+ *  profile——首个命中即止；带 ctx 的 describe 腿才是权威。 */
+async function collectModelsFromPatchFiles(list: DiscoveredModel[], refs: Record<string, string>, ctx?: unknown): Promise<void> {
+  for (const path of await profilePatchCandidates()) {
+    if (list.length) return
+    let text = ''
+    try { text = await readFile(path, 'utf8') } catch { continue }
+    const piBlock = entryBlockLines(text, 'llm-pi-ai')
+    if (piBlock) {
+      for (const r of parsePiProviders(piBlock)) {
+        for (const id of r.models) {
+          list.push({ id, provider: r.route, baseURL: r.baseURL, apiKeyEnv: r.apiKeyEnv, hasKey: await keyResolves(r.apiKeyEnv, refs, ctx) })
+        }
+      }
+    }
+    const dsBlock = entryBlockLines(text, 'llm-deepseek')
+    if (dsBlock) {
+      const ds = parseDeepseekBlock(dsBlock)
+      const keyEnv = ds.apiKeyEnv || 'DEEPSEEK_API_KEY'
+      for (const id of ds.models) {
+        list.push({ id, provider: 'deepseek', baseURL: ds.baseURL || 'https://api.deepseek.com/v1', apiKeyEnv: keyEnv, hasKey: await keyResolves(keyEnv, refs, ctx) })
+      }
+    }
+  }
 }
 
 /**
@@ -420,6 +578,37 @@ export async function resolveDefaultCredentials(opts?: {
       if (defaultModelMatch) {
         const mod = defaultModelMatch[1].trim()
         if (mod) model = mod
+      }
+    } catch {}
+  }
+
+  // 2b. 0.1.7：settings.yaml 已迁移。describe 的 user 层 = 显式覆盖才有值，
+  //     与旧「settings.yaml 里写过才认」同语义；base 层默认不抬上来。
+  if (!model && opts?.ctx) {
+    try {
+      const settings = safeService<any>(opts.ctx, 'settings')
+      if (settings && typeof settings.describe === 'function') {
+        const form = (settings.describe() as Array<{ ns: string; user?: { model?: unknown } }>)
+          .find((f) => f?.ns === 'agent-default-model')
+        const um = String(form?.user?.model ?? '').trim()
+        if (um) model = um
+      }
+    } catch {}
+  }
+
+  // 2c. 无 ctx 时扫 profile/home patch：文件里写着的 agent-default-model 即显式选择。
+  if (!model) {
+    try {
+      for (const path of await profilePatchCandidates()) {
+        let text = ''
+        try { text = await readFile(path, 'utf8') } catch { continue }
+        const block = entryBlockLines(text, 'agent-default-model')
+        if (!block) continue
+        for (const line of block) {
+          const m = line.match(/^\s*model:\s*(\S+)/)
+          if (m) { model = m[1].trim(); break }
+        }
+        if (model) break
       }
     } catch {}
   }

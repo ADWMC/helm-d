@@ -24,7 +24,7 @@ const STATUS_TONE = {
 	HOST_UPGRADED: "var(--dsw-alias-state-warn-label, #b45309)",
 	STALE: "var(--dsw-alias-state-error-primary, #b91c1c)",
 	LEGACY_PRESET: "var(--dsw-alias-state-business-primary, #6d28d9)",
-	NOT_DEPLOYED: "var(--dsw-alias-label-tertiary, #64748b)",
+	NOT_GENERATED: "var(--dsw-alias-label-tertiary, #64748b)",
 	UNKNOWN: "var(--dsw-alias-label-tertiary, #64748b)",
 };
 
@@ -33,7 +33,7 @@ const STATUS_LABEL = {
 	HOST_UPGRADED: "宿主已升级 Host upgraded",
 	STALE: "内容漂移 Content drift",
 	LEGACY_PRESET: "旧版产物 Legacy preset",
-	NOT_DEPLOYED: "未部署 Not deployed",
+	NOT_GENERATED: "未生成 Not generated",
 	UNKNOWN: "无法评估 Unknown",
 };
 
@@ -121,31 +121,33 @@ function row(label, value) {
 	];
 }
 
-exports.inject = ["slots", "settingsScope", "sidebarRight", "sidebarRightTabs"];
+exports.inject = ["slots", "sidebarRight", "sidebarRightTabs"];
 
 exports.apply = function apply(ctx) {
-	let scope;
-	try {
-		scope = ctx.settingsScope.bind({ namespace: NS });
-	} catch {
-		console.error("[helmd] settingsScope unavailable; settings card not bound");
-	}
-
 	// --------------------------------------------------------------------------
 	// 1. Settings Card: HelmdHealthCard
+	//    Health is boot-time derived state served over HTTP (0.1.7 settings
+	//    only carries Config schemas, so there is no settings scope to bind).
 	// --------------------------------------------------------------------------
 	function HelmdHealthCard() {
-		const state = React.useState(() => (scope ? scope.getSnapshot() : null));
+		const state = React.useState(null);
 		const snap = state[0];
 		const setSnap = state[1];
 		React.useEffect(() => {
-			if (!scope) return;
-			return scope.subscribe(() => setSnap(scope.getSnapshot()));
+			var alive = true;
+			function load() {
+				fetch("/api/helmd/health").then(function (r) { return r.json(); }).then(function (j) {
+					if (alive && j && j.ok) setSnap(j.data);
+				}).catch(function () {});
+			}
+			load();
+			var timer = setInterval(load, 30000);
+			return function () { alive = false; clearInterval(timer); };
 		}, []);
 
 		const [open, setOpen] = React.useState(false);
 
-		const v = (snap && snap.value) || {};
+		const v = snap || {};
 		const status = typeof v.status === "string" ? v.status : "UNKNOWN";
 		const statusColor = STATUS_TONE[status] || STATUS_TONE.UNKNOWN;
 		const statusText = STATUS_LABEL[status] || status;
@@ -157,7 +159,7 @@ exports.apply = function apply(ctx) {
 		if (v.version) rows.push(row("版本 Version", v.version));
 		if (v.autoHeal) rows.push(row("自动修复 Auto-heal", v.autoHeal));
 		if (v.checkedAt) rows.push(row("评估于 Checked at", v.checkedAt));
-		if (v.presetPath) rows.push(row("部署 Preset", v.presetPath));
+		if (v.presetPath) rows.push(row("预设 Patch", v.presetPath));
 		if (v.hostPath) rows.push(row("宿主 standard", v.hostPath));
 		rows.push(row("提示 Hint", "重启 dsh 后重新评估 · evaluated once per dsh boot"));
 

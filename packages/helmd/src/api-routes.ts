@@ -2,14 +2,19 @@
 // Each route provides dynamic, real-time data that the client polls.
 //
 // Routes:
+//   GET /api/helmd/health   → boot-time preset health verdict (host plane)
 //   GET /api/helmd/tools    → dynamic tool list from ctx.tools registry
-//   GET /api/helmd/hcot     → H-CoT ledger summary (rounds, broke, strategies)
+//   GET /api/helmd/hcot     → ledger summary + run-state projections
+//                             (0.1.7: run state leaves the settings document,
+//                              so /hcot is its only read surface)
 //   GET /api/helmd/intercept → stream interception stats (count, last time, snippet)
 //   GET /api/helmd/jev      → Jev plugin status (transport, model, key configured)
 
 import type { Context } from '@deepseek-ai/cordis'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { ledgerPath, loadLedger, loadCorpus, discoverAvailableModels } from './hcot-engine.js'
+import { getHcotLastResult, summarizeLedger, libraryIndex } from './hcot-settings.js'
 
 const ROUTE_BASE = '/api/helmd'
 
@@ -66,7 +71,7 @@ function checkJevStatus(): { transport: string; model: string; keyConfigured: bo
   return { transport: 'typesafe', model: 'jev-latest', keyConfigured: Boolean(key) }
 }
 
-export function registerHelmdApi(ctx: Context): void {
+export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void {
   const webServer = (ctx as any).webServer
   if (!webServer?.register) return
 
@@ -93,6 +98,13 @@ export function registerHelmdApi(ctx: Context): void {
     })
   }
 
+  // Boot-time health verdict, evaluated once by the host plane (health.ts).
+  // Derived state rides HTTP, not the settings document: 0.1.7 settings only
+  // carries Config schemas, and a read-only snapshot is not configuration.
+  if (getHealth) {
+    get(`${ROUTE_BASE}/health`, () => getHealth())
+  }
+
   // Dynamic tool list from the live ctx.tools registry.
   // schemas() is ToolRuntime's public enumeration of the global view; the
   // layer fields behind it are private and hold the host's shadowing rules.
@@ -101,7 +113,8 @@ export function registerHelmdApi(ctx: Context): void {
     return tools.schemas().map((schema) => schema.name).sort()
   })
 
-  // H-CoT ledger summary
+  // H-CoT ledger summary + run-state projections (hcot-settings header contract:
+  // run state is projected here, never written back into the settings document).
   get(`${ROUTE_BASE}/hcot`, async () => {
     const records = await readHcotLedger(20)
     const rounds = records.map((r, i) => ({
@@ -113,7 +126,29 @@ export function registerHelmdApi(ctx: Context): void {
       broke: Boolean(r.broke ?? r.break),
     }))
     const broke = rounds.some(r => r.broke)
-    return { rounds, broke, total: records.length }
+
+    // Each projection degrades to its empty shape on purpose: a missing ledger
+    // or corpus must not take the whole route down (the panel polls it).
+    let ledgerSummary = '[]'
+    let slotLibraryIndex = '{"frames":[],"enablers":[],"continuations":[]}'
+    let availableModels: Array<{ id: string; provider: string; hasKey: boolean }> = []
+    try {
+      ledgerSummary = summarizeLedger(await loadLedger(ledgerPath({})))
+    } catch {}
+    try {
+      slotLibraryIndex = libraryIndex(await loadCorpus())
+    } catch {}
+    try {
+      availableModels = (await discoverAvailableModels(ctx)).map(m => ({
+        id: m.id, provider: m.provider, hasKey: m.hasKey,
+      }))
+    } catch {}
+
+    return {
+      rounds, broke, total: records.length,
+      ledgerSummary, slotLibraryIndex, availableModels,
+      lastResult: getHcotLastResult(),
+    }
   })
 
   // Stream interception stats
