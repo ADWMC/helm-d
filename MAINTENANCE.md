@@ -25,10 +25,10 @@
 | persona 文本 | `packages/helmd/presets/persona.txt` | repack 经 `scripts/gen-preset.mjs` 注入 → `packages/helmd/preset.generated.patch.yml`（生成物）→ tgz |
 | preset 平台行 | 宿主内置 `standard` | `gen-preset.mjs` 读取宿主 `<dsh>/node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml`，保留宿主全部行，只替换 persona 行内容、改写组合行头（`preset-helmd` / `id: helmd` / `order` / `description` 取自 `packages/helmd/presets/preset.yml`）、末尾追加 `@adwmc/helm-d/agent` 行。安装/更新脚本在目标机再次生成（bundle 内 `scripts/gen-preset.mjs` 走 `--out`），生成失败才保留 tgz 快照 |
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
-| 依赖 cohort | `pnpm-workspace.yaml` `overrides`（编译期全家 + cordis + schemastery；装机宿主可更新，如 0.1.7-alpha.1） | `pnpm install` → `pnpm-lock.yaml` + node_modules；`pnpm peers check` 必须无问题（跨 cohort peer = 迁移未完成）。宿主真实形状由 `pnpm test:checks` 的 host-seam 那几份直接跑在装机宿主包上把关，编译期 cohort 落后不会伪装成绿 |
+| 依赖 cohort | `pnpm-workspace.yaml` `overrides`（编译期全家 + cordis + schemastery；与装机宿主同代，当前 `0.1.7-alpha.2` / cordis `4.0.4` / schemastery `3.18.4`） | `pnpm install` → `pnpm-lock.yaml` + node_modules；`pnpm peers check` 必须无问题（跨 cohort peer = 迁移未完成）。宿主真实形状由 `pnpm test:checks` 的 host-seam 那几份直接跑在装机宿主包上把关，编译期 cohort 落后不会伪装成绿。钉宿主时留意 launcher 的 `^0.1.7-alpha.N` 会让嵌套宿主包上浮一档，`dsh --version` 只反映 launcher |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
 | H-CoT 语料与账本 | 语料 `packages/helmd/scripts/ai-security/h_cot_variants.json`（纯数据）；结果账本 `~/.dsh/helmd-tools/h_cot_results.jsonl`（`HELMD_TOOLS_DIR` 可重定向） | 引擎直接读写；账本经工作台或 `/hcot` 清理/分组删除 |
-| 工作台 UI | `packages/helmd/client.js`（浏览器半，免构建）+ `src/hcot-settings.ts`（host 半，`pnpm build`）+ `cordis.patch.yml` 的 `dsh.client.inject` | settings `hcot` 命名空间是唯一通道：UI 写配置/动作请求，宿主消费并回写运行态 |
+| 工作台 UI | `packages/helmd/client.js`（浏览器半，免构建）+ `src/hcot-settings.ts`（host 半，`pnpm build`）+ `cordis.patch.yml` 的 `dsh.client.inject` | 配置与动作请求走 settings 条目 `helmd-hcot-settings`（UI 写、宿主消费后清），运行态走 `/api/helmd/*` HTTP 投影，两条面不再混用 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | release assets（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
 

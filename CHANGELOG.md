@@ -3,15 +3,15 @@
 所有显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
-## [Unreleased] — 宿主 dsh 0.1.7-alpha.1 兼容迁移
+## [Unreleased] — 宿主 dsh 0.1.7-alpha.2 兼容迁移
 
-装机宿主升到 `@deepseek-ai/dsh@0.1.7-alpha.1`（`dsh --version` 实证），插件按 plugin-upgrade skill 的触点清单同步换代。宿主有三处硬变更落在插件公共面上：settings 只承载 Config schema、preset 从 `.agent-presets/` 部署目录改为 bundle 声明的一行组合、版本线进入 alpha 使原 semver peer 范围判为不匹配。发布号待定（用户可见的 preset/设置面语义未变，但装机流程与宿主下限变了）。
+装机宿主升到 `@deepseek-ai/dsh@0.1.7-alpha.2`（npm `alpha` 标签当前值；先到 alpha.1 完成迁移，再随最新 alpha 复验，`dsh --version` 实证），插件按 plugin-upgrade skill 的触点清单同步换代。宿主有三处硬变更落在插件公共面上：settings 只承载 Config schema、preset 从 `.agent-presets/` 部署目录改为 bundle 声明的一行组合、版本线进入 alpha 使原 semver peer 范围判为不匹配。发布号按用户指示不升（仍 `0.4.1`）。
 
 ### 设置面：派生态迁出 settings
 
 - **`hcot-settings.ts` 重写**：settings 命名空间改挂 profile 条目 id `helmd-hcot-settings`，`Config` 只留 model / provider / maxRounds / autoSchedule 与动作请求 `requestedAction`（UI 写、宿主消费），宿主经 `settings/document-updated` 事件感知，describe 读、update 清
 - **运行态不再写进 settings 文档**——0.1.7 的 settings 只承载 Config，且每次攻击都会把报告体持久化进 profile patch。`lastResult` / 账本聚合 / 实例库索引改由 `GET /api/helmd/hcot` 投影，新增 `GET /api/helmd/health` 承载 boot 时健康判定；单个投影在账本或语料缺失时降级为空形，不整条 500
-- `client.js` 卡片与工作台改读 HTTP，15s 轮询面不变
+- `client.js` 卡片与工作台改读 HTTP：健康卡片 30s 轮询 `GET /api/helmd/health`（原为 settings scope 订阅），工作台 15s 轮询面不变
 
 ### Preset：部署目录退役，改为随包组合行
 
@@ -25,18 +25,21 @@
 ### 依赖与工具链
 
 - **10 个包的 peer / dev 范围加 `|| >=0.1.7-alpha.0 <0.2.0-0`**：semver 比较器不带同段 prerelease 时不匹配 prerelease，原 `>=0.1.5-rc.1 <0.2.0-0` 把 `0.1.7-alpha.1` 判为不满足
+- **编译期 cohort 随装机宿主对齐**：`pnpm-workspace.yaml` `overrides` 从 `0.1.5-rc.2` 换到 `0.1.7-alpha.2`（cordis `4.0.4`、schemastery `3.18.4`，均按装机宿主树实证），typecheck 与 host-seam checks 从此跑在与宿主同代的类型上；钉版注意 launcher 的 `^0.1.7-alpha.N` 会让嵌套宿主包上浮一档，`dsh --version` 只反映 launcher
 - **宿主 standard 定位改为上溯祖先目录**（`scripts/checks/artifacts.mjs`）而非数 `../..` 层数：0.1.7 把 `dsh-web-app` 嵌在 `@deepseek-ai/dsh/node_modules/` 下，固定层数在真宿主上判为"无宿主"，让本该跑在真机的那条断言静默 skip 而套件依旧全绿
 - **`install.sh` 的"宿主在跑"探针修正**：`https://` + `curl -f` 在 0.1.7（http 监听、未鉴权返回 401）永远探不到，改 `http://` 且不以状态码判命中（正/负例都实测过）
 - `gen-preset.mjs` 取 `npm root -g` 改单条静态命令串，消掉 DEP0190（args + `shell: true`）
 
-### 验证（0.1.7-alpha.1 真宿主）
+### 验证（alpha.1 迁移 + alpha.2 真宿主复验）
 
 - `pnpm build` 全绿 · `pnpm peers check` 无问题 · `pnpm test:checks` **14 PASS**（含此前只能 skip 的 `the shipped patch reads OK against the installed host`）· `node scripts/test-gen-preset.mjs` PASS · `node scripts/gen-preset.mjs --check` → `preset check OK`
 - 生成幂等：以装机宿主 standard 重生成输出 `unchanged / nothing to write`，包内镜像 `packages/helmd/scripts/gen-preset.mjs --out` 与随包产物逐字节一致；`setup-preset.ps1` 与 `.sh` 两条路径均跑通
 - 真实组合取证：`dsh web --dump-config` 出现 `- id: preset-helmd` / `config: id: helmd`（description、order 10 在位）/ 末行 `@adwmc/helm-d/agent`，preset 的 plugins 行集合 = 宿主 19 行 + `helmd`，missing 与 extra 皆空
 - 运行时：宿主启动无报错，`GET /api/helmd/health` 返回 `status:"OK"`、`artifact check OK (20 rows …)`、双指纹一致（`6cd2f197737f`），`GET /api/helmd/tools` 正常
-- **未验证**：UI preset 选择器渲染、真机会话首轮工具目录 `[pwsh, read]`（MAINTENANCE §8 护栏）——浏览器连接器本轮超时，需重启宿主后手跑一次
-- **遗留**：`pnpm-workspace.yaml` 的编译期 cohort 仍钉 0.1.5-rc.2（cordis 4.0.2 / schemastery 3.18.2，装机宿主已 4.0.3 / 3.18.3）。运行面由 host-seam checks 直接跑在装机宿主包上把关，不构成当前故障；是否随本次一并对齐待决策
+- UI preset 选择器已在真宿主渲染出 `helmd` 及其 description（0.1.7 的 `内置插件 / Agent 预设` 面板可见三件运行中组件）
+- **alpha.1 → alpha.2 契约零漂移**：宿主 `standard.patch.yml` 逐字节相同（sha256 前缀 `6cd2f197737f` 两版一致），随包产物无需重生成；alpha.2 上 `--dump-config`、`/api/helmd/health`（`status:"OK"`、双指纹一致）、build / typecheck / peers / 14 checks / preset 幂等 / `--check` 全部复跑通过
+- **未验证**：设置页健康卡片渲染（数据源已验，卡片挂载点在 0.1.7 设置面板里没定位到）、真机会话首轮工具目录 `[pwsh, read]`（MAINTENANCE §8 护栏，需把 `helmd` 选为会话预设并跑一轮真实请求）
+- **遗留**：`docs/incident-2026-08-26-preset-stale-generation.md` 只在顶部加了"机制已随 0.1.7 失效"的声明，正文仍是 0.1.5 时代的 `.agent-presets` / standing-mount 取证叙述，未逐节重写
 
 ## [0.4.1] — 2026-09-21
 

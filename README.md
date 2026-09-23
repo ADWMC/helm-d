@@ -121,7 +121,7 @@ tool-wash 描述清洗 → persist 证据链包装 → bootstrap 首轮收窄
 | `hcot-attack-scheduler.ts` | 编排层 | 日志提取 → 上下文重构（拒绝原文不进子代理 prompt，只传触发点标签）→ 子代理主路 → 防线3 重试（≤2 次）→ 引擎降级 |
 | `hcot-engine.ts` | Node 原生执行器 | 零 Python/子进程，全局 fetch 打 OpenAI-compatible SSE 端点捕获 first_fragment；语料 `scripts/ai-security/h_cot_variants.json`，结果账本 `~/.dsh/helmd-tools/h_cot_results.jsonl` |
 | `command-hcot.ts` | `ctx.commands` | `/hcot <goal>` 单发引擎（`--semantic-auto` 语义路由）、`/hcot breach <goal>` 走统一调度器 |
-| `hcot-settings.ts` | settings `hcot` 命名空间 | 工作台 UI 的读写面：配置（model/provider/maxRounds/autoSchedule）+ 动作请求 + 运行态 |
+| `hcot-settings.ts` | settings 条目 `helmd-hcot-settings` | 工作台 UI 的读写面：配置（model/provider/maxRounds/autoSchedule）+ 动作请求；运行态改由 `/api/helmd/*` 投影 |
 | `ica-context.ts` | `systemPrompt.context` | L2 行为示范注入：4 组真实形态域名的任务→执行行为对，ICL 把生成分布拉向直接交付（arXiv:2310.06387），替代会被 reasoning 引用回读的声明式前提 |
 | `llm-stream-hook.ts` | `llm/stream` | 拒绝真闭环：拦截（内容 / reasoning 早停）→ 历史清洗 → prefill 阶梯（assistant-last → pair）经 `llm` 服务嵌套重发 → 末轮诚实透传；refusal / retry 落账本，计数与摘录写 `~/.dsh/helmd-stream-intercept.log` |
 

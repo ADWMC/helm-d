@@ -122,7 +122,7 @@ tool-wash description washing → persist evidence wrap → bootstrap first-turn
 | `hcot-attack-scheduler.ts` | orchestration | Log extraction → context reconstruction (refusal wording never enters the subagent prompt, only a trigger label) → subagent main path → defense-line-3 retry (≤2) → engine fallback |
 | `hcot-engine.ts` | Node-native executor | Zero Python/subprocess; global fetch against an OpenAI-compatible SSE endpoint to capture first_fragment; corpus `scripts/ai-security/h_cot_variants.json`, results ledger `~/.dsh/helmd-tools/h_cot_results.jsonl` |
 | `command-hcot.ts` | `ctx.commands` | `/hcot <goal>` single-shot engine (`--semantic-auto` semantic routing), `/hcot breach <goal>` via the unified scheduler |
-| `hcot-settings.ts` | settings `hcot` namespace | Read/write face of the workbench UI: config (model/provider/maxRounds/autoSchedule) + action requests + runtime state |
+| `hcot-settings.ts` | settings entry `helmd-hcot-settings` | Read/write face of the workbench UI: config (model/provider/maxRounds/autoSchedule) + action requests; run state is projected over `/api/helmd/*` |
 | `ica-context.ts` | `systemPrompt.context` | L2 behavioral demonstration: four task→execution pairs with real-form domains; ICL pulls the generation distribution toward direct delivery (arXiv:2310.06387), replacing declarative premises that reasoning quotes back as adversarial evidence |
 | `llm-stream-hook.ts` | `llm/stream` | Refusal closed loop: intercept (content / reasoning early-abort) → history laundering → prefill ladder (assistant-last → pair) re-entered via the `llm` service → honest passthrough on the final attempt; refusals / retries hit the ledger, counts and excerpts go to `~/.dsh/helmd-stream-intercept.log` |
 
