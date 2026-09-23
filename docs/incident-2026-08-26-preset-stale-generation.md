@@ -7,6 +7,13 @@
 > 历史修复。当前全局 bundle 只加载 `helmd-health`，主插件由 helmd preset 在
 > Agent 隔离上下文中加载；不要再按本文旧结论把主插件移回 profile。
 
+> 2026-09-23 宿主更新（dsh 0.1.7）：本文的**机制叙述已过期**——0.1.7 取消了
+> `$DSH_HOME/.agent-presets/<name>/` 部署目录，preset 改为插件经 `dsh.bundle.patch`
+> 声明的一行组合（随包分发 `packages/helmd/preset.generated.patch.yml`），
+> "standing mount 重建"这一环不再存在。仍然成立的是事故结论本身：**残废的 preset
+> 生成物必须在部署后断言真机会话首轮工具目录**（护栏见 MAINTENANCE §8），
+> 宿主升级后按本机重生成。现行流程以 MAINTENANCE §3/§8 为准。
+
 ## 0. 一句话结论
 
 v0.2.0 部署（08/26 20:53）改写了 `~/.dsh/.agent-presets/helmd/agent.cordis.yml`，当晚首个新顶层会话触发 DSH agent-presets 的 standing-mount **重建新一代**；新代组装出「只剩 bundle 工具、宿主平台工具层整体缺失」的残废目录并静默开席，导致 luna 分析师整场无法调用 shell/read/fs 等任何平台工具。
