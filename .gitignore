@@ -21,3 +21,7 @@ pentest-kit/
 # dsh-upgrade-audit npm 模式产物（两版宿主包树快照，不入库）
 tmp/
 
+# Playwright 会话/截图本地状态（验证产物不入库）
+.playwright-cli/
+output/
+
