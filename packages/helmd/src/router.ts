@@ -26,7 +26,6 @@ const catalog: Record<string, string> = {
   // 领域路由
   android: 'APK/AAB/DEX/smali -> apk_fingerprint + references/android/',
   web: 'JS/fetch/XHR/WebSocket/sign -> web_reference + references/web/',
-  src: 'SRC/众测/bug bounty 挖洞 -> references/web/src-hunter/（五阶段方法论 + playbook + payloader + H1 案例；与 web/ 互补）',
   native: 'PE/ELF/Mach-O/shellcode -> native_reference + references/native/',
   protocol: 'PCAP/TCP/UDP/gRPC/Protobuf -> pcap_parse + references/protocol/',
   malware: 'C2/persistence/IOC/sample -> ioc_extract/yara_gen + references/malware/',
@@ -66,7 +65,6 @@ const ROUTE_TABLE: Route[] = [
   { key: 'hcot', kw: ['h-cot', 'hcot', 'chain-of-thought', '思维链', '思维链劫持', 'cot 劫持'], why: 'H-CoT 思维链劫持 / 模型越狱' },
   { key: 'llm', kw: ['prompt', '注入', 'injection', 'llm', '越狱', 'jailbreak'], why: 'LLM 应用安全' },
   { key: 'web', kw: ['sqli', 'xss', 'ssrf', 'ssti', 'xxe', 'rce', 'lfi', '文件上传', '越权', 'idor', 'jwt', 'oauth', 'csrf', '渗透', 'pentest', 'webshell'], why: 'Web 攻击特征 -> references/web/（含 hs-* 攻击 playbook）' },
-  { key: 'src', kw: ['src', '众测', 'bug bounty', '漏洞赏金', 'hackerone', '补天', 'hvv', '挖洞', 'src 挖洞', '赏金'], why: 'SRC/众测语境 -> references/web/src-hunter/（五阶段方法论 + playbook + payloader + H1 案例）' },
   { key: 'native', kw: ['exploit', 'pwn', '提权', 'privesc', 'kerberos', 'ntlm', '内网', '横向', 'rop', '堆溢出', 'heap'], why: '主机/二进制攻击特征 -> references/native/（含 hs-* 攻击 playbook）' },
   { key: 'evidence', kw: ['报告', 'report', '存证', '证据', 'case'], why: '取证与报告' },
   { key: 'install', kw: ['安装', '下载', 'install', 'download', '环境', 'setup', '装'], why: '工具获取' },
