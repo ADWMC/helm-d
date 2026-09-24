@@ -7,34 +7,34 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/cordis-plugin-loader@1.0.5'
   - '@deepseek-ai/cordis@4.0.4'
   - '@deepseek-ai/cosmokit@1.8.5'
-  - '@deepseek-ai/dsh-agent@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-app-boot@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-atomic-write@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-brand@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-config-editor@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-home-paths@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-invariants@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-launch-environment@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-llm@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-package-manifest@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-ptc-runtime@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-sandbox-policy@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-sandbox@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-scope@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-session-projection@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-session@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-settings@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-system-prompt@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-timeout@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-tools@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-typert-protocol@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-user-approval@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-util-crypto@0.1.7-alpha.2'
-  - '@deepseek-ai/dsh-util-values@0.1.7-alpha.2'
+  - '@deepseek-ai/dsh-agent@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-app-boot@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-atomic-write@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-brand@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-config-editor@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-home-paths@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-invariants@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-launch-environment@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-llm@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-package-manifest@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-ptc-runtime@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-sandbox-policy@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-sandbox@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-scope@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-session-projection@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-session@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-settings@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-system-prompt@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-timeout@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-tools@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-typert-protocol@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-user-approval@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-util-crypto@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-util-values@0.1.7-rc.1'
   - '@deepseek-ai/schemastery@3.18.4'
 
-# Dev/test cohort pinned to the running host: dsh 0.1.7-alpha.2 vendors every
-# @deepseek-ai/dsh-* package at 0.1.7-alpha.2 with cordis 4.0.4 and schemastery 3.18.4
+# Dev/test cohort pinned to the target host: dsh 0.1.7-rc.1 vendors every
+# @deepseek-ai/dsh-* package at 0.1.7-rc.1 with cordis 4.0.4 and schemastery 3.18.4
 # (verified against the installed host tree and the registry manifests).
 #
 # Both halves of this list are required:
@@ -47,19 +47,19 @@ minimumReleaseAgeExclude:
 overrides:
   "@deepseek-ai/cordis": 4.0.4
   "@deepseek-ai/schemastery": 3.18.4
-  "@deepseek-ai/dsh-agent": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-attachment": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-brand": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-code-runtime": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-invariants": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-llm": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-scope": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-session": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-session-projection": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-settings": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-system-prompt": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-timeout": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-tools": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-typert-protocol": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-user-approval": 0.1.7-alpha.2
-  "@deepseek-ai/dsh-util-values": 0.1.7-alpha.2
+  "@deepseek-ai/dsh-agent": 0.1.7-rc.1
+  "@deepseek-ai/dsh-attachment": 0.1.7-rc.1
+  "@deepseek-ai/dsh-brand": 0.1.7-rc.1
+  "@deepseek-ai/dsh-code-runtime": 0.1.7-rc.1
+  "@deepseek-ai/dsh-invariants": 0.1.7-rc.1
+  "@deepseek-ai/dsh-llm": 0.1.7-rc.1
+  "@deepseek-ai/dsh-scope": 0.1.7-rc.1
+  "@deepseek-ai/dsh-session": 0.1.7-rc.1
+  "@deepseek-ai/dsh-session-projection": 0.1.7-rc.1
+  "@deepseek-ai/dsh-settings": 0.1.7-rc.1
+  "@deepseek-ai/dsh-system-prompt": 0.1.7-rc.1
+  "@deepseek-ai/dsh-timeout": 0.1.7-rc.1
+  "@deepseek-ai/dsh-tools": 0.1.7-rc.1
+  "@deepseek-ai/dsh-typert-protocol": 0.1.7-rc.1
+  "@deepseek-ai/dsh-user-approval": 0.1.7-rc.1
+  "@deepseek-ai/dsh-util-values": 0.1.7-rc.1
