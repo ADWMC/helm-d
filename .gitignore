@@ -25,3 +25,6 @@ tmp/
 .playwright-cli/
 output/
 
+# 本地 advisory / tool ledger 运行时状态（jsonl 账本，不入库）
+.helm-pi/
+
