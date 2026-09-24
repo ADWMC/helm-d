@@ -3,9 +3,9 @@
 所有显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
-## [Unreleased] — 宿主 dsh 0.1.7-rc.1 兼容迁移
+## [0.4.2] — 2026-09-24（宿主 dsh 0.1.7-rc.1 兼容迁移）
 
-装机宿主与编译期 cohort 对齐 `@deepseek-ai/dsh@0.1.7-rc.1`（npm `next` 当前值、0.1.7 线最新发布；`latest` 仍是 `0.1.5-rc.3`，裸包名会静默降级，故一律钉版本）。迁移路径：先在 `0.1.7-alpha.1/alpha.2` 完成 0.1.7 公共面换代（settings 只承载 Config、preset 改 bundle 组合行、peer 补同段 prerelease），再按 plugin-upgrade skill 把 alpha.2 → rc.1 作为 unsupported gap 用一手包树 diff + release notes 取证。rc.1 相对 alpha.2 对 helmd 无新的必改 API：`standard.patch.yml` 两版 SHA 一致、`dsh-tools`/`dsh-settings` 仅版本 bump、`dsh-llm` 增量类型 `team-message` 为加法；宿主新增插件安装/启动 peer 兼容检查与精确版本豁免（`version-exemptions` / `allow-version`）。发布号按用户指示不升（仍 `0.4.1`）。
+装机宿主与编译期 cohort 对齐 `@deepseek-ai/dsh@0.1.7-rc.1`（npm `next` 当前值、0.1.7 线最新发布；`latest` 仍是 `0.1.5-rc.3`，裸包名会静默降级，故一律钉版本）。迁移路径：先在 `0.1.7-alpha.1/alpha.2` 完成 0.1.7 公共面换代（settings 只承载 Config、preset 改 bundle 组合行、peer 补同段 prerelease），再按 plugin-upgrade skill 把 alpha.2 → rc.1 作为 unsupported gap 用一手包树 diff + release notes 取证。rc.1 相对 alpha.2 对 helmd 无新的必改 API：`standard.patch.yml` 两版 SHA 一致、`dsh-tools`/`dsh-settings` 仅版本 bump、`dsh-llm` 增量类型 `team-message` 为加法；宿主新增插件安装/启动 peer 兼容检查与精确版本豁免（`version-exemptions` / `allow-version`）。发布号：迁移期间按指示保持 `0.4.1` 不升，收口后按用户指示以 `0.4.2` 发布。
 
 ### 设置面：派生态迁出 settings
 
@@ -21,6 +21,16 @@
 - **`setup-preset.{ps1,sh}` 与 `install.{ps1,sh}` [3/4]** 不再往 `~/.dsh` 写部署文件，改为在包内按本机宿主重生成（先留 `.bak`，失败则保留随包产物并提示升级后重跑）
 - **`health.ts` 漂移判定切到包内产物**：新增 `NOT_GENERATED`（产物缺失），`LEGACY_PRESET` 语义改为"无指纹头、来源不可证 → 只报告不覆写"，自动修复目标从部署位改为包内 patch，`HELMD_PRESET_PATCH` 可重定向（测试用）
 - **产物断言扩到 5 项**：行集合 = 宿主 standard + `helmd`、无重复 id、组合行确已改写为 `preset-helmd` / `id: helmd`、声明 `@deepseek-ai/dsh-agent-preset`、persona 含 `helmd online`，且 `helm-d` 恰好一次
+
+### 出站通道与路由
+
+- **`feat(egress)` 出站通道规则**：新增 `references/toolbox/network-egress.md`（发现本机代理、探不到则直连，不硬编码端口），`router.ts` 与 `tools/toolbox.ts` 按该规则取出口，`tool-matrix` / `tool-install` 同步改写
+- **persona 删 SRC/众测 slang 路由**：`persona.txt` 去掉 SRC/众测 slang 映射 4 行，`router.ts` 去掉 `route_task` 的 src 入口（2 行），随包 `preset.generated.patch.yml` 同步——0.4.0 融入的 SRC 语境路由自此不再走 persona 侧路由
+
+### 文档与杂项
+
+- **SkillOpt 方法论入档**：`docs/skillopt-methodology.md`，README 文档区补链接
+- `.gitignore` 忽略 Playwright 会话/截图本地产物与本地 `.helm-pi` advisory 账本
 
 ### 依赖与工具链
 
