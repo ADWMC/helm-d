@@ -3,9 +3,9 @@
 所有显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
-## [0.4.2] — 2026-09-24（宿主 dsh 0.1.7-rc.1 兼容迁移）
+## [0.4.2] — 2026-09-24（宿主 dsh 0.1.7-rc.2 兼容迁移）
 
-装机宿主与编译期 cohort 对齐 `@deepseek-ai/dsh@0.1.7-rc.1`（npm `next` 当前值、0.1.7 线最新发布；`latest` 仍是 `0.1.5-rc.3`，裸包名会静默降级，故一律钉版本）。迁移路径：先在 `0.1.7-alpha.1/alpha.2` 完成 0.1.7 公共面换代（settings 只承载 Config、preset 改 bundle 组合行、peer 补同段 prerelease），再按 plugin-upgrade skill 把 alpha.2 → rc.1 作为 unsupported gap 用一手包树 diff + release notes 取证。rc.1 相对 alpha.2 对 helmd 无新的必改 API：`standard.patch.yml` 两版 SHA 一致、`dsh-tools`/`dsh-settings` 仅版本 bump、`dsh-llm` 增量类型 `team-message` 为加法；宿主新增插件安装/启动 peer 兼容检查与精确版本豁免（`version-exemptions` / `allow-version`）。发布号：迁移期间按指示保持 `0.4.1` 不升，收口后按用户指示以 `0.4.2` 发布。
+装机宿主与编译期 cohort 对齐 `@deepseek-ai/dsh@0.1.7-rc.2`（npm `next` 当前值；`latest` 仍是 `0.1.5-rc.3`，故安装宿主时钉版本）。迁移路径：先在 `0.1.7-alpha.1/alpha.2` 完成 0.1.7 公共面换代（settings 只承载 Config、preset 改 bundle 组合行、peer 补同段 prerelease），再升级至 rc.1 并复验，最终将开发依赖与装机宿主同步至 rc.2。0.4.2 包含设置面、随包 preset、出站通道和工具链变更，详见下列条目。
 
 ### 设置面：派生态迁出 settings
 
@@ -35,12 +35,12 @@
 ### 依赖与工具链
 
 - **10 个包的 peer / dev 范围加 `|| >=0.1.7-alpha.0 <0.2.0-0`**：semver 比较器不带同段 prerelease 时不匹配 prerelease，原 `>=0.1.5-rc.1 <0.2.0-0` 把 `0.1.7-alpha.1` 判为不满足
-- **编译期 cohort 随目标宿主对齐**：`pnpm-workspace.yaml` `overrides` / `minimumReleaseAgeExclude` 从 `0.1.7-alpha.2` 换到 `0.1.7-rc.1`（cordis `4.0.4`、schemastery `3.18.4` 不变；rc.1 registry manifest 仍声明同代 vendor），typecheck 与 host-seam checks 跑在与目标宿主同代的类型上；钉版注意 launcher 的 `^0.1.7-alpha.N` 会让嵌套宿主包上浮一档，`dsh --version` 只反映 launcher
+- **编译期 cohort 随目标宿主对齐**：`pnpm-workspace.yaml` 的 `overrides` / `minimumReleaseAgeExclude` 经 `0.1.7-rc.1` 升至 `0.1.7-rc.2`（cordis `4.0.4`、schemastery `3.18.4` 不变），lockfile 同步锁定 rc.2；typecheck 与 host-seam checks 跑在与目标宿主同代的类型上；`dsh --version` 只反映 launcher，另以 lockfile 核对依赖 cohort
 - **宿主 standard 定位改为上溯祖先目录**（`scripts/checks/artifacts.mjs`）而非数 `../..` 层数：0.1.7 把 `dsh-web-app` 嵌在 `@deepseek-ai/dsh/node_modules/` 下，固定层数在真宿主上判为"无宿主"，让本该跑在真机的那条断言静默 skip 而套件依旧全绿
 - **`install.sh` 的"宿主在跑"探针修正**：`https://` + `curl -f` 在 0.1.7（http 监听、未鉴权返回 401）永远探不到，改 `http://` 且不以状态码判命中（正/负例都实测过）
 - `gen-preset.mjs` 取 `npm root -g` 改单条静态命令串，消掉 DEP0190（args + `shell: true`）
 
-### 验证（alpha.1/alpha.2 迁移 + rc.1 编译期复验）
+### 验证（alpha.1/alpha.2 迁移 + rc.1/rc.2 编译期复验）
 
 - `pnpm build` 全绿 · `pnpm peers check` 无问题 · `pnpm test:checks` **14 PASS**（含此前只能 skip 的 `the shipped patch reads OK against the installed host`）· `node scripts/test-gen-preset.mjs` PASS · `node scripts/gen-preset.mjs --check` → `preset check OK`
 - 生成幂等：以装机宿主 standard 重生成输出 `unchanged / nothing to write`，包内镜像 `packages/helmd/scripts/gen-preset.mjs --out` 与随包产物逐字节一致；`setup-preset.ps1` 与 `.sh` 两条路径均跑通
@@ -48,8 +48,9 @@
 - 运行时：宿主启动无报错，`GET /api/helmd/health` 返回 `status:"OK"`、`artifact check OK (20 rows …)`、双指纹一致（`6cd2f197737f`），`GET /api/helmd/tools` 正常
 - UI preset 选择器已在真宿主渲染出 `helmd` 及其 description（0.1.7 的 `内置插件 / Agent 预设` 面板可见三件运行中组件）
 - **alpha.1 → alpha.2 契约零漂移**：宿主 `standard.patch.yml` 逐字节相同（sha256 前缀 `6cd2f197737f` 两版一致），随包产物无需重生成；alpha.2 上 `--dump-config`、`/api/helmd/health`（`status:"OK"`、双指纹一致）、build / typecheck / peers / 14 checks / preset 幂等 / `--check` 全部复跑通过
-- **alpha.2 → rc.1**：registry 包树 diff 确认 `standard.patch.yml` 仍为 `6CD2F197737F`（随包产物无需重生成）；`pnpm install` 后 lockfile 无 `@deepseek-ai/dsh-*@0.1.7-alpha.2` 残留；baseline 与迁移后 `pnpm build` / `typecheck` / `test:checks` **14 PASS** / `test:preset` 全绿；全局 `npm install -g @deepseek-ai/dsh@0.1.7-rc.1` 后 `dsh --version` 实证
-- **未验证**：设置页健康卡片渲染（数据源已验，卡片挂载点在 0.1.7 设置面板里没定位到）、真机会话首轮工具目录 `[pwsh, read]`（MAINTENANCE §8 护栏，需把 `helmd` 选为会话预设并跑一轮真实请求）、rc.1 真宿主冷启动 `/api/helmd/health`（静态层已绿，需本机起 `dsh web` 复验）
+- **alpha.2 → rc.1**：registry 包树 diff 确认 `standard.patch.yml` 仍为 `6CD2F197737F`（随包产物无需重生成）；`pnpm install` 后 lockfile 无 `@deepseek-ai/dsh-*@0.1.7-alpha.2` 残留；baseline 与迁移后 `pnpm build` / `typecheck` / `test:checks` **14 PASS** / `test:preset` 全绿
+- **rc.1 → rc.2**：`pnpm install --lockfile-only` 后 lockfile 无 rc.1 残留；`pnpm --filter @adwmc/helm-d build`、`npm run test:preset`、`npm run test:checks`（**14 PASS**）和 `node packages/helmd/scripts/gen-preset.mjs --check` 全绿；全局 `dsh --version` 为 `0.1.7-rc.2`，`dsh --profile web --dump-config` 含 `preset-helmd` 与 `@adwmc/helm-d/agent`。宿主 standard 的 SHA-256 为 `6CD2F197737F…`。配置检查另报 web profile 的 `llm-deepseek` 名称不匹配警告，跳过该 profile 行，与 helmd preset 行分开处理
+- **未验证**：设置页健康卡片渲染（数据源已验，卡片挂载点在 0.1.7 设置面板里没定位到）、真机会话首轮工具目录 `[pwsh, read]`（MAINTENANCE §8 护栏，需把 `helmd` 选为会话预设并跑一轮真实请求）
 - **遗留**：`docs/incident-2026-08-26-preset-stale-generation.md` 只在顶部加了"机制已随 0.1.7 失效"的声明，正文仍是 0.1.5 时代的 `.agent-presets` / standing-mount 取证叙述，未逐节重写
 
 ## [0.4.1] — 2026-09-21
