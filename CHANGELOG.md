@@ -2,6 +2,7 @@
 
 所有显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
+官方QQ群：**213266664**
 
 ## [0.4.2] — 2026-09-24（宿主 dsh 0.1.7-rc.2 兼容迁移）
 
