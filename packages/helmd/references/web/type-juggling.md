@@ -1,6 +1,4 @@
 # PHP Type Juggling — Weak Comparison & Magic Hash Bypass
-> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/oauth-saml-jwt/13-auth-misc.md")`（弱比较与签名校验绕过）
-
 ## 0. QUICK START
 
 **First-pass goal**: prove the server branch treats unequal secrets/tokens as equal via coercion, not guess the real password.

@@ -1,6 +1,4 @@
 # WAF Bypass Techniques — Evasion Playbook
-> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/payloader/waf-bypass.md")`（WAF/EDR 绕过变体 + src-hunter/methodology/02-bypass-toolkit.md 决策树）
-
 ## 0. RELATED ROUTING
 
 - [sqli-sql-injection](./sql-injection.md) for payloads to deliver after bypassing WAF

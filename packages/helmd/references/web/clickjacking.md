@@ -1,6 +1,4 @@
 # Clickjacking — Expert Attack Playbook
-> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/logic-flaws/12-clickjacking.md")`（框架绕过 / 多步点击链）
-
 ## 1. CORE CONCEPT
 
 Clickjacking loads a target page in a transparent iframe overlaid on an attacker's page. The victim sees the attacker's UI but clicks on the invisible target page, performing unintended actions.

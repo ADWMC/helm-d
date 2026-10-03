@@ -46,7 +46,7 @@ Everything converges into a single `@adwmc/helm-d` bundle: bootstrap, router, do
 
 ### Knowledge on demand
 
-Domain knowledge, rules, workflows and cases live in `references/` (637 docs) and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
+Domain knowledge, rules, workflows and cases live in `references/` (362 docs) and are read on demand — never injected into the system prompt to decide for the model. Lean tokens, intact judgment.
 
 </td>
 <td width="50%">
@@ -149,7 +149,7 @@ A helmd session follows these fixed rules:
 
 | Rule | Behavior |
 |------|----------|
-| Knowledge on demand | All 637 reference docs live in `references/`, read via `read_reference`, never injected into the system prompt |
+| Knowledge on demand | All 362 reference docs live in `references/`, read via `read_reference`, never injected into the system prompt |
 | Catalog = metadata | `skill_catalog` only routes domains/signals and draws no conclusions: `tree` triage, `methodology`, `patterns`, `install` tool setup, `jvm` JVM decryption, etc. |
 | References ≠ hard rules | Docs inform the model's judgment; they are never binding constraints |
 
@@ -417,7 +417,7 @@ helmd/
 │       │   ├── seam.ts        shared IO seam (fs / subprocess / cmd resolve / path guard)
 │       │   └── tools/         10 tool modules (33 tools)
 │       ├── client.js          browser half: settings-page health card + workbench (lazy-CJS factory, no build chain)
-│       ├── references/        637 on-demand reference docs (8 domains + toolbox)
+│       ├── references/        362 on-demand reference docs (8 domains + toolbox)
 │       ├── scripts/           analysis scripts + ai-security corpus/ledger + gen-preset.mjs + setup-preset.{ps1,sh}
 │       ├── presets/           persona single source + preset.yml (picker order/description)
 │       ├── preset.generated.patch.yml  preset artifact (generated: host standard + persona + helmd row)

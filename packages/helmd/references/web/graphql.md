@@ -1,6 +1,4 @@
 # graphql-methodology
-> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/graphql.md")`（Introspection / 嵌套 IDOR / DoS）
-
 > 来源: wgpsec/AboutSecurity (web-method) | 融合进 web 域参考库
 
 

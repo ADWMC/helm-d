@@ -1,6 +1,4 @@
 # OS Command Injection — Expert Attack Playbook
-> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/11-command-injection.md")`（盲注带外 / 转换器 / 导入管线）
-
 ## 0. RELATED ROUTING
 
 Before going deep, you can first load:

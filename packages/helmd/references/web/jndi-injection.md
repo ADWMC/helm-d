@@ -1,6 +1,4 @@
 # JNDI Injection — Expert Attack Playbook
-> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/rce/10-framework.md")`（Log4j2 / Spring 指纹与检测 payload）
-
 ## 0. RELATED ROUTING
 
 - [deserialization-insecure](./deserialization-insecure.md) when JNDI leads to deserialization (post-8u191 bypass path)

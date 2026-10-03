@@ -148,7 +148,7 @@ helmd 会话遵循以下固定规则：
 
 | 规则 | 行为 |
 |------|------|
-| 知识按需读 | 637 个参考文档全放 `references/`，经 `read_reference` 读取，绝不注入 system prompt |
+| 知识按需读 | 362 个参考文档全放 `references/`，经 `read_reference` 读取，绝不注入 system prompt |
 | 目录即元数据 | `skill_catalog` 只做领域/信号路由，不下结论：`tree` 分诊、`methodology` 方法论、`patterns` 模式、`install` 工具安装、`jvm` JVM 解密等 |
 | 参考非硬规则 | 文档供模型自主判断，不作为强制约束 |
 
@@ -418,7 +418,7 @@ helmd/
 │       │   ├── seam.ts        共享 IO seam（fs / subprocess / 命令解析 / 路径校验）
 │       │   └── tools/         10 个工具模块（33 个工具）
 │       ├── client.js          浏览器半：设置页健康卡片 + 工作台（lazy-CJS factory，免构建）
-│       ├── references/        637 个参考文档，按需读取（8 大域 + toolbox）
+│       ├── references/        362 个参考文档，按需读取（8 大域 + toolbox）
 │       ├── scripts/           分析脚本 + ai-security 语料/账本 + gen-preset.mjs + setup-preset.{ps1,sh}
 │       ├── presets/           persona 单源 + preset.yml（picker 的 order/description）
 │       ├── preset.generated.patch.yml  preset 产物（生成物；宿主 standard + persona + helmd 行）

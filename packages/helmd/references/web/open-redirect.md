@@ -1,6 +1,4 @@
 # Open Redirect — Expert Attack Playbook
-> **SRC / 众测语境** → 用 `read_reference(path: "src-hunter/playbooks/oauth-saml-jwt/10-oauth-redirect.md")`（redirect_uri 白名单绕过链）
-
 ## 1. CORE CONCEPT
 
 Open redirect occurs when an application redirects users to a URL derived from user input without validation. The trusted domain acts as a "launchpad" for phishing or token theft.
