@@ -4,6 +4,11 @@
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 官方QQ群：**213266664**
 
+## [0.4.3] — 2026-09-26（npm 发布包精简）
+
+- 移除 `src-hunter` 大型语料及生成脚本，npm tarball 不再包含该目录；Web 参考文档指针同步清理。
+- 兼容宿主 `dsh 0.2.0-rc.2`：peer 增加 `^0.2.0-rc.1` 分支（`^0.2.0` 不收 rc），编译期依赖 cohort 对齐 `0.2.0-rc.2`（0.2 家族更名 `dsh-code-runtime` → `dsh-ptc-runtime`）。
+
 ## [0.4.2] — 2026-09-24（宿主 dsh 0.1.7-rc.2 兼容迁移）
 
 装机宿主与编译期 cohort 对齐 `@deepseek-ai/dsh@0.1.7-rc.2`（npm `next` 当前值；`latest` 仍是 `0.1.5-rc.3`，故安装宿主时钉版本）。迁移路径：先在 `0.1.7-alpha.1/alpha.2` 完成 0.1.7 公共面换代（settings 只承载 Config、preset 改 bundle 组合行、peer 补同段 prerelease），再升级至 rc.1 并复验，最终将开发依赖与装机宿主同步至 rc.2。0.4.2 包含设置面、随包 preset、出站通道和工具链变更，详见下列条目。
