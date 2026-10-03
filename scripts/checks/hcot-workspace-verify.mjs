@@ -1,8 +1,10 @@
 // H-CoT 客户端工作区验收：
-//   1) client.js 的 lazy-CJS factory 契约（exports.inject / apply）
-//   2) 注册的插槽与条目（settings 卡片 ×2、shell.overlay 工作区、sidebar.panellist 入口）
-//   3) 工作区组件在给定 settings 快照下可渲染（不抛）
-// 零浏览器依赖：React 用最小 shim，插槽/scope 用 mock。
+//   1) client.js 的 lazy-CJS factory 契约（exports.inject = slots / sidebarRight / sidebarRightTabs）
+//   2) 注册的插槽与条目（settings.plugin.item 健康卡、conversation.session.header.actions 胶囊钮、
+//      sidebar.right.pane.tab(.title) 工作台）
+//   3) 工作台组件可渲染（不抛），且按新契约轮询 /api/helmd/* HTTP 投影
+//      （0.1.7 起 settings 只承载 Config，无 settings scope，派生态走 HTTP 投影）
+// 零浏览器依赖：React 用最小 shim，插槽/fetch 用 mock。
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -22,42 +24,31 @@ require(clientPath)
 const captured = modules.get('@adwmc/helm-d')
 if (!captured || captured.id !== '@adwmc/helm-d') throw new Error('bundle id mismatch')
 
+const effectCleanups = []
 const React = {
   // Real React flattens array children; mirror that so the walk is simple.
   createElement: (t, p, ...c) => ({ t, p, c: c.flat(Infinity) }),
   Fragment: 'Fragment',
   useState: (v) => [typeof v === 'function' ? v() : v, () => {}],
-  useEffect: () => {},
+  // Run effects synchronously so the workbench's projection poll is observable;
+  // keep cleanups so the poll interval can be torn down before the process exits.
+  useEffect: (fn) => { if (typeof fn === 'function') effectCleanups.push(fn()) },
 }
 const mod = captured.factory((n) => (n === 'react' ? React : {}))
 if (typeof mod.apply !== 'function') throw new Error('apply is not a function')
-if (!mod.inject.includes('slots') || !mod.inject.includes('settingsScope')) {
+if (!mod.inject.includes('slots') || !mod.inject.includes('sidebarRight') || !mod.inject.includes('sidebarRightTabs')) {
   throw new Error('unexpected inject: ' + JSON.stringify(mod.inject))
 }
 
-// ---- mock settings scopes (helmd health + hcot workspace)
-const ledger = JSON.stringify([
-  { model: 'deepseek-chat', semantic: 'real-third-party', trigger: 'target-domain', total: 4, breaks: 1, rate: 0.25 },
-])
-const library = JSON.stringify({
-  frames: [{ id: 'teaching', evidence: 'win' }, { id: 'academic', evidence: 'untested' }],
-  enablers: [{ id: 'socratic', evidence: 'win' }],
-  continuations: [{ id: 'format', evidence: 'win' }],
-})
-const writes = []
-const makeScope = (namespace, value) => ({
-  getSnapshot: () => ({ status: 'ready', writable: true, value }),
-  subscribe: () => () => {},
-  set: async (k, val) => { writes.push([namespace, k, val]) },
-})
+// ---- mock ctx：settings 只承载 Config，派生态走 /api/helmd/* HTTP 投影（fetch 打点）
+const fetchCalls = []
+globalThis.fetch = (url) => {
+  fetchCalls.push(String(url))
+  return Promise.resolve({ json: async () => ({ data: null }) })
+}
 const registered = []
 const slotNames = []
 const ctx = {
-  settingsScope: {
-    bind: (o) => (o.namespace === 'hcot'
-      ? makeScope('hcot', { model: 'deepseek-chat', provider: 'spawn', maxRounds: 4, ledgerSummary: ledger, slotLibraryIndex: library, lastResult: 'via=engine-fallback break=true' })
-      : makeScope('helmd', { status: 'OK', version: '0.3.1' })),
-  },
   slots: {
     inject: (name, gen) => { slotNames.push(name); for (const r of gen()) registered.push([name, r]) },
     register: (opts, comp) => ({ opts, comp }),
@@ -111,9 +102,10 @@ const titleTree = titleEntry[1].comp()
 expect(titleTree && titleTree.t === 'div', 'tab title does not render div')
 console.log('tab title: OK')
 
-// ---- the action path writes requestedAction on the hcot namespace
-const hcotScopeSet = ctx.settingsScope.bind({ namespace: 'hcot' })
-await hcotScopeSet.set('requestedAction', JSON.stringify({ kind: 'attack', goal: 'demo' }))
-expect(writes.length === 1 && writes[0][0] === 'hcot' && writes[0][1] === 'requestedAction', 'action write path broken')
-console.log('action write path: OK ->', writes[0][2])
-console.log('ACCEPT: workspace UI contract verified (registration + render + glyph + action).')
+// ---- the workbench reads the /api/helmd/* HTTP projection (no settings scope exists)
+for (const u of ['/api/helmd/tools', '/api/helmd/hcot', '/api/helmd/intercept', '/api/helmd/jev']) {
+  expect(fetchCalls.includes(u), 'workbench does not poll projection endpoint: ' + u)
+}
+for (const c of effectCleanups) if (typeof c === 'function') c()
+console.log('HTTP projection path: OK ->', fetchCalls.join(', '))
+console.log('ACCEPT: workspace UI contract verified (registration + render + glyph + projection).')
