@@ -1,0 +1,84 @@
+name: 💼 赞助 / 合作
+description: 申请出现在 README 赞助商位，或洽谈其它合作
+title: "[Sponsor] "
+labels: ["sponsor"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        赞助位按**展示位**收费，不换取功能优先级、不换取代码审查结论、不影响 issue 处理顺序。
+
+        提交前请确认你的产品或服务不属于本项目 [禁止用途](https://github.com/ADWMC/helm-d/blob/main/DISCLAIMER.md) 的范围。
+
+  - type: input
+    id: name
+    attributes:
+      label: 项目 / 公司名称
+      placeholder: 冷咖啡 · 破甲工作台
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: 落地页
+      description: 用户点击后到达的地址，HTTPS
+      placeholder: https://example.com/
+    validations:
+      required: true
+
+  - type: textarea
+    id: pitch
+    attributes:
+      label: 一句话介绍
+      description: 会原样放进 README 表格，建议 60 字以内
+      placeholder: 十一个 LLM 客户端一键破甲、一键卸载。
+    validations:
+      required: true
+
+  - type: dropdown
+    id: placement
+    attributes:
+      label: 期望位置
+      options:
+        - README 赞助商表格（主位）
+        - README 赞助商表格（次位）
+        - 其它（在下方说明）
+    validations:
+      required: true
+
+  - type: input
+    id: period
+    attributes:
+      label: 展示周期与预算
+      description: 例如「1 个月 / 单次」；具体金额可在沟通中确认
+      placeholder: 1 个月
+    validations:
+      required: true
+
+  - type: input
+    id: contact
+    attributes:
+      label: 联系方式
+      description: 邮箱或即时通讯账号；公开 issue 里会可见，介意可只留邮箱
+      placeholder: you@example.com
+    validations:
+      required: true
+
+  - type: textarea
+    id: assets
+    attributes:
+      label: 素材（可选）
+      description: Logo 图片链接、头像 URL、想附带的说明
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我确认内容不涉及本项目禁止用途
+          required: true
+        - label: 我理解赞助不改变项目的技术判断与 issue 优先级
+          required: true

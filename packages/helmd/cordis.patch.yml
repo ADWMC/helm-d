@@ -1,0 +1,3 @@
+- insert:
+    - id: helmd-health
+      name: '@adwmc/helm-d'

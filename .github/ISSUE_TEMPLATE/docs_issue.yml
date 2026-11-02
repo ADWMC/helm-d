@@ -1,0 +1,62 @@
+name: 📚 文档 / 参考错误
+description: README、docs、references 里的错误、死链或过时内容
+title: "[Docs] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        参考文档共 362 篇，发现错误请给出可核对的定位；能附上验证命令或来源的优先处理。
+
+  - type: input
+    id: path
+    attributes:
+      label: 文件路径
+      description: 从仓库根开始，例如 packages/helmd/references/android/index.md
+      placeholder: docs/install-troubleshooting.md
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: 位置
+      description: 行号、小节标题或命令行，三者给一个即可
+      placeholder: 第 42 行 / "### 常见故障" 小节
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题
+      description: 错在哪：命令跑不通、结论过时、链接 404、与代码不一致
+      placeholder: 文中写的命令在 0.5.2 上会报 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: fix
+    attributes:
+      label: 建议修正
+      description: 能给出替换文本或补丁最好
+      render: markdown
+    validations:
+      required: false
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 验证方式 / 来源
+      description: 你的验证命令与输出，或上游文档链接
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我确认这是文档问题，不是代码行为问题
+          required: true

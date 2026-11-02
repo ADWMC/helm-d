@@ -1,0 +1,33 @@
+# Fixture of the dsh >= 0.1.7 host `standard` preset
+# (<dsh>/node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml),
+# trimmed to the shapes gen-preset.mjs and the health card must handle:
+# entry retarget, persona replacement (with host template placeholders),
+# `plugins:` row extraction that must skip group children, and `!!js` rows.
+- insert:
+    - id: preset-standard
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: standard
+        order: 1
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              suffix: Your working directory is {{cwd}}.
+              prefix: You are a coding agent powered by the {{model}} model.
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  section: |
+                    You are in plan mode.

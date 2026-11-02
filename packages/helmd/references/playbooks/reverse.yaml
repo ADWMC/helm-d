@@ -1,0 +1,31 @@
+schema: 1
+id: reverse
+title: 逆向分析
+phases:
+  - id: intake
+    title: 目标入库
+    suggest:
+      - "SHA-256 哈希"
+      - "file 类型识别"
+      - "read_reference('toolbox/decision-tree.md')"
+  - id: triage
+    title: 风险面
+    suggest:
+      - "壳/熵/导入表 → read_reference('toolbox/patterns.md') 触发表"
+      - "发现异常 → record_hypothesis"
+      - "read_reference('native/index.md') 按需"
+  - id: map
+    title: 结构分析
+    suggest:
+      - "关键函数/符号/调用链"
+      - "read_reference 对应子域（license-bypass / anti-debug / crypto / ...）"
+  - id: hypothesize
+    title: 假设形成
+    suggest:
+      - "record_hypothesis(statement, expected, test_cmd)"
+      - "每条假设必须可验证"
+  - id: report
+    title: 报告
+    suggest:
+      - "record_finding（confirmed 必须有 repro_cmd + evidence）"
+      - "end_case 前检查 coverage/unknowns"

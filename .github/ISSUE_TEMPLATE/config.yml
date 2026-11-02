@@ -1,0 +1,18 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: 🔐 安全漏洞
+    url: https://github.com/ADWMC/helm-d/security/policy
+    about: 请不要用公开 issue 报告漏洞；按 SECURITY.md 的流程私下提交。
+
+  - name: 🧰 安装 / 预置排查
+    url: https://github.com/ADWMC/helm-d/blob/main/docs/install-troubleshooting.md
+    about: ERR_PNPM_TARBALL_INTEGRITY、预设不生效、健康检查失败，先看这份文档。
+
+  - name: ⭐ Star 面板问题
+    url: https://github.com/ADWMC/helm-d/blob/main/docs/star-gate-help.md
+    about: 面板卡住、设备码过期、状态重置的处置方式。
+
+  - name: ⚖️ 使用边界与免责声明
+    url: https://github.com/ADWMC/helm-d/blob/main/DISCLAIMER.md
+    about: 允许/禁止用途、法域要点与地域限制，提交前请确认你的场景在范围内。

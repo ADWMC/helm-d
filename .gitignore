@@ -1,0 +1,48 @@
+node_modules/
+dist/
+*.tgz
+.DS_Store
+
+__pycache__/
+*.pyc
+*.log
+
+# 本地参考克隆（嵌套 git 仓库，不入库）
+_refs/
+
+# 本地 case 工作区（begin_case 产物：sample/evidence/会话记录，分析数据不入库）
+helmd-cases/
+
+# 凭据类文件，禁止进入历史
+cookie.txt
+# 实弹/会话测试在仓库根目录产生的攻击工具包产物（pentest-kit 等），分析数据不入库
+pentest-kit/
+
+# dsh-upgrade-audit npm 模式产物（两版宿主包树快照，不入库）
+tmp/
+
+# Playwright 会话/截图本地状态（验证产物不入库）
+.playwright-cli/
+output/
+
+# 本地 advisory / tool ledger 运行时状态（jsonl 账本，不入库）
+.helm-pi/
+
+# 本地探针脚本 / 提示词快照（实验产物，不入库）
+probe/
+
+
+dist-tgz/
+clear/
+idor-lab/
+dist.bak-*
+solo.md
+model-catalog.json
+provider-probe.json
+
+package/
+
+.real/
+
+# ZCode 本地会话/计划产物
+.zcode/

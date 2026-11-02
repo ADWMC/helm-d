@@ -1,0 +1,3 @@
+- insert:
+    - id: router
+      name: '@helm-d/router'

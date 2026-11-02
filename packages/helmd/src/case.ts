@@ -1,0 +1,564 @@
+// Case workspace core — pure fs/state operations, no cordis deps.
+// Everything a case needs lives on disk; the in-memory map only binds
+// a session (exec.agent.id) to its active case dir for convenience.
+
+import { createHash } from 'node:crypto'
+import { createReadStream, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { mkdir, copyFile, writeFile, appendFile, readFile, readdir, rename } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { basename, dirname, join, resolve } from 'node:path'
+
+export interface CaseInfo {
+  dir: string
+  name: string
+  goal: string
+  mode: string
+  route: string
+}
+
+const bindings = new Map<string, CaseInfo>()
+
+/** $DSH_HOME/storages/helmd/sessions/<sha256(sessionId)>.json */
+function sessionBindingPath(sessionId: string): string {
+  const home = process.env.DSH_HOME ?? join(homedir(), '.dsh')
+  const key = createHash('sha256').update(sessionId).digest('hex')
+  return join(home, 'storages', 'helmd', 'sessions', `${key}.json`)
+}
+
+/** Read the bound case from memory, then from the session binding file. The
+ *  file survives host restarts and context compaction; without it the model
+ *  (and the workbench) would fall back to "latest open case on disk", which is
+ *  exactly the cross-session confusion the workbench used to show. */
+export function getCase(sessionId?: string): CaseInfo | undefined {
+  const key = sessionId ?? '__global__'
+  const cached = bindings.get(key)
+  if (cached) return cached
+  if (!sessionId) return undefined
+  try {
+    const parsed = JSON.parse(readFileSync(sessionBindingPath(sessionId), 'utf8')) as Partial<CaseInfo> | null
+    if (parsed !== null && typeof parsed === 'object' && typeof parsed.dir === 'string') {
+      const dir = resolve(parsed.dir)
+      if (existsSync(join(dir, 'CASE.md'))) {
+        const info: CaseInfo = {
+          dir,
+          name: typeof parsed.name === 'string' ? parsed.name : basename(dir),
+          goal: typeof parsed.goal === 'string' ? parsed.goal : 'unspecified',
+          mode: typeof parsed.mode === 'string' ? parsed.mode : 'full',
+          route: typeof parsed.route === 'string' ? parsed.route : 'pending (route_task)',
+        }
+        bindings.set(key, info)
+        return info
+      }
+    }
+  } catch { /* no binding file / unreadable — the caller sees no active case */ }
+  return undefined
+}
+
+export function bindCase(sessionId: string | undefined, info: CaseInfo): void {
+  const key = sessionId ?? '__global__'
+  bindings.set(key, info)
+  if (!sessionId) return
+  try {
+    const path = sessionBindingPath(sessionId)
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, JSON.stringify({ sessionId, ...info, boundAt: new Date().toISOString() }, null, 2), 'utf8')
+  } catch { /* best effort: the in-memory binding still works for this process */ }
+}
+
+export function unbindCase(sessionId?: string): CaseInfo | undefined {
+  const key = sessionId ?? '__global__'
+  const info = bindings.get(key)
+  bindings.delete(key)
+  if (sessionId) {
+    try { unlinkSync(sessionBindingPath(sessionId)) } catch { /* already absent */ }
+  }
+  return info
+}
+
+/** Root resolution: explicit arg > HELMD_CASES_DIR > process.cwd(). */
+export function casesRoot(root?: string): string {
+  const base = root?.trim() || process.env.HELMD_CASES_DIR?.trim() || process.cwd()
+  return resolve(base, 'helmd-cases')
+}
+
+export function slugify(text: string, max = 48): string {
+  const clean = text
+    .replace(/[\\/:\*\?"<>\|]+/g, ' ')
+    .trim()
+    .replace(/[^\p{L}\p{N}_-]+/gu, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, max)
+    .replace(/-+$/g, '')
+  return clean || 'case'
+}
+
+function today(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+function nowStamp(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
+async function sha256File(path: string): Promise<string> {
+  return await new Promise((resolvePromise, reject) => {
+    const hash = createHash('sha256')
+    const stream = createReadStream(path)
+    stream.on('data', (chunk) => hash.update(chunk))
+    stream.on('end', () => resolvePromise(hash.digest('hex')))
+    stream.on('error', reject)
+  })
+}
+
+/** Create <root>/helmd-cases/<date>-<slug>[/] with collision suffixes. */
+export async function createCaseDir(opts: {
+  goal: string
+  samples: string[]
+  mode: string
+  route: string
+  root?: string
+}): Promise<CaseInfo> {
+  const base = casesRoot(opts.root)
+  const hint = slugify(opts.goal || basename(opts.samples[0] ?? ''))
+  let name = `${today()}-${hint}`
+  for (let i = 2; existsSync(join(base, name)); i++) name = `${today()}-${hint}-${i}`
+
+  const dir = join(base, name)
+  for (const sub of ['sample', 'evidence', 'scripts']) {
+    await mkdir(join(dir, sub), { recursive: true })
+  }
+
+  const lines: string[] = []
+  let id = 0
+  for (const sample of opts.samples) {
+    if (!existsSync(sample)) throw new Error(`sample not found: ${sample}`)
+    const dest = join(dir, 'sample', basename(sample))
+    await copyFile(sample, dest)
+    const sha = await sha256File(dest)
+    id++
+    const eid = `E-${String(id).padStart(3, '0')}`
+    await writeFile(join(dir, 'evidence', `${eid}-sha256.txt`),
+      `${sha}  ${basename(sample)}\nsource: ${resolve(sample)}\n`, 'utf8')
+    lines.push(`  - sample/${basename(sample)} sha256:${sha}`)
+  }
+
+  const caseMd = [
+    `# CASE ${name}`,
+    `status: open`,
+    `mode: ${opts.mode}`,
+    `route: ${opts.route}`,
+    `goal: ${opts.goal}`,
+    ...(lines.length ? ['samples:', ...lines] : []),
+    '',
+    '## timeline',
+    `- [${nowStamp()}] BEGIN — created by begin_case`,
+    '',
+    '## resume（压缩恢复契约：恢复时先 case_status()；压缩前把 1-6 更新到当前）',
+    '1. 目标与用户约束：goal + 用户说过的范围/边界（安全相关约束逐字保留，不要转述）',
+    '2. 已确认事实：验证过的结论 + 对应 E-id（未验证的猜测不要写进来）',
+    '3. 关键参数：命令 / 偏移 / 哈希 / 工具版本 —— 正文只写 E-id，细节留在 evidence/',
+    '4. 已排除的路线：试过且失败的路子（同步进 DEAD_ENDS，写明根因）',
+    '5. 当前进展：正在做的这一步、做到哪、下一步的最小动作',
+    '6. 待办与阻塞：等材料 / 等外部结果 / 等用户技术选择（写明等什么、由谁给）',
+    '',
+  ].join('\n')
+  await writeFile(join(dir, 'CASE.md'), caseMd, 'utf8')
+  await writeFile(join(dir, 'findings.md'), `# FINDINGS ${name}\n`, 'utf8')
+
+  return { dir, name, goal: opts.goal, mode: opts.mode, route: opts.route }
+}
+
+/** Evidence files present for a case (E-xxx entries), counted from disk. */
+export async function countEvidence(caseDir: string): Promise<number> {
+  const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
+  return files.filter((f) => /^E-\d{3}/.test(f)).length
+}
+
+export interface EvidenceEntry {
+  id: string
+  file: string
+}
+
+/** Evidence entries on disk, sorted by E-number. */
+export async function listEvidence(caseDir: string): Promise<EvidenceEntry[]> {
+  const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
+  return files
+    .map((file) => {
+      const match = /^(E-\d+)/.exec(file)
+      return match ? { id: match[1], file } : null
+    })
+    .filter((entry): entry is EvidenceEntry => entry !== null)
+    .sort((a, b) => a.id.localeCompare(b.id))
+}
+
+/**
+ * Next evidence id for one case directory.
+ *
+ * The directory is scanned once per case, not once per save: this runs on the
+ * tool-call path for EVERY domain tool while a case is open, and a readdir grows
+ * with the evidence count. After the first scan the counter is process-local —
+ * the case directory is created and owned by this process, so no external writer
+ * can invalidate it. Restart safety is preserved by the initial scan.
+ */
+const evidenceCounters = new Map<string, number>()
+
+/** Next E-number = max existing + 1; the scan happens once per case directory. */
+export async function nextEvidenceId(caseDir: string): Promise<string> {
+  const cached = evidenceCounters.get(caseDir)
+  if (cached !== undefined) {
+    const next = cached + 1
+    evidenceCounters.set(caseDir, next)
+    return `E-${String(next).padStart(3, '0')}`
+  }
+  const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
+  let max = 0
+  for (const f of files) {
+    const m = /^E-(\d{3})-/.exec(f)
+    if (m) max = Math.max(max, parseInt(m[1], 10))
+  }
+  evidenceCounters.set(caseDir, max + 1)
+  return `E-${String(max + 1).padStart(3, '0')}`
+}
+
+/** Drop a case directory's counter (called when its case closes). */
+export function resetEvidenceCounter(caseDir: string): void {
+  evidenceCounters.delete(caseDir)
+}
+
+export async function saveEvidence(
+  caseDir: string,
+  toolLabel: string,
+  content: string,
+  summary: string,
+): Promise<{ id: string; path: string; sha256: string; dedup?: string }> {
+  const sha = createHash('sha256').update(content, 'utf8').digest('hex')
+  // Dedup: if an evidence file with the same content hash exists, return it.
+  const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
+  for (const f of files) {
+    if (!/^E-\d{3,}-/.test(f)) continue
+    const existing = await readFile(join(caseDir, 'evidence', f), 'utf8').catch(() => '')
+    const existingSha = createHash('sha256').update(existing, 'utf8').digest('hex')
+    if (existingSha === sha) {
+      const existingId = /^E-(\d{3,})-/.exec(f)?.[1]
+      if (existingId) return { id: `E-${existingId}`, path: join(caseDir, 'evidence', f), sha256: sha, dedup: `E-${existingId}` }
+    }
+  }
+  const id = await nextEvidenceId(caseDir)
+  const safeTool = toolLabel.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 40) || 'output'
+  const capped = content.length > 256 * 1024
+    ? content.slice(0, 256 * 1024) + `\n[truncated at 256KB; full length ${content.length}]\n`
+    : content
+  const path = join(caseDir, 'evidence', `${id}-${safeTool}.txt`)
+  await writeFile(path, capped, 'utf8')
+  await appendTimeline(caseDir, `${toolLabel} → ${id} — ${summary.slice(0, 80)}`)
+  return { id, path, sha256: sha }
+}
+
+export async function appendTimeline(caseDir: string, line: string): Promise<void> {
+  await appendFile(join(caseDir, 'CASE.md'), `- [${nowStamp()}] ${line}\n`, 'utf8')
+}
+
+export async function loadCaseMd(caseDir: string): Promise<string> {
+  return await readFile(join(caseDir, 'CASE.md'), 'utf8')
+}
+
+export async function validateEvidenceIds(
+  caseDir: string,
+  ids: string[],
+): Promise<{ ok: boolean; missing: string[]; known: string[] }> {
+  const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
+  const known = files
+    .map((f) => /^(E-\d{3})-/.exec(f)?.[1])
+    .filter((x): x is string => Boolean(x))
+  const missing = ids.filter((id) => !known.includes(id))
+  return { ok: missing.length === 0, missing, known }
+}
+
+export async function appendFinding(
+  caseDir: string,
+  title: string,
+  detail: string,
+  ids: string[],
+  reproCmd?: string,
+): Promise<void> {
+  const repro = reproCmd?.trim()
+  await appendFile(
+    join(caseDir, 'findings.md'),
+    `\n## ${title}\n${detail}\nevidence: ${ids.join(', ')}\n${repro ? `repro: ${repro}\n` : ''}`,
+    'utf8',
+  )
+  await appendTimeline(caseDir, `FINDING — ${title} (${ids.join(', ')})`)
+}
+
+export interface Finding {
+  title: string
+  detail: string
+  evidence: string
+  repro?: string
+}
+
+/** Parse findings.md into structured entries for case_status and the WebUI. */
+export async function loadFindings(caseDir: string): Promise<Finding[]> {
+  try {
+    const raw = await readFile(join(caseDir, 'findings.md'), 'utf8')
+    return raw.split(/^## /m).slice(1).map((chunk) => {
+      const lines = chunk.split('\n')
+      const title = (lines.shift() ?? '').trim()
+      const evidenceLine = lines.find((line) => /^evidence:/i.test(line)) ?? ''
+      const reproLine = lines.find((line) => /^repro:/i.test(line)) ?? ''
+      const detail = lines.filter((line) => !/^(evidence|repro):/i.test(line)).join('\n').trim()
+      return {
+        title,
+        detail: detail.slice(0, 500),
+        evidence: evidenceLine.replace(/^evidence:\s*/i, ''),
+        repro: reproLine.replace(/^repro:\s*/i, ''),
+      }
+    }).filter((finding) => finding.title !== '')
+  } catch {
+    return []
+  }
+}
+
+export async function closeCase(caseDir: string, summary?: string): Promise<void> {
+  // 1. Auto-sweep any loose files left in case root to evidence/
+  const swept = await sweepCaseRootFiles(caseDir)
+  if (swept.length > 0) {
+    await appendTimeline(caseDir, `SWEEP — auto-archived loose files to evidence/: ${swept.join(', ')}`)
+  }
+
+  // 2. Mark completed
+  const md = await loadCaseMd(caseDir)
+  await writeFile(join(caseDir, 'CASE.md'), md.replace(/^status: open/m, 'status: completed'), 'utf8')
+  if (summary) await appendTimeline(caseDir, `END — ${summary.slice(0, 120)}`)
+  else await appendTimeline(caseDir, 'END — closed by end_case')
+}
+
+export interface CaseSummary {
+  name: string
+  dir: string
+  status: 'open' | 'completed' | 'unknown'
+  goal: string
+  mode: string
+  route: string
+  evidenceCount: number
+  looseFiles: string[]
+}
+
+/** List all case directories under casesRoot with metadata. */
+export async function listCasesOnDisk(root?: string): Promise<CaseSummary[]> {
+  const base = casesRoot(root)
+  if (!existsSync(base)) return []
+  try {
+    const entries = await readdir(base, { withFileTypes: true })
+    const results: CaseSummary[] = []
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      const dirPath = join(base, entry.name)
+      const caseMdPath = join(dirPath, 'CASE.md')
+      if (existsSync(caseMdPath)) {
+        try {
+          const md = await readFile(caseMdPath, 'utf8')
+          const statusMatch = /^status:\s*(open|completed)\b/m.exec(md)
+          const goalMatch = /^goal:\s*(.*)$/m.exec(md)
+          const modeMatch = /^mode:\s*(.*)$/m.exec(md)
+          const routeMatch = /^route:\s*(.*)$/m.exec(md)
+          const evidenceCount = await countEvidence(dirPath)
+          const looseFiles = await listLooseFilesInCase(dirPath)
+          results.push({
+            name: entry.name,
+            dir: dirPath,
+            status: (statusMatch?.[1] as any) ?? 'unknown',
+            goal: goalMatch?.[1]?.trim() ?? 'unspecified',
+            mode: modeMatch?.[1]?.trim() ?? 'full',
+            route: routeMatch?.[1]?.trim() ?? 'pending (route_task)',
+            evidenceCount,
+            looseFiles,
+          })
+        } catch {}
+      }
+    }
+    results.sort((a, b) => b.name.localeCompare(a.name))
+    return results
+  } catch {
+    return []
+  }
+}
+
+/** Check for non-case stray directories or files sitting directly in helmd-cases/. */
+export async function auditCasesRoot(root?: string): Promise<{ cases: CaseSummary[]; strays: string[] }> {
+  const base = casesRoot(root)
+  const cases = await listCasesOnDisk(root)
+  const strays: string[] = []
+  if (!existsSync(base)) return { cases, strays }
+  try {
+    const entries = await readdir(base, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.isFile()) {
+        strays.push(`file:${entry.name}`)
+      } else if (entry.isDirectory()) {
+        const caseMdPath = join(base, entry.name, 'CASE.md')
+        if (!existsSync(caseMdPath)) {
+          strays.push(`dir:${entry.name}`)
+        }
+      }
+    }
+  } catch {}
+  return { cases, strays }
+}
+
+/** Find the most recently created case marked status: open. */
+export async function findOpenCaseOnDisk(root?: string): Promise<CaseInfo | undefined> {
+  const all = await listCasesOnDisk(root)
+  const open = all.find((c) => c.status === 'open')
+  if (!open) return undefined
+  return {
+    dir: open.dir,
+    name: open.name,
+    goal: open.goal,
+    mode: open.mode,
+    route: open.route,
+  }
+}
+
+/** Load a specific case by directory or folder name. */
+export async function loadCaseInfoFromDisk(caseDirOrName: string, root?: string): Promise<CaseInfo | undefined> {
+  const base = casesRoot(root)
+  const dirPath = caseDirOrName.includes('/') || caseDirOrName.includes('\\')
+    ? resolve(caseDirOrName)
+    : join(base, caseDirOrName)
+  const caseMdPath = join(dirPath, 'CASE.md')
+  if (!existsSync(caseMdPath)) return undefined
+  try {
+    const md = await readFile(caseMdPath, 'utf8')
+    const goalMatch = /^goal:\s*(.*)$/m.exec(md)
+    const modeMatch = /^mode:\s*(.*)$/m.exec(md)
+    const routeMatch = /^route:\s*(.*)$/m.exec(md)
+    return {
+      dir: dirPath,
+      name: basename(dirPath),
+      goal: goalMatch?.[1]?.trim() ?? 'unspecified',
+      mode: modeMatch?.[1]?.trim() ?? 'full',
+      route: routeMatch?.[1]?.trim() ?? 'pending (route_task)',
+    }
+  } catch {
+    return undefined
+  }
+}
+
+/** List any loose unorganized files directly in the case root. */
+export async function listLooseFilesInCase(caseDir: string): Promise<string[]> {
+  const loose: string[] = []
+  try {
+    const entries = await readdir(caseDir, { withFileTypes: true })
+    for (const e of entries) {
+      if (e.isFile() && e.name !== 'CASE.md' && e.name !== 'findings.md') {
+        loose.push(e.name)
+      }
+    }
+  } catch {}
+  return loose
+}
+
+/** Auto-sweep unorganized files from case root into evidence/. */
+export async function sweepCaseRootFiles(caseDir: string): Promise<string[]> {
+  const swept: string[] = []
+  try {
+    const loose = await listLooseFilesInCase(caseDir)
+    for (const name of loose) {
+      const src = join(caseDir, name)
+      const dest = join(caseDir, 'evidence', name)
+      if (!existsSync(dest)) {
+        await rename(src, dest)
+        swept.push(name)
+      }
+    }
+  } catch {}
+  return swept
+}
+
+// ── Hypothesis ledger ────────────────────────────────────────────────────────
+
+export interface Hypothesis {
+  id: string
+  statement: string
+  expected: string
+  testCmd: string
+  status: 'open' | 'confirmed' | 'refuted' | 'blocked'
+  observation?: string
+  evidenceIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+const hypothesisCounters = new Map<string, number>()
+
+function hypothesesPath(caseDir: string): string {
+  return join(caseDir, 'hypotheses.json')
+}
+
+export async function recordHypothesis(
+  caseDir: string,
+  statement: string,
+  expected: string,
+  testCmd: string,
+  evidenceIds: string[] = [],
+): Promise<Hypothesis> {
+  let count = hypothesisCounters.get(caseDir)
+  if (count === undefined) {
+    const existing = await loadHypotheses(caseDir)
+    count = existing.length
+    hypothesisCounters.set(caseDir, count)
+  }
+  count++
+  hypothesisCounters.set(caseDir, count)
+  const now = new Date().toISOString()
+  const h: Hypothesis = {
+    id: `H-${String(count).padStart(3, '0')}`,
+    statement,
+    expected,
+    testCmd,
+    status: 'open',
+    evidenceIds,
+    createdAt: now,
+    updatedAt: now,
+  }
+  const all = await loadHypotheses(caseDir)
+  all.push(h)
+  await writeFile(hypothesesPath(caseDir), JSON.stringify(all, null, 2), 'utf8')
+  await appendTimeline(caseDir, `HYPOTHESIS ${h.id} — ${statement.slice(0, 80)}`)
+  return h
+}
+
+export async function updateHypothesis(
+  caseDir: string,
+  id: string,
+  status: Hypothesis['status'],
+  observation: string,
+  evidenceIds: string[] = [],
+): Promise<Hypothesis | undefined> {
+  const all = await loadHypotheses(caseDir)
+  const h = all.find((x) => x.id === id)
+  if (!h) return undefined
+  h.status = status
+  h.observation = observation
+  if (evidenceIds.length > 0) h.evidenceIds = [...new Set([...h.evidenceIds, ...evidenceIds])]
+  h.updatedAt = new Date().toISOString()
+  await writeFile(hypothesesPath(caseDir), JSON.stringify(all, null, 2), 'utf8')
+  await appendTimeline(caseDir, `HYPOTHESIS ${id} → ${status} — ${observation.slice(0, 80)}`)
+  return h
+}
+
+export async function loadHypotheses(caseDir: string): Promise<Hypothesis[]> {
+  try {
+    return JSON.parse(await readFile(hypothesesPath(caseDir), 'utf8')) as Hypothesis[]
+  } catch { return [] }
+}
+
+export async function getOpenHypothesisCount(caseDir: string): Promise<number> {
+  const all = await loadHypotheses(caseDir)
+  return all.filter((h) => h.status === 'open').length
+}

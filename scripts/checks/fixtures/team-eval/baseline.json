@@ -1,0 +1,28 @@
+[
+  {
+    "id": "case-static-1",
+    "role": "static",
+    "correct": true,
+    "expectedEvidence": ["E-001", "E-002"],
+    "citedEvidence": ["E-001"],
+    "canaryTraps": 2,
+    "canaryHits": 1,
+    "shouldBlock": false,
+    "blocked": false,
+    "tokens": 1000,
+    "wallTimeMs": 42000
+  },
+  {
+    "id": "case-critic-1",
+    "role": "critic",
+    "correct": true,
+    "expectedEvidence": ["E-003"],
+    "citedEvidence": ["E-003"],
+    "canaryTraps": 0,
+    "canaryHits": 0,
+    "shouldBlock": true,
+    "blocked": true,
+    "tokens": 600,
+    "wallTimeMs": 18000
+  }
+]

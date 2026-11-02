@@ -1,0 +1,3 @@
+- insert:
+    - id: toolbox
+      name: '@helm-d/toolbox'

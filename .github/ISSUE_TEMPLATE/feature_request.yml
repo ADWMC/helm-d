@@ -1,0 +1,71 @@
+name: ✨ 功能请求
+description: 新工具、新参考、工作台能力或流程改进
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先说明**要解决什么问题**，而不是只给方案。涉及攻击性能力的请求，请同时说明使用边界（自有资产 / 授权靶场）。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 当前哪里卡住、哪个流程效率低、哪个能力缺口
+      placeholder: 分析 APK 时，xxx 需要手工 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的行为
+      description: 工具名、输入输出、在哪个环节被调用
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 已考虑过的替代方案
+      description: 现有工具能否组合实现？差在哪
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 影响范围
+      multiple: true
+      options:
+        - 新增工具
+        - 现有工具行为
+        - persona / 档位
+        - references 参考文档
+        - 工作台 / API
+        - Team 协作
+        - 打包 / 安装
+    validations:
+      required: true
+
+  - type: dropdown
+    id: pr
+    attributes:
+      label: 是否愿意提交 PR
+      options:
+        - 愿意，我可以实现
+        - 愿意，但需要指路
+        - 只想提需求
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已检索现有 issue 与 README 工具表，没有重复
+          required: true
+        - label: 该能力的使用边界符合 DISCLAIMER（自有资产或授权范围）
+          required: true

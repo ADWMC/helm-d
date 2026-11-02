@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="t d">
+  <title id="t">helm-d</title>
+  <desc id="d">Monochrome Hd monogram with a terminal prompt in the d bowl and a jagged crack in the bowl.</desc>
+  <defs>
+    <mask id="crack">
+      <rect width="256" height="256" fill="#fff"/>
+      <path d="M224 100 208 114 216 124 202 136" fill="none" stroke="#000" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <g fill="none" stroke="#1F2328" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M38 60V196M94 60V196M38 128H94"/>
+    <path d="M208 60V196"/>
+    <g mask="url(#crack)">
+      <path d="M208 112C166 108 142 128 142 148C142 172 166 188 208 184"/>
+    </g>
+    <path d="M164 134 180 148 164 162" stroke-width="12"/>
+    <path d="M184 162H198" stroke-width="12"/>
+  </g>
+</svg>
