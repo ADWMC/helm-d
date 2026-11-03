@@ -32,10 +32,11 @@ try {
   assert.match(first, /generated:/)
   const generated = readFileSync(outputPath, 'utf8')
   assert.match(generated, /^# gen-preset: host=[0-9a-f]{64}/)
-  // Top-level plugin rows (indent 10) are the host's own, in host order, plus helmd.
+  // Top-level plugin rows (indent 10) are the host's own, in host order, plus the
+  // host-native team tools row and helmd.
   assert.deepEqual(
     [...generated.matchAll(/^ {10}- id: (.+)$/gm)].map((m) => m[1]),
-    ['persona', 'tool-pwsh', 'tool-fs', 'planning', 'helmd'],
+    ['persona', 'tool-pwsh', 'tool-fs', 'planning', 'tool-agent-team', 'helmd'],
   )
   assert.match(generated, /^ {10}  name: '@deepseek-ai\/dsh-tool-pwsh'$/m, 'platform rows must survive')
   assert.match(generated, /disabled: !!js process\.platform !== 'win32'/, 'host `!!js` expressions must pass through')
@@ -62,8 +63,10 @@ try {
   const pkg = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'packages', 'helmd', 'package.json'), 'utf8'))
   assert.equal(pkg.exports['.'].default, './dist/health.js', 'the bare name must resolve to the host-plane health entry, never the tool entry')
   assert.equal(pkg.exports['./agent'].default, './dist/index.js', 'the tool entry is reached through the /agent subpath only')
-  assert.match(generated, /`pwsh` is the native terminal tool/)
-  assert.match(generated, /`wsl\.exe -- bash -lc 'command'`/)
+  // v2 persona contract: the text ships sealed in profiles.dat, so the patch
+  // carries an EMPTY prefix and must not leak persona plaintext.
+  assert.match(generated, /^ {14}prefix: ""$/m, 'the persona row must carry an empty prefix (sealed persona)')
+  assert.doesNotMatch(generated, /You are luna|native terminal tool|HARD BOUNDS/, 'persona plaintext must stay out of the patch')
 
   // The activation protocol has one source of truth: the helmd persona.
   const persona = readFileSync(join(import.meta.dirname, '..', 'packages', 'helmd', 'presets', 'persona.txt'), 'utf8')

@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+### Team v2（自主基质）
+
+- **接入宿主原生 agent-team**：preset 内挂 `tool-agent-team`（spawn_teammate / send_message / list_agents / wait_agent / interrupt_agent / team_task_* 九个原生工具 + 自带协作契约段），组合顶层挂 `agent-team` 服务（maxMembers 8）；只影响 helmd 会话，非 helmd 零泄漏。命名可续 teammate、durable 信箱、共享任务 DAG 全部原生
+- **编排契约**：新增 `helmd:team-loop` systemPrompt context——事件驱动（worker 完成自动唤醒 orchestrator，禁止轮询/空等）、原生轨与 ticket 轨的分工、证据纪律、阻塞显式上报
+- **角色依赖 DAG**：`TeamTicket.roleDeps`（如 critic 等 static+dynamic），`team_dispatch` 强制门禁，team_status 与工作台显示 waits
+- **修 test:preset 历史遗留**：persona 封印化后 `test-gen-preset` 的明文锚点失效（HEAD 上即红）；改为断言空 prefix + 无明文泄漏，并同步 tool-agent-team 行期望。生成器断言与健康断言同步新行集
+
 ### 团队与设置
 
 - **Team 模型侧闭环**：新增 `team_create` / `team_status` / `team_report` 三个工具，补上「模型只能 dispatch、建单却只能靠 UI」的断点；`team_dispatch` 仍只允许 orchestrator，worker 可用 `team_report` 汇报中间结果/阻塞。工具数 34 → 37

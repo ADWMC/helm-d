@@ -900,6 +900,11 @@ exports.apply = function apply(ctx) {
 		});
 
 		var roleRows = selected ? selected.roles.map(function (role) {
+			var deps = (selected.roleDeps && selected.roleDeps[role.role]) || [];
+			var unmet = deps.filter(function (dep) {
+				var depRole = selected.roles.find(function (r) { return r.role === dep; });
+				return depRole && depRole.state !== "done";
+			});
 			return h("div", {
 				key: role.role,
 				style: {
@@ -910,7 +915,7 @@ exports.apply = function apply(ctx) {
 				h("span", { style: { width: 6, height: 6, borderRadius: 999, background: stateColor(role.state), flex: "none" } }),
 				h("span", { style: { fontSize: 12, minWidth: 74, color: "var(--dsw-alias-label-primary)" } }, role.role),
 				h("span", { style: Object.assign({}, S.caption, { flex: 1, minWidth: 0, fontFamily: CODE }) },
-					role.sessionId ? role.sessionId.slice(0, 12) : "not started"),
+					role.sessionId ? role.sessionId.slice(0, 12) : (unmet.length ? "waits: " + unmet.join(",") : "not started")),
 				h("span", { style: S.pill(stateColor(role.state), true) }, role.state),
 				h("button", {
 					type: "button", className: "hm-btn", disabled: role.state === "running" || busy === role.role,

@@ -55,6 +55,8 @@ export interface TeamTicket {
   revision: number
   /** Active artifact revisions captured when the first worker starts. */
   artifactRevisions: Record<string, number>
+  /** Role dependencies: a role may only start once every listed role is done. */
+  roleDeps?: Partial<Record<TeamRole, TeamRole[]>>
   roles: RoleAssignment[]
   reports: TeamReport[]
   handoffs: TeamHandoff[]
@@ -187,6 +189,9 @@ function loadState(): TeamState {
       artifactRevisions: ticket.artifactRevisions && typeof ticket.artifactRevisions === 'object'
         ? ticket.artifactRevisions
         : {},
+      roleDeps: ticket.roleDeps && typeof ticket.roleDeps === 'object'
+        ? ticket.roleDeps
+        : undefined,
     })),
   }
 }
@@ -239,6 +244,7 @@ export function createTicket(input: {
   roles?: TeamRole[]
   revision?: number
   artifactRevisions?: Record<string, number>
+  roleDeps?: Partial<Record<TeamRole, TeamRole[]>>
 }): TeamTicket {
   const goal = input.goal.trim()
   const caseDir = input.caseDir.trim()
@@ -256,6 +262,7 @@ export function createTicket(input: {
       state: 'open',
       revision: input.revision ?? 0,
       artifactRevisions: { ...(input.artifactRevisions ?? {}) },
+      ...(input.roleDeps !== undefined ? { roleDeps: input.roleDeps } : {}),
       roles: unique.map((role) => ({ role, state: 'idle' })),
       reports: [],
       handoffs: [],

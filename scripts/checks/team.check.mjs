@@ -140,6 +140,30 @@ await report.check('worker start fails loudly without a subagent provider', asyn
   )
 })
 
+await report.check('roleDeps gate dispatch until prerequisites are done', async () => {
+  const ticket = team.createTicket({
+    goal: 'dag gate', caseDir: join(home, 'dag-case'), roles: ['static', 'critic'],
+    roleDeps: { critic: ['static'] },
+  })
+  const runtime = {
+    subagents: {
+      getProvider: () => ({ name: 'spawn' }),
+      startActivation: async (spec) => ({
+        childId: `child-${spec.label}`,
+        result: new Promise(() => { /* stays running for the gate check */ }),
+        dispose: async () => {},
+      }),
+    },
+  }
+  await assert.rejects(
+    () => worker.startTeamWorker({ ticketId: ticket.id, role: 'critic', parentAgent: { id: 'parent' }, runtime }),
+    /role critic waits for: static/,
+  )
+  team.recordReport({ ticketId: ticket.id, role: 'static', state: 'ready', summary: 'static done' })
+  const started = await worker.startTeamWorker({ ticketId: ticket.id, role: 'critic', parentAgent: { id: 'parent' }, runtime })
+  assert.ok(started.sessionId.startsWith('child-'), 'critic starts once static is done')
+})
+
 await report.check('team_dispatch is the model-facing entry to the same worker adapter', async () => {
   const ticket = team.createTicket({ goal: 'tool dispatch', caseDir: join(home, 'tool-case'), roles: ['reporter'] })
   let definition

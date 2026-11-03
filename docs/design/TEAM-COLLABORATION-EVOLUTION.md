@@ -58,6 +58,26 @@ Loop：
 
 安全边界：进化只改策略/提示/模型/预算，不放松证据门禁，不允许 worker 修改自己的权限或评估标准。
 
+## 宿主原生基质接入（Team v2 Phase 1）
+
+审查确认：当前实现是「带账本的并行委派」；宿主自带实验性多 agent 子系统 `dsh-experimental-agent-team`（standard 组合未启用），提供命名可续 teammate、durable 信箱、共享任务 DAG（blockedBy / writeScopes / CAS）、wait/interrupt；上游另有换装包 `dsh-experimental-agent-team-profile`。superagent 的自主契约是事件驱动（reports arrive as messages; never poll; end turn when nothing to do），而 `dsh-subagent` 已具备 wake 语义（`dsh-subagent/lib/index.js:1641`，idle parent 被 `followup` 唤醒）。
+
+Phase 1 接入方式（只影响 helmd 会话）：
+
+- preset 行内追加 `tool-agent-team`（9 个原生模型工具：spawn_teammate / send_message / list_agents / wait_agent / interrupt_agent / team_task_create|list|get|update + 自带 team:policy 契约段）；
+- 组合顶层追加 `agent-team` 服务行（maxMembers 8）——服务 `static inject` 全是宿主级服务，必须挂宿主 plane（对照 `subagent` 在 dsh-base 的挂法）；
+- durable 存储已在 dsh-base（session-persistence-jsonl），无需另加；provider 名即 spawn/fork。
+
+双轨用法（写进 `helmd:team-loop` 编排契约 context）：
+
+- 原生轨：`spawn_teammate` / `send_message` / `wait_agent` / `team_task_*`——命名可续 teammate + 任务板，做持续协作；
+- ticket 轨：`team_create` / `team_dispatch` / `team_status` / `team_report`——case 绑定、证据链、revision 钉住的一次性派工；
+- 事件驱动纪律：禁止轮询/空等，worker 完成会自动唤醒 orchestrator；阻塞必须显式上报。
+
+角色依赖（DAG）：`TeamTicket.roleDeps`（如 `{"critic":["static","dynamic"]}`），`team_dispatch` 强制门禁，UI/team_status 显示 waits。
+
+Phase 2 待办：ticket ↔ 宿主任务板结构化映射；team_dispatch 改走 spawnTeammate（per-ticket 命名 teammate）；waiting/ownership 语义；运行中输出观测与取消 UI；进化记录自动采集。
+
 ## 当前落地（Phase 0/1a/1b/3 核心）
 
 已实现：

@@ -128,5 +128,11 @@
           - id: tool-plugin-market
             name: '@deepseek-ai/dsh-plugin-market/tools'
             disabled: true
+          - id: tool-agent-team
+            name: '@deepseek-ai/dsh-experimental-tool-agent-team'
           - id: helmd
             name: '@adwmc/helm-d/agent'
+    - id: agent-team
+      name: '@deepseek-ai/dsh-experimental-agent-team'
+      config:
+        maxMembers: 8

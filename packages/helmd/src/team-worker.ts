@@ -328,6 +328,15 @@ export async function startTeamWorker(input: StartWorkerInput): Promise<StartedW
   if (running >= maxParallel) {
     throw new Error(`team concurrency limit reached: ${running}/${maxParallel} workers already running in ticket ${ticket.id}`)
   }
+  // DAG gate: every listed prerequisite role must have finished (assignment
+  // done) before this role may start. Unknown deps are ignored defensively.
+  const unmet = (ticket.roleDeps?.[input.role] ?? []).filter((dep) => {
+    const assignment = ticket.roles.find((role) => role.role === dep)
+    return assignment !== undefined && assignment.state !== 'done'
+  })
+  if (unmet.length > 0) {
+    throw new Error(`role ${input.role} waits for: ${unmet.join(', ')} (finish or team_report them done first)`)
+  }
 
   const { agents, subagents } = resolveRuntime(input)
   if (subagents === undefined) throw new Error('host subagent service is unavailable; cannot start a local worker')

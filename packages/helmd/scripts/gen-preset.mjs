@@ -273,8 +273,24 @@ function generate(hostText, personaText) {
   if (personaStart < 0) throw new Error('host standard has no top-level `persona` row in plugins')
   if (personaEnd < 0) personaEnd = end
   const helmdRow = [
+    // Host-native experimental team tools, scoped to helmd sessions only (the
+    // service row below is the host-plane half; this row is the per-preset half,
+    // mirroring how standard.patch.yml scopes tool-subagent inside the preset).
+    `${basePrefix}- id: tool-agent-team`,
+    `${' '.repeat(base + 2)}name: '@deepseek-ai/dsh-experimental-tool-agent-team'`,
     `${basePrefix}- id: helmd`,
     `${' '.repeat(base + 2)}name: '@adwmc/helm-d/agent'`,
+  ]
+  // Host-plane team service (roster/mailbox/task DAG). static inject is all
+  // host-level services, so it composes at the top level like `subagent` does
+  // in dsh-base — a sibling entry INSIDE the same `- insert:` list (col 4,
+  // matching preset-helmd), outside any plugins block, hence invisible to
+  // pluginRowIds and to the helmd-only tool scoping.
+  const teamServiceRow = [
+    '    - id: agent-team',
+    "      name: '@deepseek-ai/dsh-experimental-agent-team'",
+    '      config:',
+    '        maxMembers: 8',
   ]
   const insertIdx = lines.findIndex((l) => l === '- insert:')
   if (insertIdx < 0 || insertIdx > pi) {
@@ -287,6 +303,7 @@ function generate(hostText, personaText) {
     ...lines.slice(personaEnd, end),
     ...helmdRow,
     ...lines.slice(end),
+    ...teamServiceRow,
   ]
   const out = outLines.join('\n')
   assertShape(hostText, out, personaText, base)
@@ -297,7 +314,7 @@ function generate(hostText, personaText) {
 function assertShape(hostText, out, personaText, base) {
   const hostIds = pluginRowIds(hostText)
   const outIds = pluginRowIds(out)
-  const expect = [...hostIds, 'helmd'].sort()
+  const expect = [...hostIds, 'helmd', 'tool-agent-team'].sort()
   const got = [...outIds].sort()
   if (JSON.stringify(got) !== JSON.stringify(expect)) {
     throw new Error(`row id set mismatch\n  expected: ${expect.join(', ')}\n  got:      ${got.join(', ')}`)

@@ -247,6 +247,9 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
           goal: String(body?.goal ?? ''),
           caseDir,
           roles: Array.isArray(body?.roles) ? body.roles.map(String) as TeamRole[] : undefined,
+          roleDeps: body?.roleDeps !== null && typeof body?.roleDeps === 'object'
+            ? body.roleDeps as Partial<Record<TeamRole, TeamRole[]>>
+            : undefined,
           revision: typeof body?.revision === 'number' ? body.revision : undefined,
         })
       }

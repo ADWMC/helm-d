@@ -222,7 +222,10 @@ function rowIds(text: string): string[] {
 export function assertPresetArtifact(deployed: string, hostStandardText: string): { ok: boolean; detail: string } {
   const hostIds = rowIds(hostStandardText)
   const deployedIds = rowIds(deployed)
-  const expected = [...hostIds, 'helmd'].sort()
+  // tool-agent-team rides INSIDE the helmd preset's plugins list (host-native
+  // experimental team tools, helmd-scoped); the agent-team service row sits at
+  // the composition top level, outside any plugins block, so rowIds never sees it.
+  const expected = [...hostIds, 'helmd', 'tool-agent-team'].sort()
   if (JSON.stringify([...deployedIds].sort()) !== JSON.stringify(expected)) {
     return {
       ok: false,

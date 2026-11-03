@@ -36,7 +36,12 @@ const REPORT_STATES: ReportState[] = ['progress', 'ready', 'blocked', 'failed', 
 /** Compact text projection for the model; the workbench renders the full JSON. */
 function renderTicket(ticket: NonNullable<ReturnType<typeof getTicket>>): string {
   const roles = ticket.roles
-    .map((r) => `- ${r.role}: ${r.state}${r.sessionId ? ` (${r.sessionId})` : ''}`)
+    .map((r) => {
+      const deps = ticket.roleDeps?.[r.role] ?? []
+      const unmet = deps.filter((dep) => ticket.roles.find((role) => role.role === dep)?.state !== 'done')
+      const waits = unmet.length > 0 ? ` [waits: ${unmet.join(', ')}]` : ''
+      return `- ${r.role}: ${r.state}${r.sessionId ? ` (${r.sessionId})` : ''}${waits}`
+    })
     .join('\n')
   const lastByRole = new Map<string, string>()
   for (const report of ticket.reports) lastByRole.set(report.role, `[${report.state}] ${report.summary}`)
@@ -59,19 +64,31 @@ export function registerTeamTools(ctx: Context): void {
     parameters: {
       goal: { type: 'string', required: true, description: 'What this team must deliver.' },
       roles: { type: 'array', items: { type: 'string' }, description: `Subset of: ${TEAM_ROLES.join(', ')}. Defaults to the configured default roles.` },
+      roleDeps: { type: 'string', description: 'Role dependencies, format "role:dep1,dep2;role2:dep" — e.g. "critic:static,dynamic". A role starts only after its prerequisites are done.' },
       caseDir: { type: 'string', description: 'Ticket workspace directory; defaults to the active case or session cwd.' },
     },
     output: { schema: { type: 'string' }, render: (_args: unknown, value: string) => [{ type: 'text', text: value }] },
-    async execute(args: { goal: string; roles?: string[]; caseDir?: string }, exec?: ExecLike) {
+    async execute(args: { goal: string; roles?: string[]; roleDeps?: string; caseDir?: string }, exec?: ExecLike) {
       const caseDir = args.caseDir?.trim() || defaultCaseDir(exec)
       if (caseDir === undefined || caseDir === '') {
         throw new Error('no caseDir: bind a case with begin_case or pass caseDir explicitly')
       }
       const roles = (args.roles ?? []).map(String).filter(isTeamRole) as TeamRole[] | []
+      // Deps come as "critic:static,dynamic;reporter:critic" — free-form JSON
+      // object parameters are not part of the tool schema subset the registry accepts.
+      const roleDeps: Partial<Record<TeamRole, TeamRole[]>> = {}
+      for (const pair of (args.roleDeps ?? '').split(';')) {
+        const [role, deps] = pair.split(':').map((part) => part.trim())
+        if (role === undefined || deps === undefined) continue
+        if (!isTeamRole(role)) continue
+        const valid = deps.split(',').map((dep) => dep.trim()).filter(isTeamRole) as TeamRole[]
+        if (valid.length > 0) roleDeps[role] = valid
+      }
       const ticket = createTicket({
         goal: args.goal,
         caseDir,
         roles: roles.length > 0 ? roles : undefined,
+        roleDeps: Object.keys(roleDeps).length > 0 ? roleDeps : undefined,
       })
       return [
         `ticket created: ${ticket.id}`,
