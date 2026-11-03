@@ -43,14 +43,20 @@ export function registerNativeTools(ctx: Context): void {
   }))
   ctx.tools.register(defineTool({
     name: 'xor_bruteforce',
-    description: 'Bruteforce single-byte XOR key on a file or hex string.',
+    description:
+      'Single/multi-byte XOR key bruteforce ranked by English-likeness (letter density + word/flag-format bonus). ' +
+      'Omit keylen for single-byte ranked candidates; pass keylen for repeating-key. Use top_n to widen the candidate list.',
     parameters: {
-      data: { type: 'string', required: true },
-      keylen: { type: 'number' },
+      data: { type: 'string', required: true, description: 'File path or hex string.' },
+      keylen: { type: 'number', description: 'Repeating-key length; omit for single-byte mode.' },
+      top_n: { type: 'number', description: 'Candidate count (default 10).' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: any) {
-      return await runSeam(ctx, ['python', resolve(scriptRoot, 'crypto/xor_bruteforce.py'), args.data, ...(args.keylen != null ? ['-k', String(args.keylen)] : [])], packageRoot())
+      const extra: string[] = []
+      if (args.keylen != null) extra.push('-k', String(args.keylen))
+      if (args.top_n != null) extra.push('-n', String(args.top_n))
+      return await runSeam(ctx, ['python', resolve(scriptRoot, 'crypto/xor_bruteforce.py'), args.data, ...extra], packageRoot())
     },
   }))
   ctx.tools.register(defineTool({

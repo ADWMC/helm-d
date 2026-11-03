@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { accessSync, constants, existsSync } from 'node:fs'
+import { accessSync, constants, existsSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { execFile } from 'node:child_process'
+import { execFile, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { readSealedByAbsPath } from './sealed-refs.js'
 import { promisify } from 'node:util'
@@ -34,18 +34,68 @@ interface SubprocessHandleLike {
   collected?: { stdout?: OutputReader; stderr?: OutputReader }
 }
 
-function findOnPath(cmd: string): string | null {
-  const pathext = (process.env.PATHEXT ?? '').split(';').filter(Boolean)
-  const exts = ['', ...pathext]
-  for (const dir of (process.env.PATH ?? '').split(delimiter)) {
-    if (!dir) continue
-    for (const ext of exts) {
-      const full = join(dir, cmd + ext)
-      try {
-        accessSync(full, constants.F_OK)
+/** A usable interpreter binary. Microsoft Store "App execution aliases" are
+ *  0-byte reparse points that pass F_OK and then fail with exit 9009 — the
+ *  2026-11-04 battery had every python-backed domain tool resolve to one.
+ *  F_OK alone is not enough: the file must exist AND carry bytes. */
+function isUsableBinary(path: string): boolean {
+  try {
+    const stat = statSync(path)
+    return stat.isFile() && stat.size > 0
+  } catch {
+    return false
+  }
+}
+
+/** True when `path` looks like a Store app-execution alias stub. */
+function isStub(path: string): boolean {
+  try {
+    return statSync(path).isFile() && statSync(path).size === 0
+  } catch {
+    return false
+  }
+}
+
+const probeCache = new Map<string, boolean>()
+
+/** Live `--version` probe so an existing-but-broken interpreter on PATH
+ *  cannot shadow a working launcher (e.g. a broken python alias vs py.exe). */
+function runsSuccessfully(path: string, args: string[]): boolean {
+  const cacheKey = `${path}\u0000${args.join(' ')}`
+  const cached = probeCache.get(cacheKey)
+  if (cached !== undefined) return cached
+  let ok = false
+  try {
+    const result = spawnSync(path, args, { timeout: 15_000, encoding: 'utf8' })
+    ok = !result.error && result.status === 0
+  } catch {
+    ok = false
+  }
+  probeCache.set(cacheKey, ok)
+  return ok
+}
+
+/** Resolve an interpreter across all alias spellings and PATH dirs, rejecting
+ *  stubs and non-working binaries. Returns the first usable candidate. */
+export function findInterpreter(command: string): string | null {
+  const aliases = INTERPRETER_ALIASES[command] ?? [command]
+  const probeArgs = command === 'python' || command === 'python3' || command === 'py' ? ['--version'] : []
+  for (const alias of aliases) {
+    const pathext = (process.env.PATHEXT ?? '').split(';').filter(Boolean)
+    const exts = ['', ...pathext]
+    for (const dir of (process.env.PATH ?? '').split(delimiter)) {
+      if (!dir) continue
+      for (const ext of exts) {
+        const full = join(dir, alias + ext)
+        try {
+          accessSync(full, constants.F_OK)
+        } catch {
+          continue
+        }
+        if (isStub(full)) continue
+        if (!isUsableBinary(full)) continue
+        if (probeArgs.length > 0 && !runsSuccessfully(full, probeArgs)) continue
         return full
-      } catch {
-        // next candidate
       }
     }
   }
@@ -58,20 +108,17 @@ export async function resolveCommand(_ctx: Context, command: string): Promise<st
   if (subprocess != null && typeof subprocess.resolveExecutable === 'function') {
     try {
       const resolved = await subprocess.resolveExecutable(command)
-      if (resolved) return resolved
+      if (resolved) {
+        // Host seam may hand back a Store stub that will 9009 at spawn time;
+        // validate it like a local candidate before trusting it.
+        if (INTERPRETER_ALIASES[command] === undefined || !isStub(resolved)) return resolved
+      }
     } catch {
       // fall through to local resolution
     }
   }
-  for (const candidate of INTERPRETER_ALIASES[command] ?? [command]) {
-    const found = findOnPath(candidate)
-    if (found) return found
-  }
-  // Windows py launcher fallback: try `py -3` if plain `py` not found
-  if (command === 'python' && process.platform === 'win32') {
-    const py = findOnPath('py')
-    if (py) return py
-  }
+  const local = findInterpreter(command)
+  if (local) return local
   return command
 }
 
