@@ -39,6 +39,12 @@ function parsePromoteOn(value: unknown): string[] {
 }
 
 export function applyBootstrapFilter(ctx: Context, config: BootstrapConfig = {}): void {
+  // Escape hatch for profiles where the plugin mounts at HOST scope (headless,
+  // automation rigs): the promotion listener is scope-keyed to the mounting
+  // context, so at host scope the first-turn filter never promotes and the
+  // session stays pinned to [shell, read]. `HELMD_BOOTSTRAP=off` skips the
+  // filter entirely — the full catalog is exposed from turn one.
+  if ((process.env.HELMD_BOOTSTRAP ?? '').trim().toLowerCase() === 'off') return
   const commonTools = stringList(config.commonTools, 'commonTools')
   const shellTools = stringList(config.shellTools, 'shellTools')
   const promoteEvents = parsePromoteOn(config.promoteOn)
