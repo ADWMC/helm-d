@@ -23,10 +23,10 @@ ERR_PNPM_TARBALL_INTEGRITY: Got unexpected checksum for
 
 ```bash
 dsh plugin --profile web remove @adwmc/helm-d
-dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.5.2/helm-d.tgz
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.5.3/helm-d.tgz
 ```
 
-把 `v0.5.2` 换成你要安装的 Release tag。装完重启 DSH。
+把 `v0.5.3` 换成你要安装的 Release tag。装完重启 DSH。
 
 ### 如果 remove 也失败
 
@@ -39,7 +39,7 @@ dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v
 
 ## 为什么版本化 URL 安全
 
-`https://github.com/ADWMC/helm-d/releases/download/v0.5.2/...` 指向该 tag 下的固定资产；只要不覆盖这个已发布版本的资产，内容就保持不变。`latest/download` 则会随下一次 Release 改变。
+`https://github.com/ADWMC/helm-d/releases/download/v0.5.3/...` 指向该 tag 下的固定资产；只要不覆盖这个已发布版本的资产，内容就保持不变。`latest/download` 则会随下一次 Release 改变。
 
 发布者约定：新版本用新 tag，不覆盖已发布 tag 的同名资产。
 

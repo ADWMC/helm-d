@@ -1,6 +1,6 @@
 {
   "name": "@adwmc/helm-d",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "type": "module",
   "license": "AGPL-3.0-or-later",
   "repository": {

@@ -31,7 +31,7 @@ body:
     attributes:
       label: 问题
       description: 错在哪：命令跑不通、结论过时、链接 404、与代码不一致
-      placeholder: 文中写的命令在 0.5.2 上会报 ...
+      placeholder: 文中写的命令在 0.5.3 上会报 ...
     validations:
       required: true
 

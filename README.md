@@ -68,7 +68,7 @@ helm-d 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) �
 **前提**：Node >= 22.19，已安装 [`dsh`](https://github.com/deepseek-ai/deepseek-harness) CLI。
 
 ```bash
-dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.5.2/helm-d.tgz
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.5.3/helm-d.tgz
 dsh web
 ```
 
@@ -216,13 +216,13 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 ```bash
 # 更新：先卸载，再装目标版本（不要用 latest/download）
 dsh plugin --profile web remove @adwmc/helm-d
-dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.5.2/helm-d.tgz
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.5.3/helm-d.tgz
 
 # 卸载
 dsh plugin --profile web remove @adwmc/helm-d
 ```
 
-把 `v0.5.2` 换成目标 Release 的 tag；不要用 `releases/latest/download/*` 作为 profile 依赖。
+把 `v0.5.3` 换成目标 Release 的 tag；不要用 `releases/latest/download/*` 作为 profile 依赖。
 
 ## 文档
 

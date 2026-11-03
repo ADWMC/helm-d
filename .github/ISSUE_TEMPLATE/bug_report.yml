@@ -17,7 +17,7 @@ body:
     attributes:
       label: 插件版本
       description: README 徽章或 packages/helmd/package.json 的 version
-      placeholder: 0.5.2
+      placeholder: 0.5.3
     validations:
       required: true
 

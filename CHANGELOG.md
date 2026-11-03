@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-11-03（AGPL + 四档 + 本地 Team 协作 + Issue #5 收口）
+
+本版把许可与免责声明改成 AGPL-3.0-or-later 并补齐三大法域要点；主档改名 `ds4.1f` 并新增第四档 `gpt-6x`；把本地多 agent 协作协议从「工单状态机」补成可运行的 worker 会话 + Team 工作台 + A/B 进化门禁；发布资产改用版本化 URL 收口 Issue #5。分发形态不变：payload / references / profiles 全封印，release 资产仍是 3 个 tgz。
+
 ### 许可与免责
 
 - **许可改为 AGPL-3.0-or-later**：`LICENSE` 换成 GNU AGPL v3 全文（官方文本，sha256 `0d96a4ff…`），`packages/helmd/package.json` 的 `license` 字段同步；README / README.en 的许可徽章、License 段更新，并补 §13 网络使用与对应源码说明（封印数据均可由仓库明文源重新生成）。授权版本为 v3 或任何更新版本（`AGPL-3.0-or-later`）。**这是对下游的破坏性变更**：再分发、派生与网络部署都须按 AGPL 提供对应源码
@@ -25,7 +29,7 @@
 
 ### 安装/发布
 
-- **修复 Issue #5**：README / README.en / About 页的安装更新命令改用版本化 URL；`releases/latest/download/*` 不再作为 profile 依赖（滚动资产会让 pnpm lockfile sha512 失配，`ERR_PNPM_TARBALL_INTEGRITY`）。新增 `docs/install-troubleshooting.md` 自救文档和 `install-url` 检查（23 项 checks）
+- **修复 Issue #5**：README / README.en / About 页的安装更新命令改用版本化 URL；`releases/latest/download/*` 不再作为 profile 依赖（滚动资产会让 pnpm lockfile sha512 失配，`ERR_PNPM_TARBALL_INTEGRITY`）。新增 `docs/install-troubleshooting.md` 自救文档和 `install-url` 检查（23 项 checks）。**自 v0.5.3 起**：About 页给出的安装命令已改为 `releases/download/v0.5.3/...`；已经写坏 lockfile 的 profile 按 [安装故障排查](docs/install-troubleshooting.md) 移除旧依赖后用版本化 URL 重装即可
 - **本地多 agent 协作协议**：新增 `team.ts` 的 ticket / role assignment / report / handoff 状态机与 `GET/POST /api/helmd/team`；本地文件状态，无外部服务
 - **本地可审计进化**：新增 versioned `role-prompt` / `playbook` / `skill` / `model-profile` / `budget-policy` / `tool-policy`，带 eval gate、activate/rollback 与 `GET/POST /api/helmd/team/versions`；`docs/design/TEAM-COLLABORATION-EVOLUTION.md` 记录 prompt-leaks/superagent 模式对照
 - **非 helmd 会话隔离**：header 胶囊不再抢官方 `agent-preset` 座位，非 helmd 直接返回 null；Star gate 从全局 `shell.overlay` 移入 helmd-only capsule；侧栏 guide 不再向所有会话展示 helm-d tab；`/api/helmd/gate` 在 gate 未注册时不启动设备流。新增 `client-scope` 检查
