@@ -24,6 +24,7 @@ import {
   type ArtifactKind, type ReportState, type TeamRole,
 } from './team.js'
 import { startTeamWorker } from './team-worker.js'
+import { loadSettings, saveSettings } from './settings.js'
 
 const ROUTE_BASE = '/api/helmd'
 
@@ -234,9 +235,17 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
     const action = String(body?.action ?? '')
     try {
       if (action === 'create') {
+        // Workbench tickets may exist without a bound case; give them a stable
+        // workspace under the helmd storage so child workers still get a cwd.
+        let caseDir = String(body?.caseDir ?? '').trim()
+        if (caseDir === '') {
+          const home = process.env.DSH_HOME?.trim() || join(homedir(), '.dsh')
+          caseDir = join(home, 'storages', 'helmd', 'team', 'standalone')
+          fs.mkdirSync(caseDir, { recursive: true })
+        }
         return createTicket({
           goal: String(body?.goal ?? ''),
-          caseDir: String(body?.caseDir ?? ''),
+          caseDir,
           roles: Array.isArray(body?.roles) ? body.roles.map(String) as TeamRole[] : undefined,
           revision: typeof body?.revision === 'number' ? body.revision : undefined,
         })
@@ -319,6 +328,16 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
     } catch (error) {
       throw new HttpError(400, error instanceof Error ? error.message : String(error))
     }
+  })
+
+  // Operator settings: the workbench 设置 tab reads and patches this store;
+  // the DSH settings page edits the same values through the row Config at boot.
+  route(`${ROUTE_BASE}/settings`, async (req) => {
+    const method = String(req?.method ?? 'GET').toUpperCase()
+    if (method !== 'POST') return loadSettings()
+    requireJson(req)
+    const body = await readJsonBody(req, 16384)
+    return saveSettings(body)
   })
 
   // Hypotheses for the session-bound case.

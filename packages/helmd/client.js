@@ -605,6 +605,177 @@ exports.apply = function apply(ctx) {
 		);
 	}
 
+	// ── Tab: 设置（runtime settings store + DSH 设置页同源） ─────
+	var TEAM_ROLE_LIST = ["orchestrator", "triage", "static", "dynamic", "decoy-audit", "critic", "reporter"];
+	function SettingsRow(props) {
+		return h("div", { style: { display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 0" } },
+			h("div", { style: { width: 118, flex: "none" } },
+				h("div", { style: { fontSize: 12.5, color: "var(--dsw-alias-label-primary)" } }, props.label),
+				props.hint ? h("div", { style: Object.assign({}, S.caption, { marginTop: 1 }) }, props.hint) : null
+			),
+			h("div", { style: { flex: 1, minWidth: 0 } }, props.children)
+		);
+	}
+	function SettingsToggle(props) {
+		return h("button", {
+			type: "button", onClick: function () { props.onChange(!props.checked); },
+			"aria-pressed": props.checked ? "true" : "false",
+			style: {
+				display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px 3px 6px",
+				borderRadius: 999, cursor: "pointer", fontSize: 12,
+				border: "0.5px solid var(--dsw-alias-border-l3)",
+				background: props.checked ? "color-mix(in srgb, " + TONE.success + " 14%, transparent)" : "var(--dsw-alias-fill-tsp-secondary)",
+				color: props.checked ? TONE.success : "var(--dsw-alias-label-secondary)",
+			},
+		},
+			h("span", { style: { width: 8, height: 8, borderRadius: 999, background: props.checked ? TONE.success : "var(--dsw-alias-label-tertiary)" } }),
+			props.checked ? "开" : "关"
+		);
+	}
+	function SettingsNumber(props) {
+		return h("input", {
+			type: "number", min: props.min, max: props.max, step: 1,
+			value: String(props.value), onChange: function (e) {
+				var n = Number(e.target.value);
+				props.onChange(Number.isFinite(n) ? n : props.min);
+			},
+			style: {
+				width: 84, height: 26, padding: "0 8px", borderRadius: "var(--dsw-radius-sm)",
+				border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
+				color: "var(--dsw-alias-label-primary)", fontSize: 12.5, outline: "none",
+			},
+		});
+	}
+	function SettingsTab(props) {
+		var remote = props.settings;
+		var formState = React.useState(null);
+		var form = formState[0]; var setForm = formState[1];
+		var noticeState = React.useState("");
+		var notice = noticeState[0]; var setNotice = noticeState[1];
+		var savingState = React.useState(false);
+		var saving = savingState[0]; var setSaving = savingState[1];
+		React.useEffect(function () {
+			if (!form && remote) setForm(JSON.parse(JSON.stringify(remote)));
+		}, [remote]);
+		function setIn(path, value) {
+			setForm(function (prev) {
+				if (!prev) return prev;
+				var next = JSON.parse(JSON.stringify(prev));
+				var seg = path.split(".");
+				var obj = next;
+				for (var i = 0; i < seg.length - 1; i++) obj = obj[seg[i]];
+				obj[seg[seg.length - 1]] = value;
+				return next;
+			});
+		}
+		function toggleRole(role) {
+			setForm(function (prev) {
+				if (!prev) return prev;
+				var next = JSON.parse(JSON.stringify(prev));
+				var list = next.team.defaultRoles || [];
+				next.team.defaultRoles = list.indexOf(role) >= 0
+					? list.filter(function (r) { return r !== role; })
+					: list.concat([role]);
+				return next;
+			});
+		}
+		function save() {
+			if (!form) return;
+			setSaving(true); setNotice("");
+			fetch("/api/helmd/settings", {
+				method: "POST", headers: { "content-type": "application/json" },
+				body: JSON.stringify(form),
+			}).then(function (r) { return r.json(); }).then(function (res) {
+				if (res && res.ok) { setForm(res.data); setNotice("已保存，立即生效（DSH 设置页的修改在重启时并入）。"); if (props.onRefresh) props.onRefresh(); }
+				else setNotice((res && res.error) || "保存失败");
+			}).catch(function (e) { setNotice(String((e && e.message) || e)); })
+				.then(function () { setSaving(false); });
+		}
+		if (!form) {
+			return h("div", { style: S.card }, h(EmptyState, { title: "设置读取中…", hint: "等待 /api/helmd/settings。" }));
+		}
+		var roles = form.team.defaultRoles || [];
+		var inputStyle = {
+			width: "100%", height: 28, padding: "0 8px", borderRadius: "var(--dsw-radius-sm)",
+			border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
+			color: "var(--dsw-alias-label-primary)", fontSize: 12.5, outline: "none", boxSizing: "border-box",
+		};
+		return h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+			notice ? h("div", { style: { padding: "7px 9px", borderRadius: 4, fontSize: 11.5, color: TONE.info, background: "var(--dsw-alias-fill-tsp-secondary)" } }, notice) : null,
+			h("div", { style: S.card },
+				h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
+					h("span", { style: S.title }, "Team 协作"),
+					h("span", { style: S.caption }, "worker / ticket")
+				),
+				h("div", { style: { marginTop: 4 } },
+					h(SettingsRow, { label: "begin_case 自动建单", hint: "每次开案自动创建 team ticket" },
+						h(SettingsToggle, { checked: !!form.team.autoTicket, onChange: function (v) { setIn("team.autoTicket", v); } })
+					),
+					h(SettingsRow, { label: "默认角色集", hint: "新 ticket 预含的角色" },
+						h("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } },
+							TEAM_ROLE_LIST.map(function (role) {
+								var on = roles.indexOf(role) >= 0;
+								return h("button", {
+									key: role, type: "button", onClick: function () { toggleRole(role); },
+									style: {
+										padding: "2px 8px", borderRadius: 4, fontSize: 11, cursor: "pointer",
+										border: "0.5px solid " + (on ? TONE.info : "var(--dsw-alias-border-l3)"),
+										background: on ? "color-mix(in srgb, " + TONE.info + " 12%, transparent)" : "transparent",
+										color: on ? TONE.info : "var(--dsw-alias-label-secondary)",
+									},
+								}, role);
+							})
+						)
+					),
+					h(SettingsRow, { label: "并发 worker 上限", hint: "每 ticket 同时运行数（1-8）" },
+						h(SettingsNumber, { value: form.team.maxParallelWorkers, min: 1, max: 8, onChange: function (v) { setIn("team.maxParallelWorkers", v); } })
+					),
+					h(SettingsRow, { label: "默认 worker 超时", hint: "分钟（1-60），budget artifact 可覆盖" },
+						h(SettingsNumber, { value: form.team.defaultWallTimeMin, min: 1, max: 60, onChange: function (v) { setIn("team.defaultWallTimeMin", v); } })
+					)
+				)
+			),
+			h("div", { style: S.card },
+				h("div", { style: S.title }, "拦截"),
+				h("div", { style: { marginTop: 4 } },
+					h(SettingsRow, { label: "流式拒绝拦截", hint: "关闭后不再改写/重试拒答流" },
+						h(SettingsToggle, { checked: !!form.intercept.enabled, onChange: function (v) { setIn("intercept.enabled", v); } })
+					)
+				)
+			),
+			h("div", { style: S.card },
+				h("div", { style: S.title }, "自主辅助"),
+				h("div", { style: { marginTop: 4 } },
+					h(SettingsRow, { label: "[autonomy] 状态包", hint: "case_status 附假设/证据/下一步" },
+						h(SettingsToggle, { checked: !!form.advisory.autonomyPacket, onChange: function (v) { setIn("advisory.autonomyPacket", v); } })
+					),
+					h(SettingsRow, { label: "下一步建议", hint: "工具结果后的 L4-lite 提示" },
+						h(SettingsToggle, { checked: !!form.advisory.nextActionNudge, onChange: function (v) { setIn("advisory.nextActionNudge", v); } })
+					)
+				)
+			),
+			h("div", { style: S.card },
+				h("div", { style: S.title }, "Star 弹窗"),
+				h("div", { style: { marginTop: 4 } },
+					h(SettingsRow, { label: "延迟秒数", hint: "0-60 秒；0 为立即" },
+						h(SettingsNumber, { value: form.star.popupDelaySec, min: 0, max: 60, onChange: function (v) { setIn("star.popupDelaySec", v); } })
+					)
+				)
+			),
+			h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+				h("button", {
+					type: "button", className: "hm-btn", onClick: save, disabled: saving,
+					style: {
+						height: 28, padding: "0 14px", borderRadius: "var(--dsw-radius-sm)", cursor: saving ? "default" : "pointer",
+						border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
+						color: "var(--dsw-alias-label-primary)", fontSize: 12.5,
+					},
+				}, saving ? "保存中…" : "保存设置"),
+				h("span", { style: S.caption }, "同时写 storages/helmd/settings.json；DSH 设置页改的是启动配置")
+			)
+		);
+	}
+
 	// ── Tab 2: Team（本地多 agent 协作 + 进化） ─────────────────
 	function TeamTab(props) {
 		var team = props.teamData || {};
@@ -618,6 +789,14 @@ exports.apply = function apply(ctx) {
 		var notice = noticeState[0]; var setNotice = noticeState[1];
 		var busyState = React.useState("");
 		var busy = busyState[0]; var setBusy = busyState[1];
+		var goalState = React.useState("");
+		var goalInput = goalState[0]; var setGoalInput = goalState[1];
+		var newRolesState = React.useState(["triage", "static", "critic", "reporter"]);
+		var newRoles = newRolesState[0]; var setNewRoles = newRolesState[1];
+		React.useEffect(function () {
+			var cd = props.caseData;
+			if (!goalInput && cd && cd.active && cd.goal) setGoalInput(cd.goal);
+		}, [props.caseData, goalInput]);
 		var selected = null;
 		tickets.forEach(function (t) { if (t.id === selectedId) selected = t; });
 		if (!selected && tickets.length > 0) selected = tickets[0];
@@ -641,14 +820,17 @@ exports.apply = function apply(ctx) {
 			if (props.onRefresh) props.onRefresh();
 		}
 		function createTicket() {
+			var goal = String(goalInput || "").trim();
+			if (goal === "") { setNotice("先填写分析目标（goal）。"); return; }
 			var cd = props.caseData;
-			if (!cd || !cd.active || !cd.dir) {
-				setNotice("先在对话里 begin_case，工作台才能拿到 case 目录。");
-				return;
-			}
 			setBusy("create");
-			callJson("/api/helmd/team", { action: "create", goal: cd.goal, caseDir: cd.dir })
-				.then(function (t) { setSelectedId(t.id); done("已创建 " + t.id); })
+			callJson("/api/helmd/team", {
+				action: "create",
+				goal: goal,
+				caseDir: cd && cd.active && cd.dir ? cd.dir : undefined,
+				roles: newRoles && newRoles.length > 0 ? newRoles : undefined,
+			})
+				.then(function (t) { setSelectedId(t.id); setGoalInput(""); done("已创建 " + t.id); })
 				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
 		}
 		function startRole(role) {
@@ -803,15 +985,50 @@ exports.apply = function apply(ctx) {
 			h("div", { style: S.card },
 				h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
 					h("span", { style: S.title }, "Tickets"),
-					h("span", { style: S.caption }, String(tickets.length)),
-					h("button", {
-						type: "button", className: "hm-btn", onClick: createTicket, disabled: busy === "create",
-						style: { marginLeft: "auto", height: 24, padding: "0 8px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: "var(--dsw-alias-label-secondary)", fontSize: 11, cursor: "pointer" },
-					}, busy === "create" ? "创建中" : "从当前 case 新建")
+					h("span", { style: S.caption }, String(tickets.length))
 				),
-				ticketRows.length ? h("div", { style: { display: "flex", flexDirection: "column", gap: 1, marginTop: 6 } }, ticketRows) : h(EmptyState, {
+				h("div", { style: { marginTop: 6 } },
+					h("input", {
+						type: "text", value: goalInput,
+						placeholder: "分析目标（goal），例如：分析 samples/app.apk 的加固方式",
+						onChange: function (e) { setGoalInput(e.target.value); },
+						onKeyDown: function (e) { if (e.key === "Enter") createTicket(); },
+						style: {
+							width: "100%", height: 28, padding: "0 8px", borderRadius: "var(--dsw-radius-sm)",
+							border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
+							color: "var(--dsw-alias-label-primary)", fontSize: 12.5, outline: "none", boxSizing: "border-box",
+						},
+					}),
+					h("div", { style: { display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6 } },
+						TEAM_ROLE_LIST.map(function (role) {
+							var on = (newRoles || []).indexOf(role) >= 0;
+							return h("button", {
+								key: "new-" + role, type: "button",
+								onClick: function () {
+									setNewRoles(function (prev) {
+										var list = prev || [];
+										return list.indexOf(role) >= 0 ? list.filter(function (r) { return r !== role; }) : list.concat([role]);
+									});
+								},
+								style: {
+									padding: "2px 7px", borderRadius: 4, fontSize: 10.5, cursor: "pointer",
+									border: "0.5px solid " + (on ? TONE.info : "var(--dsw-alias-border-l3)"),
+									background: on ? "color-mix(in srgb, " + TONE.info + " 12%, transparent)" : "transparent",
+									color: on ? TONE.info : "var(--dsw-alias-label-secondary)",
+								},
+							}, role);
+						}),
+						h("button", {
+							type: "button", className: "hm-btn", onClick: createTicket, disabled: busy === "create",
+							style: { marginLeft: "auto", height: 24, padding: "0 10px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: "var(--dsw-alias-label-secondary)", fontSize: 11, cursor: "pointer" },
+						}, busy === "create" ? "创建中…" : "新建 ticket")
+					),
+					h("div", { style: Object.assign({}, S.caption, { marginTop: 4 }) },
+						"绑定 case 时用 case 目录作 workspace；未绑定时用 helmd 存储下的 standalone 目录。")
+				),
+				ticketRows.length ? h("div", { style: { display: "flex", flexDirection: "column", gap: 1, marginTop: 8 } }, ticketRows) : h(EmptyState, {
 					title: "还没有 ticket",
-					hint: "先绑定 case，再点“从当前 case 新建”。每个 ticket 就是一个分析任务。",
+					hint: "填 goal 新建，或在对话里让模型 team_create。",
 				})
 			),
 			selected ? h("div", { style: S.card },
@@ -1141,6 +1358,7 @@ exports.apply = function apply(ctx) {
 					fetch('/api/helmd/case/evidence' + caseQuery).then(function(r){return r.json()}).catch(function(){return null}),
 					fetch('/api/helmd/team').then(function(r){return r.json()}).catch(function(){return null}),
 					fetch('/api/helmd/team/versions').then(function(r){return r.json()}).catch(function(){return null}),
+					fetch('/api/helmd/settings').then(function(r){return r.json()}).catch(function(){return null}),
 				]).then(function(results) {
 					if (!alive) return;
 					setData({
@@ -1153,6 +1371,7 @@ exports.apply = function apply(ctx) {
 						evidence: (results[6] && results[6].data) || [],
 						teamData: (results[7] && results[7].data) || null,
 						versions: (results[8] && results[8].data) || null,
+						settings: (results[9] && results[9].data) || null,
 						sessionId: sid || null,
 					});
 				});
@@ -1197,6 +1416,7 @@ exports.apply = function apply(ctx) {
 			{ key: "case", label: "Case", badge: (data.caseData && data.caseData.active && data.caseData.openHypotheses) || 0 },
 			{ key: "team", label: "Team", badge: openTickets },
 			{ key: "intercept", label: "拦截", badge: (data.intercept && data.intercept.count) || 0 },
+			{ key: "settings", label: "设置", badge: 0 },
 			{ key: "about", label: "关于", badge: 0 },
 		];
 
@@ -1292,6 +1512,7 @@ exports.apply = function apply(ctx) {
 						onRefresh: refresh,
 					}) : null,
 					tab === "intercept" ? h(InterceptTab, { interceptData: data.intercept }) : null,
+					tab === "settings" ? h(SettingsTab, { settings: data.settings, onRefresh: refresh }) : null,
 					tab === "about" ? h(AboutTab, { version: (data.health && data.health.version) || "unknown" }) : null
 				)
 			)
@@ -1356,10 +1577,17 @@ exports.apply = function apply(ctx) {
 			return function () { alive = false; clearInterval(timer); };
 		}, []);
 		// Do not cover the app before the operator has done anything; the CLI
-		// code channel still exists from boot.
+		// code channel still exists from boot. Delay follows the 设置 tab.
 		React.useEffect(function () {
-			var delay = setTimeout(function () { setReady(true); }, 2000);
-			return function () { clearTimeout(delay); };
+			var timer = null;
+			fetch("/api/helmd/settings").then(function (r) { return r.json(); }).then(function (j) {
+				var sec = j && j.ok && j.data && j.data.star ? Number(j.data.star.popupDelaySec) : 2;
+				if (!Number.isFinite(sec) || sec < 0) sec = 2;
+				timer = setTimeout(function () { setReady(true); }, sec * 1000);
+			}).catch(function () {
+				timer = setTimeout(function () { setReady(true); }, 2000);
+			});
+			return function () { if (timer) clearTimeout(timer); };
 		}, []);
 		// The panel disappears the moment the star lands (gating:false). Keep a
 		// short success toast so that disappearance reads as success, not as a

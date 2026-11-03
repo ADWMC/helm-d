@@ -15,7 +15,7 @@
 
 | 层 | 谁写入 | 内容 |
 |----|--------|------|
-| Profile | `dsh plugin add` / `update.ps1` | 34 个工具（router 4 + 账本 1 + 案件生命周期 5 + 领域 23 + Team 1）、bootstrap 收窄、运行时钩子层（tool-wash / persist / advisory / llm-stream）、references、scripts、工作台 UI |
+| Profile | `dsh plugin add` / `update.ps1` | 37 个工具（router 4 + 账本 1 + 案件生命周期 5 + 领域 23 + Team 4）、bootstrap 收窄、运行时钩子层（tool-wash / persist / advisory / llm-stream）、references、scripts、工作台 UI |
 | Preset | 随包分发 `preset.generated.patch.yml`（宿主经 `dsh.bundle.patch` 读取） | 一行 `@deepseek-ai/dsh-agent-preset` 组合：luna persona、激活词 `helmd`、宿主全套工具行 + `@adwmc/helm-d/agent` |
 
 **单一事实源表**
@@ -27,7 +27,7 @@
 | 工具代码 | `packages/helmd/src/*.ts` | `pnpm build` → dist |
 | 依赖 cohort | `pnpm-workspace.yaml` `overrides`（编译期全家 + cordis + schemastery；与目标宿主同代，当前 `0.2.1-rc.2` / cordis `4.0.4` / schemastery `3.18.4`） | `pnpm install` → `pnpm-lock.yaml` + node_modules；`pnpm peers check` 必须无问题（跨 cohort peer = 迁移未完成）。宿主真实形状由 `pnpm test:checks` 的 host-seam 那几份直接跑在装机宿主包上把关，编译期 cohort 落后不会伪装成绿。钉宿主时留意 launcher 的 `^0.2.0-rc.N` 会让嵌套宿主包上浮一档，`dsh --version` 只反映 launcher。0.2 起 peer 必须显式带 `>=0.2.0-rc.1 <0.2.2-0` 分支，且 `dsh-code-runtime` 已改名为 `dsh-ptc-runtime` |
 | 领域文档 | `packages/helmd/references/` | 直接打包 |
-| 工作台 UI | `packages/helmd/client.js`（浏览器半，免构建）+ `cordis.patch.yml` 的 `dsh.client.inject` | 破甲、Case、Team、拦截与关于数据走 `/api/helmd/*` HTTP 投影 |
+| 工作台 UI | `packages/helmd/client.js`（浏览器半，免构建）+ `cordis.patch.yml` 的 `dsh.client.inject` | 破甲、Case、Team、拦截、设置与关于数据走 `/api/helmd/*` HTTP 投影 |
 | 安装脚本 | 根目录 `install.{ps1,sh,bat}` | 随仓库分发（不进 tgz） |
 | 更新脚本 | `scripts/update.{ps1,sh}` | 仅仓库，随 git 分发 |
 
@@ -40,7 +40,7 @@
 git status --porcelain            # 必须干净
 
 # 0.5 检查（必须在封包前跑：build-sealed 会把 dist 移进 .real，检查只认明文 dist）
-pnpm test:checks                  # 必须 24 PASS
+pnpm test:checks                  # 必须 25 PASS
 
 # 1. bump 版本号（唯一位置）
 node -e "const fs=require('fs');const p='packages/helmd/package.json';const pkg=JSON.parse(fs.readFileSync(p,'utf8'));pkg.version='X.Y.Z';fs.writeFileSync(p,JSON.stringify(pkg,null,2)+'\n')"
@@ -105,7 +105,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/downloa
 - 描述里的**数字声明会被 reviewer 和 decay scan 对照代码核验**（工具数、版本号）。改了工具集必须同步：
   - README.md / README.en.md 的徽章行和目录树行
   - registry yml 的 en/zh description（需向上游提 PR）
-- 当前计数基准：34 个工具（router 4 + tool_memory 1 + 案件生命周期 5（含 save_evidence）+ 领域 23 + `team_dispatch` 1；create_case 已废弃）。核对方法：`pnpm test:checks` 里的 `tool-catalog` 检查——它读本行声明的数字与 mock-ctx 实际注册名比对，不一致即红（改工具集而忘了改文档会当场失败）。
+- 当前计数基准：37 个工具（router 4 + tool_memory 1 + 案件生命周期 5（含 save_evidence）+ 领域 23 + team 4：dispatch/create/status/report；create_case 已废弃）。核对方法：`pnpm test:checks` 里的 `tool-catalog` 检查——它读本行声明的数字与 mock-ctx 实际注册名比对，不一致即红（改工具集而忘了改文档会当场失败）。
 - fork `ADWMC/awesome-dsh-plugin`：PR 合并后即可删（`gh repo delete --yes`）；再提 PR 时重新 fork 即可
 
 ### 4.1 各商店收录台账（2026-09-14/15，v0.3.1）

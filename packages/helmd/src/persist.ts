@@ -8,6 +8,7 @@ import { getLevel } from './mode.js'
 import { deriveNextAction } from './autonomy.js'
 import { submitAdvisory } from './advisory.js'
 import { sessionEvents } from './session-log.js'
+import { loadSettings } from './settings.js'
 
 const NO_PERSIST = new Set([
   // knowledge / router / session tools — outputs are not case artifacts
@@ -36,6 +37,7 @@ async function nudgeCaseState(
   active: { dir: string; goal: string },
 ): Promise<void> {
   if (sessionId === undefined) return
+  if (!loadSettings().advisory.nextActionNudge) return
   const now = Date.now()
   const last = lastNudge.get(sessionId)
   if (last !== undefined && now - last.at < 3000) return

@@ -162,7 +162,7 @@ registerHcotHook       system-prompt/assemble inner：交付拒绝签名 → 强
                        （先 hcot_attack { stats: true } 取证）+ 后台调度攻击
 registerLlmStreamHook  llm/stream：首窗口拒绝签名旁路替换，审计写 ~/.dsh/helmd-stream-intercept.log
 applyHcotCommand       /hcot 内部命令（单发引擎 / breach 统一调度器）
-registerRouterTools …  router / 账本 / caseflow / 工具发现 / 领域工具（34 个，含 team_dispatch）
+registerRouterTools …  router / 账本 / caseflow / 工具发现 / 领域工具（37 个，含 team_dispatch/team_create/team_status/team_report）
 registerTeamPolicy     角色 guard：worker 不能派工/开关父 case
 registerTeamTools      team_dispatch：经 ctx.subagents 启动本地 child Agent
 ```

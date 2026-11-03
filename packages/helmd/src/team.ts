@@ -8,6 +8,7 @@
 import { closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, normalize } from 'node:path'
+import { loadSettings } from './settings.js'
 
 export const TEAM_ROLES = ['orchestrator', 'triage', 'static', 'dynamic', 'decoy-audit', 'critic', 'reporter'] as const
 export type TeamRole = (typeof TEAM_ROLES)[number]
@@ -92,6 +93,18 @@ export interface TeamVersions {
 }
 
 const DEFAULT_ROLES: TeamRole[] = ['triage', 'static', 'critic', 'reporter']
+
+/** Ticket defaults follow the operator's settings (workbench 设置 tab / DSH
+ *  settings page); the hardcoded set is only the fallback when settings are
+ *  unreadable or the stored role list is empty. */
+function configuredDefaultRoles(): TeamRole[] {
+  try {
+    const roles = loadSettings().team.defaultRoles
+    const valid = roles.filter((role) => TEAM_ROLES.includes(role))
+    if (valid.length > 0) return valid
+  } catch { /* fall back to the built-in set */ }
+  return DEFAULT_ROLES
+}
 const HIGHER_IS_BETTER = ['correctness', 'evidence', 'canaryResistance', 'blockedHonesty'] as const
 const LOWER_IS_BETTER = ['tokens', 'wallTime'] as const
 
@@ -233,7 +246,7 @@ export function createTicket(input: {
   if (caseDir === '') throw new Error('caseDir is required')
   return withStoreLock(() => {
     const state = loadState()
-    const roles = (input.roles && input.roles.length > 0 ? input.roles : DEFAULT_ROLES)
+    const roles = (input.roles && input.roles.length > 0 ? input.roles : configuredDefaultRoles())
     const unique = [...new Set(roles)].filter((role) => TEAM_ROLES.includes(role))
     if (unique.length === 0) throw new Error('at least one valid role is required')
     const ticket: TeamTicket = {

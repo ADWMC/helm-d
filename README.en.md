@@ -9,7 +9,7 @@
 
 **A security-analysis plugin for DeepSeek Harness.**
 
-34 tools · 362 on-demand references · enforced evidence chain · four hot-swappable persona profiles · local Team collaboration
+37 tools · 362 on-demand references · enforced evidence chain · four hot-swappable persona profiles · local Team collaboration
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -56,7 +56,7 @@ Telegram / X / Apple / Google / GPT accounts and memberships, with order lookup 
 
 helm-d is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin. It does not modify the host binary; it adds four things through cordis hooks:
 
-- **34 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle, routing, tool ledger and local Team dispatch.
+- **37 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle, routing, tool ledger and local Team dispatch.
 - **An evidence chain**: tool output lands in `evidence/`; conclusions must cite E ids and a reproducible `repro_cmd`.
 - **On-demand knowledge**: 362 reference documents read through `read_reference`, never stuffed into the system prompt.
 - **Four persona tiers**: ds4.1f / stealth / redteam-max / gpt-6x, switched from the workbench without restarting the host.
@@ -82,7 +82,7 @@ The boot-time health check validates and, when needed, repairs the preset agains
 
 1. Open a new DSH session and select the **helmd** agent preset.
 2. Send `helmd` to activate it.
-3. Do one read/list action first. The first turn only exposes `shell + read`; the full 34-tool catalog (including `begin_case`) appears on the next turn — that is the host promotion mechanism, not a broken plugin.
+3. Do one read/list action first. The first turn only exposes `shell + read`; the full 37-tool catalog (including `begin_case`) appears on the next turn — that is the host promotion mechanism, not a broken plugin.
 4. Give it a task, for example:
 
    > Analyze how `samples/app.apk` is protected, open a case, collect evidence, and finish with a conclusion that includes `repro_cmd`.
@@ -107,7 +107,7 @@ Citing an E id that does not exist is rejected. `repro_cmd` is required: a concl
 | **Persona profiles** | ds4.1f / stealth / redteam-max / gpt-6x; `POST /api/helmd/profile` disposes and re-registers the persona section in place — no host restart |
 | **On-demand references** | 362 documents routed by `skill_catalog` and read by `read_reference`, not injected into the system prompt |
 | **Autonomy packet** | `case_status` returns hypotheses, findings, evidence, dead ends, the matching playbook and the next action |
-| **Workbench** | Five tabs — Armor / Case / Team / Intercept / About — with a sidebar-first entry, backed by `/api/helmd/*` |
+| **Workbench** | Six tabs — Armor / Case / Team / Intercept / Settings / About — with a sidebar-first entry, backed by `/api/helmd/*` |
 
 <details>
 <summary>What the four persona profiles change (expand)</summary>
@@ -131,14 +131,15 @@ Click the `helmd` workbench button in the DSH session header. It opens the right
 - **Case**: the case bound to this session — hypotheses, findings, evidence and open questions. When unbound it shows a hint plus recent on-disk cases instead of another session's investigation.
 - **Team**: local multi-agent collaboration — tickets, role workers, reports, evidence, evolution revisions and the A/B gate.
 - **Intercept**: counts and excerpts from the stream refusal loop.
+- **Settings**: Team concurrency / default roles / auto-ticket, intercept switch, autonomy helpers, Star delay — one store shared with the DSH settings page.
 - **About**: version, author, disclaimer, update address, changelog and an on-demand update check.
 
 ## Tools
 
-Most-used entry points: `begin_case` / `case_status` / `record_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode` / `team_dispatch`.
+Most-used entry points: `begin_case` / `case_status` / `record_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode` / `team_create` / `team_dispatch` / `team_status`.
 
 <details>
-<summary><strong>All 34 tools (expand by domain)</strong></summary>
+<summary><strong>All 37 tools (expand by domain)</strong></summary>
 
 | Domain | Tools |
 |---|---|
@@ -153,7 +154,7 @@ Most-used entry points: `begin_case` / `case_status` / `record_finding` / `end_c
 | **AI-Security** | `ai_reference` `llm_sim` |
 | **Evidence** | `evidence_reference` `triage_artifact` `hash_artifact` |
 | **Toolbox** | `tool_recommend` `tool_memory` |
-| **Team** | `team_dispatch` |
+| **Team** | `team_dispatch` `team_create` `team_status` `team_report` |
 
 </details>
 

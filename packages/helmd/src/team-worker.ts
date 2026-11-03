@@ -16,10 +16,20 @@ import {
   activeRevision, assignRole, getTicket, listRevisions, pinArtifactRevisions,
   recordReport, type ArtifactKind, type ReportState, type TeamReport, type TeamRole,
 } from './team.js'
+import { loadSettings } from './settings.js'
 
 const ARTIFACT_KINDS: ArtifactKind[] = ['role-prompt', 'playbook', 'skill', 'model-profile', 'budget-policy', 'tool-policy']
-const DEFAULT_WALL_TIME_MS = 15 * 60 * 1000
 const MAX_WALL_TIME_MS = 60 * 60 * 1000
+
+/** Default budget follows the operator settings (minutes), clamped to the
+ *  hard ceiling; the budget-policy artifact still overrides per ticket. */
+function defaultWallTimeMs(): number {
+  try {
+    return Math.min(MAX_WALL_TIME_MS, loadSettings().team.defaultWallTimeMin * 60 * 1000)
+  } catch {
+    return 15 * 60 * 1000
+  }
+}
 const DEFAULT_ROLE_PROMPTS: Record<TeamRole, string> = {
   orchestrator: [
     'You are the orchestrator. Decompose the goal, dispatch role workers, and merge their reports.',
@@ -293,14 +303,14 @@ function parseModelProfile(value: string | undefined): TeamActivationSpec['reque
 }
 
 function parseBudget(value: string | undefined): number {
-  if (value === undefined) return DEFAULT_WALL_TIME_MS
+  if (value === undefined) return defaultWallTimeMs()
   try {
     const parsed: unknown = JSON.parse(value)
     if (parsed !== null && typeof parsed === 'object' && typeof (parsed as { wallTimeMs?: unknown }).wallTimeMs === 'number') {
       return Math.max(1000, Math.min(MAX_WALL_TIME_MS, (parsed as { wallTimeMs: number }).wallTimeMs))
     }
   } catch { /* plain text budget falls back to the default */ }
-  return DEFAULT_WALL_TIME_MS
+  return defaultWallTimeMs()
 }
 
 /** Start one local child Agent for a ticket role. The returned completion is
@@ -313,6 +323,11 @@ export async function startTeamWorker(input: StartWorkerInput): Promise<StartedW
   const assignment = ticket.roles.find((role) => role.role === input.role)
   if (assignment === undefined) throw new Error(`role ${input.role} is not part of ticket ${ticket.id}`)
   if (assignment.state === 'running') throw new Error(`role ${input.role} is already running in ticket ${ticket.id}`)
+  const running = ticket.roles.filter((role) => role.state === 'running').length
+  const maxParallel = loadSettings().team.maxParallelWorkers
+  if (running >= maxParallel) {
+    throw new Error(`team concurrency limit reached: ${running}/${maxParallel} workers already running in ticket ${ticket.id}`)
+  }
 
   const { agents, subagents } = resolveRuntime(input)
   if (subagents === undefined) throw new Error('host subagent service is unavailable; cannot start a local worker')

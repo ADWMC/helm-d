@@ -1,0 +1,126 @@
+// Operator settings for helm-d runtime features.
+//
+// One store, two editors: the DSH settings page edits the composition row's
+// Config (applied at boot by the host row), and the workbench 设置 tab edits
+// this file directly through /api/helmd/settings. Boot always merges the row
+// config over the file, so the official settings form wins after a restart;
+// the workbench wins for the running process.
+//
+// Every consumer reads through loadSettings() so a missing/corrupt file falls
+// back to defaults instead of disabling the feature.
+
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { dirname, join, normalize } from 'node:path'
+import { TEAM_ROLES, type TeamRole } from './team.js'
+
+export interface HelmdSettings {
+  team: {
+    /** begin_case 也自动开一个 team ticket。 */
+    autoTicket: boolean
+    defaultRoles: TeamRole[]
+    /** 每 ticket 同时运行的 worker 上限。 */
+    maxParallelWorkers: number
+    /** 无 budget-policy artifact 时的默认 worker 超时（分钟）。 */
+    defaultWallTimeMin: number
+  }
+  intercept: {
+    /** 流式拒绝拦截总开关（等价 HELMD_STREAM_MODE=off）。 */
+    enabled: boolean
+  }
+  advisory: {
+    /** case_status 是否附 [autonomy] 状态包。 */
+    autonomyPacket: boolean
+    /** 工具结果后的 L4-lite 下一步建议。 */
+    nextActionNudge: boolean
+  }
+  star: {
+    /** Star 弹窗延迟秒数。 */
+    popupDelaySec: number
+  }
+}
+
+export const DEFAULT_SETTINGS: HelmdSettings = {
+  team: {
+    autoTicket: false,
+    defaultRoles: ['triage', 'static', 'critic', 'reporter'],
+    maxParallelWorkers: 4,
+    defaultWallTimeMin: 15,
+  },
+  intercept: { enabled: true },
+  advisory: { autonomyPacket: true, nextActionNudge: true },
+  star: { popupDelaySec: 2 },
+}
+
+type Mutable<T> = { -readonly [K in keyof T]: T[K] }
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return fallback
+  return Math.max(min, Math.min(max, Math.trunc(n)))
+}
+
+function clampBool(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback
+}
+
+function normalizeSettings(raw: unknown): HelmdSettings {
+  const src = (raw !== null && typeof raw === 'object' ? raw : {}) as Record<string, any>
+  const team = (src.team !== null && typeof src.team === 'object' ? src.team : {}) as Record<string, any>
+  const intercept = (src.intercept !== null && typeof src.intercept === 'object' ? src.intercept : {}) as Record<string, any>
+  const advisory = (src.advisory !== null && typeof src.advisory === 'object' ? src.advisory : {}) as Record<string, any>
+  const star = (src.star !== null && typeof src.star === 'object' ? src.star : {}) as Record<string, any>
+  const roles = Array.isArray(team.defaultRoles)
+    ? [...new Set(team.defaultRoles.map(String))].filter((role): role is TeamRole => (TEAM_ROLES as readonly string[]).includes(role))
+    : []
+  const d = DEFAULT_SETTINGS
+  return {
+    team: {
+      autoTicket: clampBool(team.autoTicket, d.team.autoTicket),
+      defaultRoles: roles.length > 0 ? roles : [...d.team.defaultRoles],
+      maxParallelWorkers: clampNumber(team.maxParallelWorkers, 1, 8, d.team.maxParallelWorkers),
+      defaultWallTimeMin: clampNumber(team.defaultWallTimeMin, 1, 60, d.team.defaultWallTimeMin),
+    },
+    intercept: { enabled: clampBool(intercept.enabled, d.intercept.enabled) },
+    advisory: {
+      autonomyPacket: clampBool(advisory.autonomyPacket, d.advisory.autonomyPacket),
+      nextActionNudge: clampBool(advisory.nextActionNudge, d.advisory.nextActionNudge),
+    },
+    star: { popupDelaySec: clampNumber(star.popupDelaySec, 0, 60, d.star.popupDelaySec) },
+  }
+}
+
+/** $DSH_HOME/storages/helmd/settings.json */
+export function settingsPath(): string {
+  const home = process.env.DSH_HOME?.trim() || join(homedir(), '.dsh')
+  return normalize(join(home, 'storages', 'helmd', 'settings.json'))
+}
+
+export function loadSettings(): HelmdSettings {
+  try {
+    return normalizeSettings(JSON.parse(readFileSync(settingsPath(), 'utf8')))
+  } catch {
+    return structuredClone(DEFAULT_SETTINGS) as Mutable<HelmdSettings>
+  }
+}
+
+/** Deep-merge a patch over the stored settings, clamp, and persist. */
+export function saveSettings(patch: unknown): HelmdSettings {
+  const current = loadSettings() as Mutable<HelmdSettings>
+  const src = (patch !== null && typeof patch === 'object' ? patch : {}) as Record<string, any>
+  const merged = {
+    team: { ...current.team, ...(src.team !== null && typeof src.team === 'object' ? src.team : {}) },
+    intercept: { ...current.intercept, ...(src.intercept !== null && typeof src.intercept === 'object' ? src.intercept : {}) },
+    advisory: { ...current.advisory, ...(src.advisory !== null && typeof src.advisory === 'object' ? src.advisory : {}) },
+    star: { ...current.star, ...(src.star !== null && typeof src.star === 'object' ? src.star : {}) },
+  }
+  const next = normalizeSettings(merged)
+  try {
+    const path = settingsPath()
+    mkdirSync(dirname(path), { recursive: true })
+    const temp = `${path}.${process.pid}.tmp`
+    writeFileSync(temp, JSON.stringify(next, null, 2), 'utf8')
+    renameSync(temp, path)
+  } catch { /* read-only home: the merged value still governs this process */ }
+  return next
+}

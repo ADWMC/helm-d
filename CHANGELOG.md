@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+### 团队与设置
+
+- **Team 模型侧闭环**：新增 `team_create` / `team_status` / `team_report` 三个工具，补上「模型只能 dispatch、建单却只能靠 UI」的断点；`team_dispatch` 仍只允许 orchestrator，worker 可用 `team_report` 汇报中间结果/阻塞。工具数 34 → 37
+- **Team UI 建单解耦**：Team tab 支持未绑定 case 时直接填 goal 新建 ticket（落到 `storages/helmd/team/standalone`）、勾选角色；不再强制先 begin_case
+- **设置面**：`health.ts` 导出组合行 Config schema——DSH 设置页自动出现 helm-d 表单；工作台新增「设置」tab（`/api/helmd/settings`），与设置页同写 `storages/helmd/settings.json`（设置页改动在重启时并入）
+- **设置项接线**：Team（begin_case 自动建单、默认角色集、每 ticket 并发上限 1-8、默认 worker 超时分钟）、拦截总开关、`[autonomy]` 状态包开关、L4-lite 建议开关、Star 弹窗延迟——全部生效于运行中的宿主，不再只有环境变量
+- **新增 settings 检查**（默认值/合并/clamp/并发上限生效），检查集 24 → 25 项
+
 ## [0.5.3] — 2026-11-03（AGPL + 四档 + 本地 Team 协作 + Issue #5 收口）
 
 本版把许可与免责声明改成 AGPL-3.0-or-later 并补齐三大法域要点；主档改名 `ds4.1f` 并新增第四档 `gpt-6x`；把本地多 agent 协作协议从「工单状态机」补成可运行的 worker 会话 + Team 工作台 + A/B 进化门禁；发布资产改用版本化 URL 收口 Issue #5。分发形态不变：payload / references / profiles 全封印，release 资产仍是 3 个 tgz。

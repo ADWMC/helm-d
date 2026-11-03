@@ -18,6 +18,8 @@ import { renderAdvisoryStats } from '../advisory.js'
 import { getStreamInterceptionStats } from '../llm-stream-hook.js'
 import { deadEndsSummary } from '../ledger.js'
 import { renderAutonomyPacket } from '../autonomy.js'
+import { loadSettings } from '../settings.js'
+import { createTicket } from '../team.js'
 
 interface ExecLike {
   agent?: {
@@ -87,9 +89,22 @@ export function registerCaseflowTools(ctx: Context): void {
         root: effectiveRoot,
       })
       bindCase(exec?.agent?.id, info)
+      // Optional team hook: settings.team.autoTicket opens a ticket per case so
+      // the model can dispatch immediately. Best-effort — a team failure must
+      // never block opening the case.
+      let teamNote = ''
+      if (loadSettings().team.autoTicket) {
+        try {
+          const ticket = createTicket({ goal: args.goal ?? info.goal, caseDir: info.dir })
+          teamNote = `team ticket: ${ticket.id} (${ticket.roles.map((r) => r.role).join(', ')}) — dispatch with team_dispatch`
+        } catch (error) {
+          teamNote = `team ticket: skipped (${error instanceof Error ? error.message : String(error)})`
+        }
+      }
       return [
         `case opened: ${info.dir}`,
         `mode: ${mode}`,
+        ...(teamNote !== '' ? [teamNote] : []),
         '',
         RULES,
       ].join('\n')
@@ -168,14 +183,16 @@ export function registerCaseflowTools(ctx: Context): void {
       const hypotheses = await loadHypotheses(active.dir)
       const findings = await loadFindings(active.dir)
       const evidence = await listEvidence(active.dir)
-      const packet = renderAutonomyPacket({
-        mode: getLevel(exec?.agent?.id),
-        goal: active.goal,
-        hypotheses,
-        findings,
-        evidence,
-        deadEnds: deadEndsSummary(3),
-      })
+      const packet = loadSettings().advisory.autonomyPacket
+        ? renderAutonomyPacket({
+          mode: getLevel(exec?.agent?.id),
+          goal: active.goal,
+          hypotheses,
+          findings,
+          evidence,
+          deadEnds: deadEndsSummary(3),
+        })
+        : ''
 
       return [
         `case: ${active.name}`,
@@ -187,8 +204,7 @@ export function registerCaseflowTools(ctx: Context): void {
         timeline || '  (empty)',
         looseNotice,
         ...(resume ? ['', resume] : []),
-        '',
-        packet,
+        ...(packet !== '' ? ['', packet] : []),
         '',
         RULES,
         ...(renderAdvisoryStats() ? ['', renderAdvisoryStats()] : []),

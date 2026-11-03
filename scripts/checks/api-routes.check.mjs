@@ -22,7 +22,7 @@ process.env.HELMD_CASES_DIR = mkdtempSync(join(tmpdir(), 'helmd-api-cases-'))
 const report = createReporter('api-routes')
 
 const ROUTE_BASE = '/api/helmd'
-const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry']
+const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry', 'settings']
 
 /** Registry contents, reachable only through register/schemas — no layer internals. */
 const registered = []
@@ -257,6 +257,19 @@ await report.check('POST /team starts a local worker and records its report', as
   assert.equal(ticket.roles[0].sessionId, 'sess-api-worker')
   assert.equal(ticket.reports.at(-1).summary, 'api worker')
   assert.equal(ticket.reports.at(-1).source, 'worker')
+})
+
+await report.check('GET/POST /settings round-trips and clamps through the store', async () => {
+  const initial = await call(`${ROUTE_BASE}/settings`)
+  assert.equal(initial.status, 200)
+  assert.equal(initial.payload.data.intercept.enabled, true)
+  const saved = await post(`${ROUTE_BASE}/settings`, { star: { popupDelaySec: 9 }, team: { maxParallelWorkers: 2 } })
+  assert.equal(saved.status, 200)
+  assert.equal(saved.payload.data.star.popupDelaySec, 9)
+  assert.equal(saved.payload.data.team.maxParallelWorkers, 2)
+  assert.equal(saved.payload.data.intercept.enabled, true, 'untouched group survives the patch')
+  const onDisk = JSON.parse(readFileSync(join(process.env.DSH_HOME, 'storages', 'helmd', 'settings.json'), 'utf8'))
+  assert.equal(onDisk.star.popupDelaySec, 9)
 })
 
 report.finish()

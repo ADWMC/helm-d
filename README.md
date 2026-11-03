@@ -9,7 +9,7 @@
 
 **DeepSeek Harness 的破甲安全分析插件。**
 
-34 个工具 · 362 篇按需参考 · 证据链强制入链 · 四档破甲热切换 · 本地 Team 协作
+37 个工具 · 362 篇按需参考 · 证据链强制入链 · 四档破甲热切换 · 本地 Team 协作
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -56,7 +56,7 @@ Telegram / 推特 / 苹果 / 谷歌 / GPT 账号与会员，支持查单与售�
 
 helm-d 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的插件，不修改宿主二进制，通过 cordis 钩子给模型加四样东西：
 
-- **34 个工具**：Android / Web / Native / Protocol / Malware / AI-Security，加上 Case 生命周期、路由、工具账本与本地 Team 调度。
+- **37 个工具**：Android / Web / Native / Protocol / Malware / AI-Security，加上 Case 生命周期、路由、工具账本与本地 Team 调度。
 - **证据链**：工具输出自动落 `evidence/`，结论必须引用 E 编号和可复现的 `repro_cmd`。
 - **按需知识**：362 篇参考文档由 `read_reference` 读取，不塞进 system prompt。
 - **四档破甲**：ds4.1f / stealth / redteam-max / gpt-6x，工作台一键热切换，下一次模型调用生效。
@@ -82,7 +82,7 @@ dsh web
 
 1. 新建 DSH 会话，把 Agent 预设切到 **helmd**。
 2. 发送 `helmd` 激活。
-3. 先做一个读文件/列目录动作。首轮只暴露 `shell + read`，下一轮 34 个工具（含 `begin_case`）才会出现——这是宿主晋升机制，不是插件坏了。
+3. 先做一个读文件/列目录动作。首轮只暴露 `shell + read`，下一轮 37 个工具（含 `begin_case`）才会出现——这是宿主晋升机制，不是插件坏了。
 4. 直接下任务，例如：
 
    > 分析 `samples/app.apk` 的加固方式，建 case、收集证据，最后给出带 `repro_cmd` 的结论。
@@ -107,7 +107,7 @@ begin_case(goal, samples)
 | **四档破甲** | ds4.1f / stealth / redteam-max / gpt-6x，`POST /api/helmd/profile` 原地重注册 persona section，无需重启 |
 | **按需参考** | 362 篇文档，`skill_catalog` 路由、`read_reference` 按需读取，不占 system prompt |
 | **自主状态包** | `case_status` 返回假设链、findings、证据、dead ends、匹配 playbook、下一步建议 |
-| **工作台** | 破甲 / Case / Team / 拦截 / 关于五个 tab，侧边栏入口，数据走 `/api/helmd/*` |
+| **工作台** | 破甲 / Case / Team / 拦截 / 设置 / 关于六个 tab，侧边栏入口，数据走 `/api/helmd/*` |
 
 <details>
 <summary>四档破甲的区别（展开）</summary>
@@ -131,14 +131,15 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 - **Case**：当前会话绑定的 case——假设链、结论、证据列表、未决假设；未绑定时显示提示与磁盘最近 case，不再自动展示别的会话。
 - **Team**：本地多 agent 协作——ticket、角色 worker、报告、证据、evolution revision 与 A/B gate。
 - **拦截**：流式拒绝拦截的计数与摘录。
+- **设置**：Team 并发/默认角色/自动建单、拦截开关、自主辅助、Star 延迟——与 DSH 设置页同源。
 - **关于**：版本、作者、免责声明、更新地址、更新日志与“检查更新”。
 
 ## 工具
 
-最常用的入口：`begin_case` / `case_status` / `record_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode` / `team_dispatch`。
+最常用的入口：`begin_case` / `case_status` / `record_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode` / `team_create` / `team_dispatch` / `team_status`。
 
 <details>
-<summary><strong>34 个工具（按域展开）</strong></summary>
+<summary><strong>37 个工具（按域展开）</strong></summary>
 
 | 域 | 工具 |
 |----|------|
@@ -153,7 +154,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 | **AI-Security** | `ai_reference` `llm_sim` |
 | **Evidence** | `evidence_reference` `triage_artifact` `hash_artifact` |
 | **Toolbox** | `tool_recommend` `tool_memory` |
-| **Team** | `team_dispatch` |
+| **Team** | `team_dispatch` `team_create` `team_status` `team_report` |
 
 </details>
 

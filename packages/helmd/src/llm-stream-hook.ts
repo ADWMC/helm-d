@@ -41,6 +41,7 @@ import { appendFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { safeService } from './seam.js'
+import { loadSettings } from './settings.js'
 import {
   buildRoutedMessages,
   classifyRefusal,
@@ -532,7 +533,10 @@ export function registerLlmStreamHook(ctx: Context): void {
   if (typeof host?.on !== 'function') return
 
   host.on('llm/stream', async function* (options: any, next: () => AsyncIterable<Chunk>) {
-    if (MODE === 'off') {
+    // Operator settings win over the env default: the 设置 tab / DSH settings
+    // page can turn interception off for the running host.
+    const mode = loadSettings().intercept.enabled ? MODE : 'off'
+    if (mode === 'off') {
       yield* next()
       return
     }
@@ -557,7 +561,7 @@ export function registerLlmStreamHook(ctx: Context): void {
     }
 
     // always 模式：attempt 0 不透传宿主原请求，直接以 prefill 形态重入（破坏 tool-call 轮，需自担）
-    if (attempt === 0 && MODE === 'always') {
+    if (attempt === 0 && mode === 'always') {
       yield* streamNested(1, 'scope_refusal')
       return
     }
