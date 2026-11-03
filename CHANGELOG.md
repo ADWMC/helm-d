@@ -10,8 +10,6 @@
 
 - **`HELMD_BOOTSTRAP=off` 逃生阀**：插件以宿主级 scope 挂载（headless / 自动化工装）时，晋升监听不触发、会话会钉死在 `shell+read`——新增环境开关跳过首轮过滤，直接暴露全量编目；真机三轮实机冒烟据此打通（web preset 作用域不受影响）
 - **接入宿主原生 agent-team**：preset 内挂 `tool-agent-team`（spawn_teammate / send_message / list_agents / wait_agent / interrupt_agent / team_task_* 九个原生工具 + 自带协作契约段），组合顶层挂 `agent-team` 服务（maxMembers 8）；只影响 helmd 会话，非 helmd 零泄漏。命名可续 teammate、durable 信箱、共享任务 DAG 全部原生
-
-- **接入宿主原生 agent-team**：preset 内挂 `tool-agent-team`（spawn_teammate / send_message / list_agents / wait_agent / interrupt_agent / team_task_* 九个原生工具 + 自带协作契约段），组合顶层挂 `agent-team` 服务（maxMembers 8）；只影响 helmd 会话，非 helmd 零泄漏。命名可续 teammate、durable 信箱、共享任务 DAG 全部原生
 - **编排契约**：新增 `helmd:team-loop` systemPrompt context——事件驱动（worker 完成自动唤醒 orchestrator，禁止轮询/空等）、原生轨与 ticket 轨的分工、证据纪律、阻塞显式上报
 - **角色依赖 DAG**：`TeamTicket.roleDeps`（如 critic 等 static+dynamic），`team_dispatch` 强制门禁，team_status 与工作台显示 waits
 - **修 test:preset 历史遗留**：persona 封印化后 `test-gen-preset` 的明文锚点失效（HEAD 上即红）；改为断言空 prefix + 无明文泄漏，并同步 tool-agent-team 行期望。生成器断言与健康断言同步新行集
