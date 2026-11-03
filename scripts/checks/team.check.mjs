@@ -203,5 +203,24 @@ await report.check('local eval harness computes the six gate metrics and compare
   assert.ok(comparison.candidate.tokens < comparison.baseline.tokens)
 })
 
+
+await report.check('standalone tickets get a case scaffold so worker evidence tools work', () => {
+  const dir = join(home, 'scaffold-case')
+  const ticket = team.createTicket({ goal: 'scaffold', caseDir: dir, roles: ['triage'] })
+  assert.equal(ticket.state, 'open')
+  assert.equal(existsSync(join(dir, 'CASE.md')), true, 'CASE.md must exist for session binding readers')
+  assert.equal(existsSync(join(dir, 'evidence')), true, 'evidence dir must exist for save_evidence')
+  assert.match(readFileSync(join(dir, 'CASE.md'), 'utf8'), /goal: scaffold/)
+})
+
+await report.check('exact duplicate reports are dropped, distinct ones kept', () => {
+  const ticket = team.createTicket({ goal: 'dedupe', caseDir: join(home, 'dedupe-case'), roles: ['triage'] })
+  team.recordReport({ ticketId: ticket.id, role: 'triage', state: 'ready', summary: 'same content', evidenceIds: ['E-001'] })
+  team.recordReport({ ticketId: ticket.id, role: 'triage', state: 'ready', summary: 'same content', evidenceIds: ['E-001'] })
+  const updated = team.recordReport({ ticketId: ticket.id, role: 'triage', state: 'ready', summary: 'different content' })
+  const triageReports = updated.reports.filter((r) => r.role === 'triage')
+  assert.equal(triageReports.length, 2, 'exact duplicate dropped, distinct kept')
+})
+
 rmSync(home, { recursive: true, force: true })
 report.finish()

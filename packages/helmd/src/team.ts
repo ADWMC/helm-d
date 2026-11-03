@@ -5,7 +5,7 @@
 // an eval gate. Worker session spawning, sandboxing and benchmark execution are
 // separate adapters so the protocol stays testable without a DSH host.
 
-import { closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, normalize } from 'node:path'
 import { loadSettings } from './settings.js'
@@ -238,6 +238,37 @@ export function pinArtifactRevisions(ticketId: string, revisions: Record<string,
   })
 }
 
+/** Ensure the ticket workspace is a usable case: standalone tickets get the
+ *  same CASE.md + evidence/ skeleton begin_case would create, so worker
+ *  evidence tools and the session-binding reader (which requires CASE.md)
+ *  work instead of surfacing ENOENT. Never touches an existing case. */
+function scaffoldCaseDir(caseDir: string, goal: string): void {
+  try {
+    if (existsSync(join(caseDir, 'CASE.md'))) return
+    mkdirSync(join(caseDir, 'evidence'), { recursive: true })
+    writeFileSync(
+      join(caseDir, 'CASE.md'),
+      [
+        'status: open',
+        `goal: ${goal}`,
+        'mode: full',
+        'route: team',
+        '',
+        '## timeline',
+        `- [${now()}] ticket workspace scaffolded (team)`,
+        '',
+        '## resume',
+        '- workspace created by the team rail; workers report through the ticket',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+  } catch {
+    // A read-only workspace must not block ticket creation; workers degrade to
+    // text-only reports and the orchestrator sees it in their summaries.
+  }
+}
+
 export function createTicket(input: {
   goal: string
   caseDir: string
@@ -250,6 +281,7 @@ export function createTicket(input: {
   const caseDir = input.caseDir.trim()
   if (goal === '') throw new Error('goal is required')
   if (caseDir === '') throw new Error('caseDir is required')
+  scaffoldCaseDir(caseDir, goal)
   return withStoreLock(() => {
     const state = loadState()
     const roles = (input.roles && input.roles.length > 0 ? input.roles : configuredDefaultRoles())
@@ -306,6 +338,13 @@ export function recordReport(input: {
   return updateTicket(input.ticketId, (ticket) => {
     const assignment = ticket.roles.find((item) => item.role === input.role)
     if (assignment === undefined) throw new Error(`role ${input.role} is not part of ticket ${input.ticketId}`)
+    // Workers both auto-record (final output) and may call team_report — the
+    // same content twice is noise, not signal. Drop an exact repeat of the
+    // role's latest report.
+    const last = [...ticket.reports].reverse().find((report) => report.role === input.role)
+    if (last !== undefined && last.state === input.state && last.summary === summary) {
+      return ticket
+    }
     const report: TeamReport = {
       id: nextId('R', ticket.reports),
       role: input.role,
