@@ -588,8 +588,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     license: 'Apache-2.0',
     kind: 'pip',
     package: 'garak',
-    installHint: 'pip install garak',
-    usage: 'garak --model_type rest --model_name <endpoint>',
+    installHint: 'pip install "garak==0.17.0" (0.17.1 wheel 缺 probe 模块；或 git+https://github.com/NVIDIA/garak.git@main)',
+    usage: 'garak --target_type openai --target_name <model> --spec probes.encoding.InjectBase64 -g 1',
   },
 
   // General

@@ -114,7 +114,7 @@ const rules: Record<string, string> = {
   hollows: 'hollows_hunter https://github.com/hasherezade/hollows_hunter — 扫描进程 hollowing/injection | UI 工具页装 Windows 包 | hollows_hunter64.exe /loop',
 
   // 9. AI / LLM 安全
-  garak: 'garak https://github.com/NVIDIA/garak — LLM 漏洞/越狱扫描 | pip install garak | garak --model_type rest --model_name <endpoint>',
+  garak: 'garak https://github.com/NVIDIA/garak — LLM 漏洞/越狱扫描 | pip install "garak==0.17.0"（0.17.1 wheel 缺 probe 模块）| garak --target_type openai --target_name <model> --spec probes.encoding.InjectBase64 -g 1',
   jailbreak: '模型安全评测 -> references/ai-security/{model-security-analysis-guide,bypass-framework-matrix}.md；在自有测试样本上比较响应分类、拒答一致性和审计记录',
   llm: 'LLM 应用安全评测 -> garak + references/ai-security/ + llm_sim 工具',
 }
