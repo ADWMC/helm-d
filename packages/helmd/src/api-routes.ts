@@ -25,6 +25,8 @@ import {
 } from './team.js'
 import { startTeamWorker } from './team-worker.js'
 import { loadSettings, saveSettings } from './settings.js'
+import { TOOL_CATALOG, catalogEntry } from './toolbox/catalog.js'
+import { installCatalogTool, latestRelease, toolHealth, uninstallCatalogTool } from './toolbox/installer.js'
 
 const ROUTE_BASE = '/api/helmd'
 
@@ -157,6 +159,53 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
   get(`${ROUTE_BASE}/tools`, () => {
     const tools = (ctx as any).tools as { schemas(): Array<{ name: string }> }
     return tools.schemas().map((schema) => schema.name).sort()
+  })
+
+  // External-tool catalog: bundled entries only (GitHub-verified), plus the
+  // local install/health projection. No arbitrary URLs.
+  get(`${ROUTE_BASE}/tools/catalog`, () => {
+    return TOOL_CATALOG.map((entry) => ({ ...entry, health: toolHealth(entry.id) }))
+  })
+
+  // Release assets for the operator's asset picker (network, on demand).
+  get(`${ROUTE_BASE}/tools/releases`, async (req) => {
+    const id = queryParam(req, 'id') ?? ''
+    const entry = catalogEntry(id)
+    if (entry === undefined) throw new HttpError(400, `unknown catalog id: ${id || '(empty)'}`)
+    if (entry.kind !== 'release') throw new HttpError(400, `${entry.name} is a ${entry.kind} tool; no release assets`)
+    try {
+      return await latestRelease(entry)
+    } catch (error) {
+      throw new HttpError(400, error instanceof Error ? error.message : String(error))
+    }
+  })
+
+  // Operator install/uninstall. The model-facing toolbox tool is separately
+  // gated by settings.toolbox.modelInstall; these routes are the operator path.
+  route(`${ROUTE_BASE}/tools/install`, async (req) => {
+    if (String(req?.method ?? 'GET').toUpperCase() !== 'POST') throw new HttpError(405, 'POST required')
+    requireJson(req)
+    const body = await readJsonBody(req) as { id?: unknown; assetName?: unknown } | undefined
+    const id = typeof body?.id === 'string' ? body.id.trim() : ''
+    if (id === '') throw new HttpError(400, 'body must be JSON: {"id":"<catalog-id>","assetName":"..."}')
+    try {
+      return await installCatalogTool(id, typeof body?.assetName === 'string' ? body.assetName : undefined)
+    } catch (error) {
+      throw new HttpError(400, error instanceof Error ? error.message : String(error))
+    }
+  })
+
+  route(`${ROUTE_BASE}/tools/uninstall`, async (req) => {
+    if (String(req?.method ?? 'GET').toUpperCase() !== 'POST') throw new HttpError(405, 'POST required')
+    requireJson(req)
+    const body = await readJsonBody(req) as { id?: unknown } | undefined
+    const id = typeof body?.id === 'string' ? body.id.trim() : ''
+    if (id === '') throw new HttpError(400, 'body must be JSON: {"id":"<catalog-id>"}')
+    try {
+      return uninstallCatalogTool(id)
+    } catch (error) {
+      throw new HttpError(400, error instanceof Error ? error.message : String(error))
+    }
   })
 
   // Stream interception stats

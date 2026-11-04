@@ -256,9 +256,10 @@
 | 团队接入 | static worker 产 candidate，critic 复核，dynamic 执行 PoC（T-15） | `team-worker` prompt + `team.ts` | 真机：static→critic→dynamic 链 |
 | 非目标 | 不做全量 SAST/符号执行；不做网络 fuzz；不引入外部扫描器二进制 | — | — |
 
-### T-17 工具下载器 + 工具注册表（P1，待批准）
+### T-17 工具下载器 + 工具注册表（P1，MVP 已落地 2026-11-04）
 
-**定位**：**catalog-driven installer（目录驱动安装器）**，不是"模型随便下工具"。用确定性的只读注册表替代已删除的 `tool_memory` 写账本。
+**状态**：T-17.1 catalog/registry、T-17.2 GitHub release 安装器（sha256 必填/抗 symlink/版本隔离）、T-17.3 WebUI「工具」tab、T-17.4 模型 `toolbox(action=catalog|status|install)` 已落地；模型安装默认 `toolbox.modelInstall=false`（仅操作者可在 UI 安装）；卸载已做，更新/离线镜像未做。
+**定位**：**catalog-driven installer（目录驱动安装器）**，不是"模型随便下工具"。catalog 只含已核实 GitHub 仓库的工具；无 GitHub 链接的 IDA/ExeinfoPE/gdb/nook 不入目录。
 
 | 子项 | 要求 | 落点 | 验收 |
 |---|---|---|---|

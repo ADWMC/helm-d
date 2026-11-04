@@ -161,16 +161,20 @@ function tunnelAgent(socket: TLSSocket): Agent {
   return agent
 }
 
-export async function requestText(
+export interface RawBufferResponse {
+  status: number
+  buffer: Buffer
+}
+
+/** Proxy-aware binary fetch; requestText is the UTF-8 view of this. */
+export async function requestBuffer(
   url: string,
   init: { method: string; headers: Record<string, string>; body?: string },
-): Promise<RawResponse> {
+): Promise<RawBufferResponse> {
   const target = new URL(url)
   const secure = target.protocol === 'https:'
   const port = Number(target.port || (secure ? 443 : 80))
   const path = `${target.pathname}${target.search}`
-  // GitHub REST API rejects requests without a User-Agent (403). Native fetch
-  // added one implicitly; http.request does not, so send it explicitly here.
   const headers: Record<string, string> = { 'user-agent': 'helm-d', host: target.host, ...init.headers }
   const proxy = resolveProxy(target.hostname)
   let agent: Agent | undefined
@@ -178,7 +182,7 @@ export async function requestText(
     const raw = await connectViaProxy(proxy, target.hostname, port)
     agent = tunnelAgent(secure ? await wrapTls(raw, target.hostname) : (raw as unknown as TLSSocket))
   }
-  return await new Promise<RawResponse>((resolve, reject) => {
+  return await new Promise<RawBufferResponse>((resolve, reject) => {
     const requestFn = secure ? httpsRequest : httpRequest
     const req = requestFn({
       host: target.hostname,
@@ -192,7 +196,7 @@ export async function requestText(
       const chunks: Buffer[] = []
       res.on('data', (chunk: Buffer) => chunks.push(chunk))
       res.once('end', () => {
-        resolve({ status: res.statusCode ?? 0, text: Buffer.concat(chunks).toString('utf8') })
+        resolve({ status: res.statusCode ?? 0, buffer: Buffer.concat(chunks) })
       })
       res.once('error', reject)
     })
@@ -201,6 +205,14 @@ export async function requestText(
     if (init.body !== undefined) req.write(init.body)
     req.end()
   })
+}
+
+export async function requestText(
+  url: string,
+  init: { method: string; headers: Record<string, string>; body?: string },
+): Promise<RawResponse> {
+  const response = await requestBuffer(url, init)
+  return { status: response.status, text: response.buffer.toString('utf8') }
 }
 
 const jsonHeaders = { accept: 'application/json', 'content-type': 'application/json' }

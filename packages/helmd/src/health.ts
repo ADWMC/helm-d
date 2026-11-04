@@ -60,6 +60,9 @@ export const Config = z.object({
   star: z.object({
     popupDelaySec: z.number().min(0).max(60).default(2).description('Star 弹窗延迟秒数'),
   }),
+  toolbox: z.object({
+    modelInstall: z.boolean().default(false).description('允许模型安装 catalog 内的外部工具（默认关闭）'),
+  }),
 })
 
 /** Legacy settings namespace; now only the client health-card key. */

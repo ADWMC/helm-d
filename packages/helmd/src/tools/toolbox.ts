@@ -2,6 +2,9 @@ import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { join, resolve } from 'node:path'
 import { packageRoot, readTextSeam  } from '../seam.js'
+import { TOOL_CATALOG, catalogEntry } from '../toolbox/catalog.js'
+import { installCatalogTool, toolHealth } from '../toolbox/installer.js'
+import { loadSettings } from '../settings.js'
 
 const refRoot = join(packageRoot(), 'references', 'toolbox')
 
@@ -114,4 +117,58 @@ export function registerToolboxTools(ctx: Context): void {
         : 'triage-and-route: begin_case + detect_packer + scan_strings + hash_artifact'
     },
   }))
+  ctx.tools.register(defineTool({
+    name: 'toolbox',
+    description:
+      'External-tool catalog and install status. action=catalog lists curated tools with GitHub repo, purpose, usage, and whether installed; ' +
+      'action=status shows installed rows; action=install installs one catalog release asset (model install is disabled unless the operator enables it). ' +
+      'Only bundled catalog entries with a verified GitHub repository exist — arbitrary URLs are not accepted.',
+    parameters: {
+      action: { type: 'string', required: true, description: 'catalog | status | install' },
+      id: { type: 'string', description: 'Catalog id for install (e.g. jadx).' },
+      asset_name: { type: 'string', description: 'Release asset name when the release has multiple candidates.' },
+      query: { type: 'string', description: 'catalog: filter by id/name/category/purpose.' },
+    },
+    output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
+    async execute(args: { action: string; id?: string; asset_name?: string; query?: string }) {
+      if (args.action === 'catalog' || args.action === 'status') {
+        const q = (args.query ?? '').toLowerCase()
+        const rows = TOOL_CATALOG
+          .filter((entry) => (args.action === 'status' ? toolHealth(entry.id).installed : true))
+          .filter((entry) => q === '' || (entry.id + ' ' + entry.name + ' ' + entry.category + ' ' + entry.purpose).toLowerCase().includes(q))
+          .map((entry) => {
+            const health = toolHealth(entry.id)
+            const status = health.installed
+              ? 'installed ' + String(health.version) + ' at ' + String(health.path)
+              : 'not installed'
+            return '- ' + entry.id + ' (' + entry.category + ') — ' + entry.purpose + '\n'
+              + '  repo: ' + entry.repo + '\n'
+              + '  kind: ' + entry.kind + ' | ' + status + '\n'
+              + '  usage: ' + entry.usage
+          })
+        return rows.length > 0 ? rows.join('\n') : 'no catalog entries match'
+      }
+      if (args.action === 'install') {
+        const entry = catalogEntry(args.id ?? '')
+        if (entry === undefined) return 'REJECTED — unknown catalog id: ' + (args.id ?? '(empty)')
+        if (entry.kind !== 'release') {
+          return entry.name + ' is a ' + entry.kind + ' tool; install manually: ' + (entry.installHint ?? entry.usage)
+        }
+        if (!loadSettings().toolbox.modelInstall) {
+          return 'REJECTED — model install is disabled. Use the WebUI 工具 tab (operator action), or enable toolbox.modelInstall in settings.'
+        }
+        try {
+          const installed = await installCatalogTool(entry.id, args.asset_name)
+          return 'installed ' + installed.name + ' ' + installed.version + '\n'
+            + 'path: ' + installed.path + '\n'
+            + 'sha256: ' + installed.sha256 + '\n'
+            + 'usage: ' + entry.usage
+        } catch (error) {
+          return 'REJECTED — ' + (error instanceof Error ? error.message : String(error))
+        }
+      }
+      return 'REJECTED — action must be catalog | status | install.'
+    },
+  }))
+
 }

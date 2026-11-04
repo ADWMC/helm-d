@@ -22,7 +22,7 @@ process.env.HELMD_CASES_DIR = mkdtempSync(join(tmpdir(), 'helmd-api-cases-'))
 const report = createReporter('api-routes')
 
 const ROUTE_BASE = '/api/helmd'
-const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry', 'settings']
+const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry', 'settings', 'tools/catalog']
 
 /** Registry contents, reachable only through register/schemas — no layer internals. */
 const registered = []
@@ -270,6 +270,18 @@ await report.check('GET/POST /settings round-trips and clamps through the store'
   assert.equal(saved.payload.data.intercept.enabled, true, 'untouched group survives the patch')
   const onDisk = JSON.parse(readFileSync(join(process.env.DSH_HOME, 'storages', 'helmd', 'settings.json'), 'utf8'))
   assert.equal(onDisk.star.popupDelaySec, 9)
+})
+
+await report.check('GET /tools/catalog serves the GitHub-only catalog and POST /tools/install rejects unknown ids', async () => {
+  const listing = await call(`${ROUTE_BASE}/tools/catalog`)
+  assert.equal(listing.status, 200)
+  assert.ok(Array.isArray(listing.payload.data) && listing.payload.data.length > 0)
+  const jadx = listing.payload.data.find((entry) => entry.id === 'jadx')
+  assert.ok(jadx, 'jadx must be catalogued')
+  assert.match(jadx.repo, /^https:\/\/github\.com\//)
+  const rejected = await post(`${ROUTE_BASE}/tools/install`, { id: 'ghost-tool' })
+  assert.equal(rejected.status, 400)
+  assert.match(rejected.payload.error, /unknown catalog tool/)
 })
 
 report.finish()

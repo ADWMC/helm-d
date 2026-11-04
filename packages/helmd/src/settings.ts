@@ -42,6 +42,10 @@ export interface HelmdSettings {
     /** Star 弹窗延迟秒数。 */
     popupDelaySec: number
   }
+  toolbox: {
+    /** 允许模型通过 toolbox 工具安装 catalog 内的 release（默认仅 UI/操作者安装）。 */
+    modelInstall: boolean
+  }
 }
 
 export const DEFAULT_SETTINGS: HelmdSettings = {
@@ -54,6 +58,7 @@ export const DEFAULT_SETTINGS: HelmdSettings = {
   intercept: { enabled: true },
   advisory: { autonomyPacket: true, nextActionNudge: true, requireDocRead: true, requireToolEvidence: true },
   star: { popupDelaySec: 2 },
+  toolbox: { modelInstall: false },
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] }
@@ -93,6 +98,7 @@ function normalizeSettings(raw: unknown): HelmdSettings {
       requireToolEvidence: clampBool(advisory.requireToolEvidence, d.advisory.requireToolEvidence),
     },
     star: { popupDelaySec: clampNumber(star.popupDelaySec, 0, 60, d.star.popupDelaySec) },
+    toolbox: { modelInstall: clampBool(src.toolbox?.modelInstall, d.toolbox.modelInstall) },
   }
 }
 

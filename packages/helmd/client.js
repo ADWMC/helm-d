@@ -627,6 +627,132 @@ exports.apply = function apply(ctx) {
 		);
 	}
 
+	// ── Tab: 工具（外部工具 catalog / 安装状态） ─────────────────
+	function ToolsTab(props) {
+		var entries = Array.isArray(props.catalog) ? props.catalog : [];
+		var noticeState = React.useState("");
+		var notice = noticeState[0]; var setNotice = noticeState[1];
+		var busyState = React.useState("");
+		var busy = busyState[0]; var setBusy = busyState[1];
+		var choiceState = React.useState(null);
+		var choice = choiceState[0]; var setChoice = choiceState[1];
+		var queryState = React.useState("");
+		var query = queryState[0]; var setQuery = queryState[1];
+
+		function post(path, body) {
+			return fetch(path, {
+				method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+			}).then(function (r) { return r.json(); }).then(function (res) {
+				if (!res || !res.ok) throw new Error((res && res.error) || "请求失败");
+				return res.data;
+			});
+		}
+		function refresh(message) {
+			setBusy(""); setChoice(null); setNotice(message || "");
+			if (props.onRefresh) props.onRefresh();
+		}
+		function doInstall(id, assetName) {
+			setBusy(id);
+			post("/api/helmd/tools/install", { id: id, assetName: assetName })
+				.then(function (tool) { refresh("已安装 " + tool.name + " " + tool.version); })
+				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
+		}
+		function pickRelease(id) {
+			setBusy(id); setNotice("");
+			fetch("/api/helmd/tools/releases?id=" + encodeURIComponent(id))
+				.then(function (r) { return r.json(); })
+				.then(function (res) {
+					if (!res || !res.ok) throw new Error((res && res.error) || "读取 release 失败");
+					var assets = (res.data.assets || []).filter(function (a) { return a.digest; });
+					if (assets.length === 0) throw new Error("该 release 没有带 sha256 摘要的资产，请手动安装");
+					if (assets.length === 1) { doInstall(id, assets[0].name); return; }
+					setBusy(""); setChoice({ id: id, tag: res.data.tag, assets: assets });
+				})
+				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
+		}
+		function uninstall(entry) {
+			if (!window.confirm("卸载 " + entry.name + "？只删除 helm-d 管理的目录，不影响系统 PATH。")) return;
+			setBusy(entry.id);
+			post("/api/helmd/tools/uninstall", { id: entry.id })
+				.then(function (tool) { refresh("已卸载 " + tool.name); })
+				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
+		}
+
+		var filtered = entries.filter(function (e) {
+			var q = String(query || "").toLowerCase();
+			return q === "" || (e.id + " " + e.name + " " + e.category + " " + e.purpose).toLowerCase().indexOf(q) >= 0;
+		}).sort(function (a, b) {
+			return String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name));
+		});
+		var installed = entries.filter(function (e) { return e.health && e.health.installed; }).length;
+
+		return h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+			notice ? h("div", { style: { padding: "7px 9px", borderRadius: 4, fontSize: 11.5, lineHeight: "17px", color: TONE.info, background: "var(--dsw-alias-fill-tsp-secondary)" } }, notice) : null,
+			h("div", { style: S.card },
+				h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+					h("span", { style: S.title }, "外部工具"),
+					h("span", { style: S.caption }, installed + " / " + entries.length + " 已安装")
+				),
+				h("div", { style: Object.assign({}, S.caption, { marginTop: 4 }) },
+					"只列有 GitHub 仓库的工具；安装来源固定为对应仓库的 latest release，必须带 sha256 摘要。pip/manual 条目只给命令，不代执行。"
+				),
+				h("input", {
+					type: "text", value: query, placeholder: "过滤：jadx / android / frida …",
+					onChange: function (e) { setQuery(e.target.value); },
+					style: {
+						width: "100%", height: 28, marginTop: 8, padding: "0 8px", borderRadius: "var(--dsw-radius-sm)",
+						border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
+						color: "var(--dsw-alias-label-primary)", fontSize: 12.5, outline: "none", boxSizing: "border-box",
+					},
+				})
+			),
+			filtered.length === 0 ? h("div", { style: S.card }, h(EmptyState, { title: "没有匹配的工具", hint: "Adjusted filter or catalog unavailable." })) : null,
+			filtered.map(function (entry) {
+				var health = entry.health || {};
+				var isInstalled = !!health.installed;
+				var pending = busy === entry.id;
+				return h("div", { key: entry.id, style: S.card },
+					h("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" } },
+						h("span", { style: { fontSize: 13, fontWeight: 600 } }, entry.name),
+						h("span", { style: S.pill(TONE.muted, true) }, entry.category),
+						h("span", { style: S.pill(entry.kind === "release" ? TONE.info : TONE.muted, entry.kind !== "release") }, entry.kind),
+						h("span", { style: S.pill(isInstalled ? TONE.success : TONE.muted, !isInstalled) }, isInstalled ? "已安装 " + (health.version || "") : "未安装"),
+						h("span", { style: { flex: 1 } }),
+						entry.repo ? h("a", { href: entry.repo, target: "_blank", rel: "noopener noreferrer", style: Object.assign({}, S.caption, { color: TONE.info }) }, "GitHub") : null
+					),
+					h("div", { style: Object.assign({}, S.body, { marginTop: 4 }) }, entry.purpose),
+					h("div", { style: Object.assign({}, S.caption, { marginTop: 2, fontFamily: CODE }) }, "usage: " + entry.usage),
+					health.path ? h("div", { style: Object.assign({}, S.caption, { fontFamily: CODE }) }, health.path) : null,
+					h("div", { style: { display: "flex", gap: 6, marginTop: 6, alignItems: "center" } },
+						isInstalled
+							? h("button", {
+								type: "button", className: "hm-btn", onClick: function () { uninstall(entry); }, disabled: pending,
+								style: { height: 24, padding: "0 8px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: TONE.warn, fontSize: 11, cursor: "pointer" },
+							}, pending ? "处理中" : "卸载")
+							: h("button", {
+								type: "button", className: "hm-btn", disabled: pending || entry.kind !== "release",
+								onClick: function () { entry.kind === "release" ? pickRelease(entry.id) : setNotice((entry.installHint || entry.usage)); },
+								style: { height: 24, padding: "0 10px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: entry.kind === "release" ? "var(--dsw-alias-label-secondary)" : TONE.muted, fontSize: 11, cursor: entry.kind === "release" ? "pointer" : "default" },
+							}, pending ? "安装中" : (entry.kind === "release" ? "安装" : "查看命令")),
+						entry.kind !== "release" && entry.installHint ? h("span", { style: Object.assign({}, S.caption, { fontFamily: CODE }) }, entry.installHint) : null
+					),
+					choice && choice.id === entry.id ? h("div", { style: { marginTop: 8, display: "flex", gap: 6, alignItems: "center" } },
+						h("span", { style: S.caption }, "选择资产（" + choice.tag + "）"),
+						h("select", {
+							defaultValue: choice.assets[0].name,
+							onChange: function (e) { choice.assets[0].name = e.target.value; },
+							style: { height: 26, borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: 11 },
+						}, choice.assets.map(function (a) { return h("option", { key: a.name, value: a.name }, a.name + " (" + Math.round(a.size / 1024) + " KB)"); })),
+						h("button", {
+							type: "button", className: "hm-btn", onClick: function () { doInstall(choice.id, choice.assets[0].name); },
+							style: { height: 24, padding: "0 8px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: "var(--dsw-alias-label-secondary)", fontSize: 11, cursor: "pointer" },
+						}, "确认安装")
+					) : null
+				);
+			})
+		);
+	}
+
 	// ── Tab: 设置（runtime settings store + DSH 设置页同源） ─────
 	var TEAM_ROLE_LIST = ["orchestrator", "triage", "static", "dynamic", "decoy-audit", "critic", "reporter"];
 	function SettingsRow(props) {
@@ -779,6 +905,9 @@ exports.apply = function apply(ctx) {
 					),
 					h(SettingsRow, { label: "证据须来自工具", hint: "引用证据至少一条为真实工具输出（save_evidence 自编不算）" },
 						h(SettingsToggle, { checked: !!form.advisory.requireToolEvidence, onChange: function (v) { setIn("advisory.requireToolEvidence", v); } })
+					),
+					h(SettingsRow, { label: "允许模型安装工具", hint: "只允许 catalog 内的 GitHub release；默认仅 WebUI 操作者安装" },
+						h(SettingsToggle, { checked: !!(form.toolbox && form.toolbox.modelInstall), onChange: function (v) { setIn("toolbox.modelInstall", v); } })
 					)
 				)
 			),
@@ -1392,6 +1521,7 @@ exports.apply = function apply(ctx) {
 					fetch('/api/helmd/team').then(function(r){return r.json()}).catch(function(){return null}),
 					fetch('/api/helmd/team/versions').then(function(r){return r.json()}).catch(function(){return null}),
 					fetch('/api/helmd/settings').then(function(r){return r.json()}).catch(function(){return null}),
+					fetch('/api/helmd/tools/catalog').then(function(r){return r.json()}).catch(function(){return null}),
 				]).then(function(results) {
 					if (!alive) return;
 					setData({
@@ -1405,6 +1535,7 @@ exports.apply = function apply(ctx) {
 						teamData: (results[7] && results[7].data) || null,
 						versions: (results[8] && results[8].data) || null,
 						settings: (results[9] && results[9].data) || null,
+						catalog: (results[10] && results[10].data) || null,
 						sessionId: sid || null,
 					});
 				});
@@ -1448,6 +1579,7 @@ exports.apply = function apply(ctx) {
 			{ key: "profile", label: "破甲", badge: 0 },
 			{ key: "case", label: "Case", badge: (data.caseData && data.caseData.active && data.caseData.openHypotheses) || 0 },
 			{ key: "team", label: "Team", badge: openTickets },
+			{ key: "tools", label: "工具", badge: ((data.catalog || []).filter(function (e) { return e.health && e.health.installed; }).length) },
 			{ key: "intercept", label: "拦截", badge: (data.intercept && data.intercept.count) || 0 },
 			{ key: "settings", label: "设置", badge: 0 },
 			{ key: "about", label: "关于", badge: 0 },
@@ -1544,6 +1676,7 @@ exports.apply = function apply(ctx) {
 						sessionId: data.sessionId || props.sessionId || null,
 						onRefresh: refresh,
 					}) : null,
+					tab === "tools" ? h(ToolsTab, { catalog: data.catalog, onRefresh: refresh }) : null,
 					tab === "intercept" ? h(InterceptTab, { interceptData: data.intercept }) : null,
 					tab === "settings" ? h(SettingsTab, { settings: data.settings, onRefresh: refresh }) : null,
 					tab === "about" ? h(AboutTab, { version: (data.health && data.health.version) || "unknown" }) : null
