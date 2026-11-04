@@ -25,6 +25,12 @@ export interface ToolCatalogEntry {
   installHint?: string
   /** Verified invocation template shown to the model after install. */
   usage: string
+  /** Pin a specific release tag (needed when latest belongs to another project). */
+  tag?: string
+  /** Pin an exact release asset name (raw binaries without extensions). */
+  asset?: string
+  /** Version-agnostic asset matcher; must resolve to exactly one digest-pinned asset. */
+  assetPattern?: string
 }
 
 export const TOOL_CATALOG: ToolCatalogEntry[] = [
@@ -36,6 +42,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     category: 'Android',
     purpose: 'APK/DEX/JAR fast decompiler and string search',
     kind: 'release',
+    tag: 'v1.8-release',
+    asset: 'garlic-win64.exe',
     usage: 'garlic -d out/ app.apk',
   },
   {
@@ -45,6 +53,7 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     category: 'Android',
     purpose: 'DEX/APK to Java decompiler',
     kind: 'release',
+    assetPattern: '^jadx-\\d.*\\.zip$',
     usage: 'jadx -d out/ app.apk',
   },
   {
@@ -54,7 +63,7 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     category: 'Android',
     purpose: 'APK unpack/repack, smali and resources',
     kind: 'release',
-    usage: 'apktool d app.apk -o out/',
+    usage: 'java -jar apktool.jar d app.apk -o out/',
   },
   {
     id: 'androguard',
@@ -94,6 +103,7 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     category: 'Android',
     purpose: 'Android ARM64 dynamic instrumentation',
     kind: 'release',
+    asset: 'rustfrida',
     usage: 'rustfrida --spawn <package>',
   },
   {
@@ -137,7 +147,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     repo: 'https://github.com/test692618/ip_checker',
     category: 'Web',
     purpose: 'IP liveness probe',
-    kind: 'release',
+    kind: 'manual',
+    installHint: 'build from source or use the project Releases page',
     usage: 'ip_checker -f ips.txt',
   },
   {
@@ -146,7 +157,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     repo: 'https://github.com/CuriousLearnerDev/CipherBridge',
     category: 'Web',
     purpose: 'Encryption/signature analysis bridge',
-    kind: 'release',
+    kind: 'manual',
+    installHint: 'download from the repository Releases; no sha256 digest published',
     usage: 'CipherBridge --help',
   },
 
@@ -169,6 +181,7 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     category: 'Native',
     purpose: 'Command-line reverse-engineering framework',
     kind: 'release',
+    assetPattern: '^radare2-.*-w64\\.zip$',
     usage: 'r2 -A sample.bin',
   },
   {
@@ -186,7 +199,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     repo: 'https://github.com/horsicq/Detect-It-Easy',
     category: 'Native',
     purpose: 'Packer/compiler detection',
-    kind: 'release',
+    kind: 'manual',
+    installHint: 'install from the project Releases page (only pre-release DB assets on GitHub)',
     usage: 'diec sample.exe',
   },
   {
@@ -196,6 +210,7 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     category: 'Native',
     purpose: 'Executable packer/unpacker',
     kind: 'release',
+    assetPattern: '^upx-.*-win64\\.zip$',
     usage: 'upx -d packed.exe',
   },
 
@@ -206,7 +221,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     repo: 'https://github.com/YuroGod/VMPStaticUnpacker',
     category: 'Windows',
     purpose: 'VMProtect static unpacking',
-    kind: 'release',
+    kind: 'manual',
+    installHint: 'download from the project Releases page (no published release found)',
     usage: 'VMPStaticUnpacker.exe sample.exe',
   },
   {
@@ -216,6 +232,7 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     category: 'Windows',
     purpose: 'Windows user-mode debugger',
     kind: 'release',
+    assetPattern: '^snapshot_.*\\.zip$',
     usage: 'x64dbg.exe sample.exe',
   },
   {
@@ -225,6 +242,7 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     category: 'Windows',
     purpose: 'MCP bridge for x64dbg',
     kind: 'release',
+    asset: 'x64dbg_mcp.dp64',
     usage: 'install plugin into x64dbg plugins/',
   },
   {
@@ -244,7 +262,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     repo: 'https://github.com/Pick-program/WeakPassDetect',
     category: 'Protocol',
     purpose: 'Weak-password detection',
-    kind: 'release',
+    kind: 'manual',
+    installHint: 'download from the project Releases page (no published release found)',
     usage: 'python weak_passwd_detect.py ...',
   },
   {
@@ -253,7 +272,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     repo: 'https://github.com/la-1314/pe-inspector',
     category: 'Malware',
     purpose: 'PE malware inspection',
-    kind: 'release',
+    kind: 'manual',
+    installHint: 'download from the project Releases page (no published release found)',
     usage: 'pe-inspector sample.exe',
   },
 
@@ -264,7 +284,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     repo: 'https://github.com/pxb1988/dex2jar',
     category: 'General',
     purpose: 'DEX to JAR conversion',
-    kind: 'release',
+    kind: 'manual',
+    installHint: 'download from the repository Releases; no sha256 digest published',
     usage: 'd2j-dex2jar classes.dex',
   },
   {
@@ -273,7 +294,8 @@ export const TOOL_CATALOG: ToolCatalogEntry[] = [
     repo: 'https://github.com/leibnitz27/cfr',
     category: 'General',
     purpose: 'Java decompiler',
-    kind: 'release',
+    kind: 'manual',
+    installHint: 'download the CFR jar from Releases; no sha256 digest published',
     usage: 'java -jar cfr.jar classes.jar',
   },
   {

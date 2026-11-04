@@ -64,6 +64,19 @@ await report.check('asset picker requires an explicit choice when the release is
   assert.equal(installer.chooseAsset(assets, 'jadx-1.5.0.zip').name, 'jadx-1.5.0.zip')
 })
 
+await report.check('catalog asset patterns resolve exactly one digest-pinned asset', () => {
+  const assets = [
+    { name: 'jadx-1.5.0.zip', size: 10, digest: 'sha256:' + 'b'.repeat(64), url: 'https://example.invalid/a.zip' },
+    { name: 'jadx-gui-1.5.0-win.zip', size: 11, digest: 'sha256:' + 'c'.repeat(64), url: 'https://example.invalid/gui.zip' },
+    { name: 'notes.txt', size: 1, digest: null, url: 'https://example.invalid/n.txt' },
+  ]
+  assert.equal(installer.chooseAsset(assets, undefined, '^jadx-\\d.*\\.zip$').name, 'jadx-1.5.0.zip')
+  assert.throws(() => installer.chooseAsset(assets, undefined, '^jadx-.*\\.zip$'), /ambiguous/)
+  assert.throws(() => installer.chooseAsset(assets, undefined, '^missing-'), /no asset matching/)
+  const unhashed = [{ name: 'tool.zip', size: 1, digest: null, url: 'https://example.invalid/t.zip' }]
+  assert.throws(() => installer.chooseAsset(unhashed, undefined, '^tool\\.zip$'), /no GitHub sha256 digest/)
+})
+
 await report.check('asset picker refuses assets without a digest', () => {
   const assets = [{ name: 'tool.zip', size: 10, digest: null, url: 'https://example.invalid/a.zip' }]
   assert.throws(() => installer.chooseAsset(assets), /no digest-pinned archive/)

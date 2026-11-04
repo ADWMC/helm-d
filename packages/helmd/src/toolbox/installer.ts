@@ -11,7 +11,7 @@
 
 import { createHash } from 'node:crypto'
 import { copyFileSync, createReadStream, existsSync, lstatSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { requestBuffer, requestText } from '../star-gate.js'
 import { assertWithinRoot } from '../seam.js'
@@ -30,7 +30,7 @@ export interface ReleaseInfo {
   assets: ReleaseAsset[]
 }
 
-const ARCHIVE_RE = /\.(zip|tar\.gz|tgz|tar|exe)$/i
+const ARCHIVE_RE = /\.(zip|tar\.gz|tgz|tar|tar\.xz|jar|exe)$/i
 const MAX_ASSET_BYTES = 512 * 1024 * 1024
 
 function ownerRepo(repo: string): { owner: string; repo: string } {
@@ -50,7 +50,10 @@ function ghHeaders(): Record<string, string> {
 /** Latest release + its assets (digest is the GitHub-published sha256 when present). */
 export async function latestRelease(entry: ToolCatalogEntry): Promise<ReleaseInfo> {
   const { owner, repo } = ownerRepo(entry.repo)
-  const response = await requestText(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, {
+  const releasePath = entry.tag !== undefined && entry.tag !== ''
+    ? `releases/tags/${encodeURIComponent(entry.tag)}`
+    : 'releases/latest'
+  const response = await requestText(`https://api.github.com/repos/${owner}/${repo}/${releasePath}`, {
     method: 'GET',
     headers: ghHeaders(),
   })
@@ -72,15 +75,24 @@ export async function latestRelease(entry: ToolCatalogEntry): Promise<ReleaseInf
   return { tag, assets }
 }
 
-/** Pick one installable asset: explicit name, or the only digest-pinned
- *  archive when there is exactly one. Ambiguity is an error, never a guess. */
-export function chooseAsset(assets: ReleaseAsset[], requested?: string): ReleaseAsset {
+/** Pick one installable asset: explicit name, a catalog asset pattern, or the
+ *  only digest-pinned archive when there is exactly one. Ambiguity is an
+ *  error, never a guess. */
+export function chooseAsset(assets: ReleaseAsset[], requested?: string, pattern?: string): ReleaseAsset {
   if (requested !== undefined && requested !== '') {
     const exact = assets.find((asset) => asset.name === requested)
     if (exact === undefined) throw new Error(`release has no asset named ${requested}`)
     if (exact.digest === null) throw new Error(`asset ${exact.name} has no GitHub sha256 digest; refusing an unhashed install`)
-    if (!ARCHIVE_RE.test(exact.name)) throw new Error(`asset ${exact.name} is not a supported archive/exe`)
     return exact
+  }
+  if (pattern !== undefined && pattern !== '') {
+    let matcher: RegExp
+    try { matcher = new RegExp(pattern) } catch { throw new Error(`catalog assetPattern is not a valid regex: ${pattern}`) }
+    const matched = assets.filter((asset) => matcher.test(asset.name))
+    if (matched.length === 0) throw new Error(`release has no asset matching ${pattern}; pass assetName`)
+    if (matched.length > 1) throw new Error(`asset pattern ${pattern} is ambiguous (${matched.map((asset) => asset.name).join(', ')}); pass assetName`)
+    if (matched[0].digest === null) throw new Error(`asset ${matched[0].name} has no GitHub sha256 digest; refusing an unhashed install`)
+    return matched[0]
   }
   const candidates = assets.filter((asset) => asset.digest !== null && ARCHIVE_RE.test(asset.name))
   if (candidates.length === 1) return candidates[0]
@@ -107,10 +119,27 @@ function assertNoEscapingLinks(dir: string): void {
   }
 }
 
-function extract(archivePath: string, destDir: string): void {
-  const result = spawnSync('tar', ['-xf', archivePath, '-C', destDir], { timeout: 120_000, encoding: 'utf8' })
+function runExtractor(command: string, args: string[], cwd?: string): void {
+  const result = spawnSync(command, args, { cwd, timeout: 120_000, encoding: 'utf8' })
   if (result.error !== undefined) throw new Error(`archive extraction failed: ${result.error.message}`)
-  if (result.status !== 0) throw new Error(`archive extraction failed: ${String(result.stderr ?? '').trim() || `tar exit ${String(result.status)}`}`)
+  if (result.status !== 0) throw new Error(`archive extraction failed: ${String(result.stderr ?? '').trim() || `${command} exit ${String(result.status)}`}`)
+}
+
+function extract(archivePath: string, destDir: string): void {
+  // Windows ships libarchive's bsdtar (handles zip, tar.*, xz); Git's GNU tar
+  // cannot read zip and parses a bare `C:\...` argument as a remote host.
+  const systemTar = process.platform === 'win32'
+    ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
+    : undefined
+  if (systemTar !== undefined && existsSync(systemTar)) {
+    runExtractor(systemTar, ['-xf', basename(archivePath), '-C', destDir], dirname(archivePath))
+    return
+  }
+  if (/\.zip$/i.test(archivePath)) {
+    runExtractor('unzip', ['-o', archivePath, '-d', destDir])
+    return
+  }
+  runExtractor('tar', ['-xf', basename(archivePath), '-C', destDir], dirname(archivePath))
 }
 
 /** Install one catalog release. Returns the installed registry row. */
@@ -123,7 +152,7 @@ export async function installCatalogTool(id: string, assetName?: string): Promis
   if (existing !== undefined) return existing
 
   const release = await latestRelease(entry)
-  const asset = chooseAsset(release.assets, assetName)
+  const asset = chooseAsset(release.assets, assetName ?? entry.asset, entry.assetPattern)
   if (asset.size > MAX_ASSET_BYTES) throw new Error(`asset is larger than ${MAX_ASSET_BYTES} bytes; install manually`)
 
   const root = toolboxRoot()
@@ -144,8 +173,8 @@ export async function installCatalogTool(id: string, assetName?: string): Promis
 
     const extractDir = join(tempDir, 'x')
     mkdirSync(extractDir, { recursive: true })
-    if (/\.(exe)$/i.test(asset.name)) copyFileSync(archivePath, join(extractDir, basename(asset.name)))
-    else extract(archivePath, extractDir)
+    if (/\.(zip|tar\.gz|tgz|tar|tar\.xz)$/i.test(asset.name)) extract(archivePath, extractDir)
+    else copyFileSync(archivePath, join(extractDir, basename(asset.name)))
     assertNoEscapingLinks(extractDir)
 
     const dest = toolDir(id, release.tag)

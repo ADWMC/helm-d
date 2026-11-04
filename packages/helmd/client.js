@@ -658,6 +658,9 @@ exports.apply = function apply(ctx) {
 				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
 		}
 		function pickRelease(id) {
+			var entry = entries.filter(function (e) { return e.id === id; })[0];
+			if (entry && entry.asset) { doInstall(id, entry.asset); return; }
+			if (entry && entry.assetPattern) { doInstall(id); return; }
 			setBusy(id); setNotice("");
 			fetch("/api/helmd/tools/releases?id=" + encodeURIComponent(id))
 				.then(function (r) { return r.json(); })
