@@ -363,7 +363,30 @@ Sprint 6:
 
 ---
 
-## 8. 附录 B：反模式（不要吸收）
+## 8. 附录 C：脚本 / 模板 / 字典来源清单（recon · PoC · 挖掘）
+
+> 结论：**没有一个可直接 vendor 的「安全脚本库」**；可用的是「解析器契约 + recipe 结构 + 验证器结构」，以及可选的本机 CLI。代码按许可分三类处理。
+
+| 来源 | 内容与规模 | 许可 | 用法 |
+|---|---|---|---|
+| **helm-d 自家 scripts/** | 86 文件（63 py）：`evidence/` 12、`native/` 36、`android/` 16、`web/` 7、`protocol/` 3、`malware/` 3、`ai-security/` 4 | AGPL-3.0（自有） | **直接扩展**：新增 `scripts/recon/` 与 `scripts/poc/`，沿用 `runSeam` 与证据落盘 |
+| **redamon `recon/` + `mcp/servers/`** | 1502 脚本；`mcp/servers` 5919 行（network_recon_server 1693、metasploit_server 1257、nuclei_server、nmap_server、playwright_server、terminal_server）；`recon/` 含 domain/port/resource/cache/graphql 扫描与解析 | **MIT** | **借解析器契约**（nmap XML/httpx/nuclei JSONL → 统一资产记录）；不搬 Neo4j/Kali 绑定 |
+| redamon `recon/wordlists` + `mcp/nuclei-templates` | 小字典目录；nuclei 模板仅 9 个 yaml（68 KB） | MIT | 可作**最小内置样例**；完整 nuclei/SecLists 需本机可选路径，不打包 |
+| **Pentest-Swarm `internal/poc/recipes.go`** | 按漏洞类别的 recipe 结构：`Class / SafeProof / Indicator / Hints`（BOLA、SQLi、XSS、SSRF、RCE、auth-bypass…） | **AGPL-3.0** | **零复制**；用同样字段重写成 helm-d `scripts/poc/recipes/*.json`（文案自写） |
+| **VulnClaw `report/verifier.py`** | 757 行三态验证器；`skills/` 有 Android 签名、浏览器请求链、OSINT 报告、SSTI 等参考模板 | **MIT** | 借**三态判定 + 模板分类**；实现重写 |
+| **ARTEX `skills/api-recon/scripts`** | 6 个可执行脚本：`harvest_static.py`(8.5K)、`spider_mpa.py`(5.8K)、`runtime_harvest.js`(11K)+`preload.js`(13K)、`extract_route_map.py`、`build_perm_tree.py`；依赖 puppeteer-core | **AGPL-3.0** | **零复制**；借「静态收割 + 运行时注入 + route map/perm tree」思路，用 Playwright/Node 重写 |
+| **T3MP3ST `src/arsenal/`** | 149 KB index + 44 KB catalog + 28 KB parsers + `idor.ts`/`js-analyze.ts`/`browser.ts`/`kev.ts` | **AGPL-3.0** | 借「catalog → parser → 攻击图」契约；零复制 |
+| **Decepticon `capabilities/` + `tools/`** | 正负对照验证、证据 HMAC 链、PoC Docker 执行 | Apache-2.0 | 借判据与字段；Docker 层不引入 |
+| **Dark-Moon `execution_guard.py`** | 命令预检分类 + 可行动拒绝 + 超时夹紧 | GPL-3.0 | 零复制；判据重写进 PoC 执行器 |
+| **DSH 宿主** | 无安全脚本库；提供 `web_fetch`（GET/无 header）、shell、MCP client、subagent/workflow | MIT/Apache | 只做执行/编排底座；recon/PoC 语义必须自补 |
+
+**取舍**：
+1. 首版不打包任何大字典/模板库（体积 + 许可 + 更新负担）；内置最小字典（<100 行）与 recipe 模板。
+2. 外部 CLI（nmap/httpx/naabu/nuclei/katana/ffuf）作为**可选 enrichment**，探测不到就降级为纯 Node/Python 实现（DoH、connect scan、HTTP 基线、小字典）。
+3. AGPL/GPL 来源只重写结构与判据；MIT/Apache 可参考实现但按仓库规范仍以自写为准，引用需署名。
+4. 所有脚本输出统一走 `save_evidence`（sha256 去重）与 scope 围栏，不新增第二套数据层。
+
+## 9. 附录 B：反模式（不要吸收）
 
 - 「exhausted ≠ done」把失败当完成；必须显式 blocked（ARTEX/pentagi 教训）。
 - 工具自声明安全（模型说 safe 不等于安全）；闸门不得接受模型标签降级（VulnClaw `exec_gate.py:157-170`）。
