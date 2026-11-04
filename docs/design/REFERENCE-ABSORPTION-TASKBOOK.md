@@ -196,6 +196,50 @@
 | 趋势统计 | 按 case 时间线输出 severity 变化（新增/升级/降级/rejected），供报告与 UI 使用 |
 | 验收 | 向量算分与 NVD 示例一致（≥10 组）；趋势统计与 timeline 一致 |
 
+### T-14 信息收集 / recon（P1）
+
+**机制来源**：xalgorix recon 谓词 + 覆盖矩阵 + scope/限速（`internal/agent/recon_predicate.go:63-186`、`coverage.go:33`、`scopeguard.go:174`、`ratelimit.go:21-87`）；redamon 成熟 CLI 调度 + Neo4j MERGE（`domain_recon.py:236`、`port_scan.py:227`、`resource_enum.py:301`、`domain_mixin.py:331`）；Decepticon KG ingest + RoE/egress（`tools/ingest.py:131-349`、`middleware/roe.py:295-526`）；ARTEX 六类资产 + 7 个 partial unique index（`db/schema.sql:40-90`、`tools_insert.go:487`）；T3MP3ST arsenal catalog+parser（`arsenal/catalog.ts:138-295`、`parsers.ts:73-181`）；antares phase/coverage methodology（`engagement/phase.go:36-60`、`prompt.go:355-431`）。
+**DSH 事实**：`web_fetch` 仅 GET、无自定义 header/cookie/body、无 JS、SSRF 安全（DNS pin）、30s/5MB（refs/deepseek-harness `web/web-fetch-http/src/provider.ts:61,74-110`、`network.ts:54-64`）；无资产图/scope/限速/OOB（宿主缺口，见调研）。
+
+| 子项 | 要求 | 落点 | 验收 |
+|---|---|---|---|
+| 资产账本 | `recon/assets.jsonl`（append-only）：`kind/value/parent/source/first_seen/last_seen/evidence_id`；键 `kind|value|parent` 去重；摘要写 CASE.md `## assets` | `case.ts` 新模块 `recon.ts` | 单元：同键去重、父子关系、E-id 关联 |
+| 被动收集 | `recon_passive`：DoH 解析 + crt.sh 证书透明（可离线注入 JSON 测试）；参数白名单，无任意 URL | 新工具 `tools/recon.ts` | 单元：fixture 解析；真机：对 lab 域跑一次 |
+| 主动收集 | `recon_ports`（connect scan，禁止原始 socket 发 shellcode）、`recon_http`（GET 基线、tech 指纹）、`recon_crawl`（限深/限页）、`recon_import`（nmap XML / httpx JSONL / nuclei JSONL 解析） | 同上 + `scripts/recon/*.py` | 单元：XML/JSONL fixture；真机：本地 lab HTTP 服务 |
+| scope 围栏 | `begin_case` 增 `scope[]`（domain/CIDR）；所有 recon 目标先校验；**默认拒绝 loopback/私网/云元数据**，需显式 `lab=true` | `case.ts` + `tools/recon.ts` | 负向：越界目标/私网默认拒；lab 开关放行 |
+| 限速 | per-host 1 rps + jitter；并发 ≤4；单工具超时 30s | 同上 | 单元：令牌桶；真机：日志间隔 |
+| 覆盖度 | `case_status` 增 `[recon]`：资产数/未测资产/六维覆盖（dns/http/tech/crawl/dir/ports） | `autonomy.ts`/`caseflow.ts` | 单元：覆盖计算；真机：统计行 |
+| 证据 | 原始输出一律 `save_evidence`（hash 去重）；finding 可带 `asset_refs[]` | 复用 `case.ts` | 单元：E-id 关联 |
+
+> 安全边界：不内置扫描器二进制；仅调度本机可选 CLI（httpx/naabu/nmap），缺失时降级为纯 Python/Node 实现（DoH、connect scan、目录小字典）。所有输出落证据，不做静默网络访问。
+
+### T-15 PoC 生成/执行/验证闭环（P1）
+
+**机制来源**：xalgorix 候选账本 + LLM 填参 + 三请求确认（`scan_source_sinks.go:145`、`ledger.go:218`、`verify_sqli.go:63`、`verifier.go:48,215`）；T3MP3ST 证据阶梯 + ASan 真 PoC + refuter 多数（`verify-finding.mjs:36,184`、`refute-finding.mjs:74,384`）；Decepticon 正例+阴性对照判定（`tools/verification.py:18-80`、`poc.py:253-315`）；Pentest-Swarm recipe 表 + 外部 oracle 三态（`poc.go:83`、`recipes.go:18`、`oracle.go:59`、`differential.go:98`、`oob.go:106`）；VulnClaw 模板+ExecutionGate（`verifier.py:104,307,443-500`）；ARTEX retester 三态 + 流量绑定（`retester.go:6-12`、`finding_traffic.go:364`）。
+**DSH 事实**：无原始 HTTP（fetch 仅 GET/无 header/body）、无 OOB/回调、无网络隔离/PoC 容器（sandbox 仅文件写）；shell 默认 120s 上限 600s、64KB 尾部+spill（`shell/bash-local/src/index.ts:99-107`、`subprocess-local/src/output.ts:20-43`）。
+
+| 子项 | 要求 | 落点 | 验收 |
+|---|---|---|---|
+| Candidate | 复用 `record_hypothesis` 增 `test_cmd/negative_cmd/expected/observed`；H-xxx 即 candidate；dedup `class|target|endpoint|param` | `case.ts` hypotheses 扩展 | 单元：去重/必填 |
+| Recipe 库 | 确定性模板：http-diff、sqli 三请求、IDOR 双身份、path-traversal、JWT、XSS canary、timing；LLM 只填 URL/参数/token | `packages/helmd/scripts/poc/recipes/*` | 单元：模板渲染/参数校验 |
+| 执行器 | `run_poc`：临时 cwd、env 白名单、30s 超时、kill 进程树、输出/退出码/耗时落证据；**scope allowlist 复用 T-14** | `tools/poc.ts` + `scripts/poc/run.mjs` | 单元：超时/清理；负向：越界拒 |
+| 正负对照 | 必须跑负例（去 payload/良性值）且不得命中成功正则；三态 verified/refuted/inconclusive | 同上 | 单元：positive+negative 判定矩阵 |
+| OOB | 本机临时 HTTP listener 收 token（仅 lab，默认关）；无 OOB 时只允许确定性证据 | `scripts/poc/oob.mjs` | 单元：token 回连；真机：local lab |
+| finding 联动 | `record_finding` 增 `poc_id`、`positive_evidence`/`negative_evidence`；无负对照最高 medium；high/critical 必须有 poc_id | `caseflow.ts` + `case.ts` | 单元：无 poc_id 的 critical 被降级；真机：完整链 |
+| 安全 | 默认 safe-mode（幂等 GET/无破坏 payload）；状态变更类需 approval；不做 DoS/爆破默认 | 设置项 + `team-policy` | 单元：非安全 payload 拒 |
+
+### T-16 漏洞挖掘 / 候选发现（P2）
+
+**机制来源**：xalgorix source→sink 自动候选 + 覆盖矩阵（`scan_source_sinks.go:145`、`coverage.go:33`）；Decepticon scanner 排序 + `path:line:sink_kind`（`scanner_tools.py:526,601`）；T3MP3ST kill-chain 攻击图 + OSV novelty（`attack-graph.ts:47-52,106-196`、`verify-finding.mjs:454`）；VulnBot plan DAG（`plan_model.py:30`）；HackSynth planner 单步（`pentest_agent.py:169`）；hexstrike 技术指纹→工具选型（`hexstrike_server.py:971,9673`）；ARTEX `list_untested_assets` + TaskCoverage（`tools_insert.go:487`、`task_assets_context.go:121`）。
+
+| 子项 | 要求 | 落点 | 验收 |
+|---|---|---|---|
+| 候选提取 | 从本地成品提取候选：HAR/OpenAPI/JS 路由/参数、APK 清单、二进制字符串；产出 `candidates.jsonl`（`class/target/endpoint/param/source/confidence`） | `scripts/mine/extract_*.mjs` | 单元：fixture 提取/去重 |
+| 覆盖驱动 | 未测资产/未覆盖维度 → 下一步建议；`case_status` `[mining]` | `autonomy.ts` | 单元：覆盖差集 |
+| 优先级 | 按 class 风险 + 资产重要性 + 证据新鲜度排序 | `case.ts` | 单元：排序稳定 |
+| 团队接入 | static worker 产 candidate，critic 复核，dynamic 执行 PoC（T-15） | `team-worker` prompt + `team.ts` | 真机：static→critic→dynamic 链 |
+| 非目标 | 不做全量 SAST/符号执行；不做网络 fuzz；不引入外部扫描器二进制 | — | — |
+
 ## 3. 顺序与依赖
 
 ```text
@@ -206,14 +250,19 @@ Sprint 2:
   T-05 预算/finish gate  →  T-06 证据版本绑定  →  T-07 进化 gate 强化
 Sprint 3:
   T-13.1 finding UI（状态编辑/过滤/头部/Case 列表/Team 报告）
+  →  T-14 recon（资产账本 + scope/限速 + 被动/导入先行，主动扫描后置）
   →  T-08 上下文纪律  →  T-09 审批 fail-safe
 Sprint 4:
-  T-13.2 SARIF/报告导出  →  T-10 UI 工程化  →  T-12 工具评分/缓存
+  T-15 PoC 闭环（candidate → recipe → run → 正负对照 → finding 联动）
+  →  T-13.2 SARIF/报告导出
 Sprint 5:
-  T-13.3 CVSS 向量/趋势  →  T-11（先补证）
+  T-16 候选挖掘（HAR/OpenAPI/JS/APK/字符串提取 + 覆盖驱动）
+  →  T-13.3 CVSS 向量/趋势
+Sprint 6:
+  T-10 UI 工程化  →  T-12 工具评分/缓存  →  T-11（先补证）
 ```
 
-依赖：T-07 依赖 T-02 的审计字段；T-06 依赖 T-02 的证据元数据；T-05 依赖 T-03 的 task 预算归属；T-13.1/.2/.3 依赖 T-13.0（已落地）。
+依赖：T-07 依赖 T-02 的审计字段；T-06 依赖 T-02 的证据元数据；T-05 依赖 T-03 的 task 预算归属；T-13.1/.2/.3 依赖 T-13.0（已落地）；T-15 依赖 T-14 的 scope/资产账本；T-16 依赖 T-14 的资产账本与 T-15 的执行器。
 
 每项必须带**设置开关**（settings + DSH Config），默认保守，可一键回退。
 
