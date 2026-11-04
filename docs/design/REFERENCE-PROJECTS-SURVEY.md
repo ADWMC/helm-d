@@ -2,6 +2,7 @@
 
 > **文档定位**：[总方案](MASTER-PLAN-PRO-RE-PENTEST.md) 的输入证据。当前约束：不接外部 MCP，全部内置。
 > **状态**：调研笔记，未实现。
+> **可执行落地**：任务拆分、落点与验收见 [REFERENCE-ABSORPTION-TASKBOOK.md](REFERENCE-ABSORPTION-TASKBOOK.md)（2026-11-04 源码级复调，T-01…T-12）。
 
 ## 分簇
 
