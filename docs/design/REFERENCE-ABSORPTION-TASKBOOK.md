@@ -386,7 +386,32 @@ Sprint 6:
 3. AGPL/GPL 来源只重写结构与判据；MIT/Apache 可参考实现但按仓库规范仍以自写为准，引用需署名。
 4. 所有脚本输出统一走 `save_evidence`（sha256 去重）与 scope 围栏，不新增第二套数据层。
 
-## 9. 附录 B：反模式（不要吸收）
+## 9. 附录 D：净新增能力探索池（未排期；排除已有功能与 T-01…T-16）
+
+> 排除项：case/evidence/finding 注册表与定级、team 协作、进化 gate、recon/PoC/挖掘、UI/审批/上下文压缩——这些已在实现或 T-01…T-16。下表是**仍然没有的新能力**。
+
+| ID | 能力 | 参考来源（证据） | 为什么值得 | 代价 | 建议 |
+|---|---|---|---|---|---|
+| N-01 | **本地混合检索（BM25 + rerank）** 覆盖 references + case evidence | VulnBot RAG+rerank（`server/chat/chat.py:76-100`）；pentestagent ShadowGraph（`knowledge/graph.py:66-91`）；T3MP3ST code-ingest（`code-ingest.ts:832`） | 现在 `read_reference` 只能按路径读；362 篇 + 证据无法语义检索 | 中：索引构建 + 纯本地 BM25，可选 embedding | P1 |
+| N-02 | **HTTP 捕获/重放/差分** | redamon `traffic_tools.py:330`（proxy_to_curl）、`:293`（proxy_diff）；ARTEX `finding_traffic.go:364` | PoC/复现/回归都缺原始请求回放；HAR 只解析不重放 | 中：本地代理或 HAR 导入 + 回放器 | P1 |
+| N-03 | **攻击图 / kill-chain 组合** | T3MP3ST `attack-graph.ts:47-52,106-196`；Swarm `internal/attackgraph/graph.go:15-104`、`build.go:20`；Decepticon `kg_internal/summary.py:52-98` | T-14 只做资产清单；缺"资产→finding→下一步"的路径评分 | 中：图结构 + 路径打分 | P1 |
+| N-04 | **独立 verifier / 模型议会** | T3MP3ST refuter 3 票（`adjudicate.ts:95-116,466-553`）；xalgorix verifier 三态（`verifier.go:48,215`）；Decepticon verifier agent（`finding_verifier.py:22`） | 现在 critic 与 worker 同模型；high/critical 缺独立复核 | 低-中：可先做多轮独立复跑，再做多模型 | P1 |
+| N-05 | **跨会话经验库（lessons）** | harness2 教训库（`core/library.py:19`、`prompts.py:1126-1147`）；openclaude memdir 限 200 行/25KB（`memdir.ts:36-39,247-249`，**仅概念**）；dgm 自知识提示 | `tool_memory` 只记工具；没有"这类目标为何失败"的经验复用 | 低：按 case/域存 lesson + 检索注入 | P1 |
+| N-06 | **计划复用 / 成功路径缓存** | 论文 2512.21309；SkillOpt best_skill（`trainer.py:568-622`）；dgm archive（`DGM_outer.py:174-190`） | 每次从零规划；同类任务重复试错 | 中：plan 模板 + 适用条件 + 命中率 | P2 |
+| N-07 | **本地安全基准/回归语料** | deadend XBOW 流程（`benchmarks/run_xbow_benchmark.sh:1-15`）；HackSynth `run.py:29-52`；NASim `environment.py:143-228`；dgm 阈值追加评测（`self_improve_step.py:152-178`） | team-eval 只有指标，没有固定任务语料；进化无法防回归 | 中：fixtures + 判据 + CI 任务 | P1 |
+| N-08 | **OPSEC / 出站策略** | T3MP3ST `opsec/index.ts:50-75,235`；红队 stealth profile（redamon `recon_settings/loader.py:174-191`）；hexstrike 参数改写（`:4837`）；xalgorix 限速（`ratelimit.go:21-87`） | recon/PoC 有 scope/限速但没有 UA/jitter/egress 策略 | 低：执行器统一策略对象 | P2 |
+| N-09 | **隐私/密钥脱敏网关** | Dark-Moon vault（`privacy/vault.py:227-505`）、位置感知再水化（`gateway.py:94-121,347-446`） | 证据/日志会把凭据原样落盘；现有 `redact_capture.py` 未接入 | 低-中：证据写入前脱敏 + 可逆映射（仅本机） | P1 |
+| N-10 | **技能包/本地注册表** | ZCode manifest 分组（`plugin-components.ts:28-55`）；OpenAgentsControl registry（`registry.json:11-30`）；Dify skills | references 是散文档；缺 skill 清单（触发词/工具/参考/评测） | 中：manifest + 本地目录 | P2 |
+| N-11 | **成本核算（token/费用）** | Decepticon USD 预算 fail-closed（`budget.py:12-360`） | T-05 只有 wallTime/toolCalls；没有每角色 token/费用 | 低：从流式用量累计 | P2 |
+| N-12 | **自生成评测任务** | AgentEvolver self-questioning（README，未克隆）；dgm 阈值追加；harness2 propose-probe | 进化 gate 缺"新题"；固定集容易过拟合 | 高：题目生成 + 期望答案校验 | P3 |
+| N-13 | **信任标签 / 操纵抵抗** | APTS 靶侧内容不可信（`6_Manipulation_Resistance/README.md:74-100`）；T3MP3ST benign-context 分解 | 工具输出/参考文档未标注信任级；注入面存在 | 低：证据/参考加 trust 标签，finding 拒绝无标签引用 | P1 |
+| N-14 | **跨 case 检索与关联** | ARTEX 全局资产、redamon 全局图、DSH session search | case 之间完全隔离，同类目标经验不可见 | 中：case 索引 + 只读搜索 | P2 |
+| N-15 | **浏览器运行时面（SPA）** | redamon `playwright_server.py`；ARTEX `runtime_harvest.js`+`preload.js`；T3MP3ST `browser.ts` | 静态 fetch 看不到 SPA/JS 路由；recon/PoC 都受益 | 中-高：Playwright 本地依赖 | P2 |
+| N-16 | **执行隔离（网络/进程）** | Decepticon Docker（`bash.py:446`）；Swarm LocalRunner（`runner.go:140`） | DSH sandbox 只限文件写，无 netns/容器 | 高：Windows 容器/受限账户工程 | P3 |
+
+**净新增优先级建议**：N-01 检索 → N-07 基准 → N-04 独立 verifier → N-09 脱敏 → N-13 信任标签（都是低成本、直接补质量门）；N-02/N-03/N-15 依赖 recon/PoC 任务落地后再做；N-05/N-06/N-10 属于效率层；N-12/N-16 成本最高，最后评估。
+
+## 10. 附录 B：反模式（不要吸收）
 
 - 「exhausted ≠ done」把失败当完成；必须显式 blocked（ARTEX/pentagi 教训）。
 - 工具自声明安全（模型说 safe 不等于安全）；闸门不得接受模型标签降级（VulnClaw `exec_gate.py:157-170`）。
