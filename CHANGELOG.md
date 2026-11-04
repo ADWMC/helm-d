@@ -4,7 +4,7 @@
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
 
-## [Unreleased]
+## [0.5.3] — 2026-11-04（Team/证据/recon/PoC/mining 全量落地）
 
 ### 参考项目吸收（T-01…T-17）
 
@@ -50,7 +50,7 @@
 - **设置项接线**：Team（begin_case 自动建单、默认角色集、每 ticket 并发上限 1-8、默认 worker 超时分钟）、拦截总开关、`[autonomy]` 状态包开关、L4-lite 建议开关、Star 弹窗延迟——全部生效于运行中的宿主，不再只有环境变量
 - **新增 settings 检查**（默认值/合并/clamp/并发上限生效），检查集 24 → 25 项
 
-## [0.5.3] — 2026-11-03（AGPL + 四档 + 本地 Team 协作 + Issue #5 收口）
+## [0.5.3-rc] — 2026-11-03（撤回基线；内容并入 0.5.3）
 
 本版把许可与免责声明改成 AGPL-3.0-or-later 并补齐三大法域要点；主档改名 `ds4.1f` 并新增第四档 `gpt-6x`；把本地多 agent 协作协议从「工单状态机」补成可运行的 worker 会话 + Team 工作台 + A/B 进化门禁；发布资产改用版本化 URL 收口 Issue #5。分发形态不变：payload / references / profiles 全封印，release 资产仍是 3 个 tgz。
 
