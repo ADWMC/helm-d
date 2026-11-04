@@ -20,6 +20,7 @@ import { deadEndsSummary } from '../ledger.js'
 import { renderAutonomyPacket } from '../autonomy.js'
 import { loadSettings } from '../settings.js'
 import { createTicket } from '../team.js'
+import { sessionEvents, toolCalls } from '../session-log.js'
 
 interface ExecLike {
   agent?: {
@@ -242,6 +243,35 @@ export function registerCaseflowTools(ctx: Context): void {
       if ((args.repro_cmd ?? '').trim() === '') {
         return 'REJECTED — repro_cmd is required: a finding without a reproducible command is not a conclusion.'
       }
+      // Anti-pretence gates. The model can CLAIM it read references or ran a
+      // tool; these checks read the actual evidence filenames (produced by the
+      // persisting wrapper) and the session's real tool/call trace instead.
+      const discipline = loadSettings().advisory
+      if (discipline.requireToolEvidence) {
+        const onDisk = await listEvidence(active.dir)
+        const byId = new Map(onDisk.map((entry) => [entry.id, entry.file]))
+        const citedFiles = (args.evidence_ids ?? []).map((id) => byId.get(id)).filter((file): file is string => file !== undefined)
+        // `manual_` is the reserved prefix save_evidence stamps on every
+        // model-authored capture, so a spoofed label can never pass as tool output.
+        const selfAuthored = /^E-\d+-(manual_|save_evidence|team_report|tool_memory)/
+        if (!citedFiles.some((file) => !selfAuthored.test(file))) {
+          return [
+            'REJECTED — every cited evidence id is self-authored (save_evidence/team_report/tool_memory).',
+            `cited: ${citedFiles.join(', ') || '(none)'}`,
+            'Run a real analysis tool first; its output is auto-captured as evidence with the tool name in the filename.',
+          ].join('\n')
+        }
+      }
+      if (discipline.requireDocRead) {
+        const calls = toolCalls(sessionEvents(exec?.agent as unknown as Parameters<typeof sessionEvents>[0], 'caseflow'))
+        if (!calls.some((call) => call.name === 'read_reference')) {
+          return [
+            'REJECTED — no read_reference call found in this session\'s real tool trace.',
+            'Call route_task(goal) and then read_reference(<matched refs>) before recording a conclusion;',
+            'the claim "I read the docs" is not evidence.',
+          ].join('\n')
+        }
+      }
       await appendFinding(active.dir, args.title, args.detail, args.evidence_ids ?? [], args.repro_cmd)
       return `finding recorded: ${args.title} [${(args.evidence_ids ?? []).join(', ')}]\nrepro: ${args.repro_cmd.trim()}`
     },
@@ -391,7 +421,9 @@ export function registerCaseflowTools(ctx: Context): void {
           await import('node:fs/promises').then((m) => m.readFile(resolve(args.file!), 'utf8'))
       }
       if (!content.trim()) return 'nothing to save (empty content)'
-      const { id } = await saveEvidence(active.dir, args.label, content, args.label)
+      // Reserved provenance prefix: the anti-pretence gate keys off the filename,
+      // so a model-controlled label must never look like a tool name.
+      const { id } = await saveEvidence(active.dir, `manual_${args.label}`, content, args.label)
       return `[evidence: ${id} saved to ${active.name}]`
     },
   }))

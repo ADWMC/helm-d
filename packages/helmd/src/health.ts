@@ -55,6 +55,8 @@ export const Config = z.object({
   advisory: z.object({
     autonomyPacket: z.boolean().default(true).description('case_status 附 [autonomy] 状态包'),
     nextActionNudge: z.boolean().default(true).description('工具结果后的下一步建议'),
+    requireDocRead: z.boolean().default(true).description('record_finding 前必须真实调用过 read_reference'),
+    requireToolEvidence: z.boolean().default(true).description('引用证据至少一条来自真实工具捕获（非 save_evidence 自编）'),
   }),
   star: z.object({
     popupDelaySec: z.number().min(0).max(60).default(2).description('Star 弹窗延迟秒数'),

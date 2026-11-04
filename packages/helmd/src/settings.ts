@@ -33,6 +33,10 @@ export interface HelmdSettings {
     autonomyPacket: boolean
     /** 工具结果后的 L4-lite 下一步建议。 */
     nextActionNudge: boolean
+    /** record_finding 前必须真实调用过 read_reference（防“假装读过文档”）。 */
+    requireDocRead: boolean
+    /** 引用证据至少一条来自真实工具捕获，save_evidence 自编文本不算。 */
+    requireToolEvidence: boolean
   }
   star: {
     /** Star 弹窗延迟秒数。 */
@@ -48,7 +52,7 @@ export const DEFAULT_SETTINGS: HelmdSettings = {
     defaultWallTimeMin: 15,
   },
   intercept: { enabled: true },
-  advisory: { autonomyPacket: true, nextActionNudge: true },
+  advisory: { autonomyPacket: true, nextActionNudge: true, requireDocRead: true, requireToolEvidence: true },
   star: { popupDelaySec: 2 },
 }
 
@@ -85,6 +89,8 @@ function normalizeSettings(raw: unknown): HelmdSettings {
     advisory: {
       autonomyPacket: clampBool(advisory.autonomyPacket, d.advisory.autonomyPacket),
       nextActionNudge: clampBool(advisory.nextActionNudge, d.advisory.nextActionNudge),
+      requireDocRead: clampBool(advisory.requireDocRead, d.advisory.requireDocRead),
+      requireToolEvidence: clampBool(advisory.requireToolEvidence, d.advisory.requireToolEvidence),
     },
     star: { popupDelaySec: clampNumber(star.popupDelaySec, 0, 60, d.star.popupDelaySec) },
   }

@@ -751,6 +751,12 @@ exports.apply = function apply(ctx) {
 					),
 					h(SettingsRow, { label: "下一步建议", hint: "工具结果后的 L4-lite 提示" },
 						h(SettingsToggle, { checked: !!form.advisory.nextActionNudge, onChange: function (v) { setIn("advisory.nextActionNudge", v); } })
+					),
+					h(SettingsRow, { label: "结论前必读文档", hint: "record_finding 要求真实调用过 read_reference（防假装）" },
+						h(SettingsToggle, { checked: !!form.advisory.requireDocRead, onChange: function (v) { setIn("advisory.requireDocRead", v); } })
+					),
+					h(SettingsRow, { label: "证据须来自工具", hint: "引用证据至少一条为真实工具输出（save_evidence 自编不算）" },
+						h(SettingsToggle, { checked: !!form.advisory.requireToolEvidence, onChange: function (v) { setIn("advisory.requireToolEvidence", v); } })
 					)
 				)
 			),
