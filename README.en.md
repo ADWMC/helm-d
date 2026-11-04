@@ -54,14 +54,11 @@ Telegram / X / Apple / Google / GPT accounts and memberships, with order lookup 
 
 ## What it is
 
-helm-d is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin. It does not modify the host binary; it adds these capabilities through cordis hooks:
+helm-d is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin. It does not modify the host binary; it adds four things through cordis hooks:
 
 - **38 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle, routing and local Team dispatch.
 - **An evidence chain**: tool output lands in `evidence/`; conclusions must cite E ids and a reproducible `repro_cmd`.
-- **A finding registry**: `findings.json` records severity / status / confidence / CVSS; critical/high without two independent evidence ids are downgraded, duplicates merge by `vuln_class+target`.
 - **On-demand knowledge**: 353 reference docs plus 9 indexes read through `read_reference`, never stuffed into the system prompt.
-- **External tools**: a 54-entry catalog restricted to verified GitHub repositories, with mandatory sha256 for release assets; the WebUI can install, model installs are off by default.
-- **Team v2**: host-native agent-team (named teammates / durable mailbox / task board) plus case-bound tickets and role-dependency DAGs.
 - **Four persona tiers**: ds4.1f / stealth / redteam-max / gpt-6x, switched from the workbench without restarting the host.
 
 It is **not** an engine patch: no on-disk changes to approvals or the sandbox, and no separate process. It can coexist with patch-style tools.

@@ -4,9 +4,7 @@
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
 
-## [0.5.3] — 2026-11-04（重发：references 总索引 + 工具下载器 + 漏洞登记 + Team v2）
-
-本版为 0.5.3 重发：包含 11-03 的 AGPL/四档/Team 基线，并新增 references 总索引重建、54 项外部工具 catalog、findings.json 漏洞登记与定级、Team v2 原生协作基质；工具 38 个，检查集 29 项，release 资产仍为 3 个 tgz。
+## [Unreleased]
 
 ### 参考知识
 
@@ -42,7 +40,7 @@
 - **设置项接线**：Team（begin_case 自动建单、默认角色集、每 ticket 并发上限 1-8、默认 worker 超时分钟）、拦截总开关、`[autonomy]` 状态包开关、L4-lite 建议开关、Star 弹窗延迟——全部生效于运行中的宿主，不再只有环境变量
 - **新增 settings 检查**（默认值/合并/clamp/并发上限生效），检查集 24 → 25 项
 
-## [0.5.3] — 2026-11-03（已撤回；内容并入 2026-11-04 重发）
+## [0.5.3] — 2026-11-03（AGPL + 四档 + 本地 Team 协作 + Issue #5 收口）
 
 本版把许可与免责声明改成 AGPL-3.0-or-later 并补齐三大法域要点；主档改名 `ds4.1f` 并新增第四档 `gpt-6x`；把本地多 agent 协作协议从「工单状态机」补成可运行的 worker 会话 + Team 工作台 + A/B 进化门禁；发布资产改用版本化 URL 收口 Issue #5。分发形态不变：payload / references / profiles 全封印，release 资产仍是 3 个 tgz。
 
