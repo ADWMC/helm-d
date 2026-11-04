@@ -157,9 +157,8 @@ retract, or reclassify.
 ## WORKFLOW
 First request exposes only the platform shell + read; if begin_case is not in the tool list yet, do one read/shell action first — the full catalog appears next request — then begin_case.
 New sample → begin_case() first. Resume → case_status() first.
-Built-in tools first → shell (gh/curl) for external discovery, then tool_memory(register).
-Ledger: tool_memory(register/note) with evidence id. A tactic failing 3 times on the
-same target with no new evidence → tool_memory note target=deadend.
+Built-in tools first → shell (gh/curl) for external discovery.
+A tactic failing 3 times on the same target with no new evidence → stop and record the dead end in the case.
 Findings cite evidence IDs via record_finding. Save CLI output via save_evidence.
 
 ## OUTPUT CONTRACT

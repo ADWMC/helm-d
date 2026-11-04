@@ -19,7 +19,6 @@ import {
 import { getLevel } from '../mode.js'
 import { renderAdvisoryStats } from '../advisory.js'
 import { getStreamInterceptionStats } from '../llm-stream-hook.js'
-import { deadEndsSummary } from '../ledger.js'
 import { renderAutonomyPacket } from '../autonomy.js'
 import { loadSettings } from '../settings.js'
 import { createTicket } from '../team.js'
@@ -43,11 +42,11 @@ function resolveWorkspaceRoot(root?: string, exec?: ExecLike): string | undefine
 }
 
 const RULES = [
-  '1. Built-in tools first; missing capability → use shell (gh/curl) to find and install it, then tool_memory(register); custom scripts LAST, only in <case>/scripts/.',
+  '1. Built-in tools first; missing capability → use shell (gh/curl) to find and install it; custom scripts LAST, only in <case>/scripts/.',
   '2. External CLI output → save_evidence(label, ...) before citing it.',
   '3. Parameters come from prior tool output in evidence/. Findings cite E ids via record_finding.',
   '4. Resume after compaction → case_status(); before compaction, bring the CASE.md `## resume` block up to date.',
-  '5. Installed a tool or learned a verified usage → tool_memory(register/note) with evidence id; a tactic failing 3 times in a row on the same target (no new evidence) → tool_memory note target=deadend, and never retry a filed dead end without new evidence.',
+  '5. A tactic failing 3 times in a row on the same target (no new evidence) → stop, record the dead end in the case, and never retry it without new evidence.',
 ].join('\n')
 
 export function registerCaseflowTools(ctx: Context): void {
@@ -199,7 +198,6 @@ export function registerCaseflowTools(ctx: Context): void {
           hypotheses,
           findings,
           evidence,
-          deadEnds: deadEndsSummary(3),
         })
         : ''
 
@@ -288,10 +286,10 @@ export function registerCaseflowTools(ctx: Context): void {
         const citedFiles = (args.evidence_ids ?? []).map((id) => byId.get(id)).filter((file): file is string => file !== undefined)
         // `manual_` is the reserved prefix save_evidence stamps on every
         // model-authored capture, so a spoofed label can never pass as tool output.
-        const selfAuthored = /^E-\d+-(manual_|save_evidence|team_report|tool_memory)/
+        const selfAuthored = /^E-\d+-(manual_|save_evidence|team_report)/
         if (!citedFiles.some((file) => !selfAuthored.test(file))) {
           return [
-            'REJECTED — every cited evidence id is self-authored (save_evidence/team_report/tool_memory).',
+            'REJECTED — every cited evidence id is self-authored (save_evidence/team_report).',
             `cited: ${citedFiles.join(', ') || '(none)'}`,
             'Run a real analysis tool first; its output is auto-captured as evidence with the tool name in the filename.',
           ].join('\n')

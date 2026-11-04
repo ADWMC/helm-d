@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url'
 import { readTextSeam, assertWithinRoot } from './seam.js'
 import { readSealedReference } from './sealed-refs.js'
 import { getLevel, setLevel, normalizeLevel, renderContract } from './mode.js'
-import { shelfSummary } from './ledger.js'
 import { playbookFor } from './autonomy.js'
 import { submitAdvisory, renderAdvisoryStats } from './advisory.js'
 import { sessionEvents, type AgentLike } from './session-log.js'
@@ -120,13 +119,6 @@ export function renderRoute(hint: string): string {
       lines.push(`备选: ${hits.slice(1, 4).map((h) => h.key).join(', ')}`)
     }
     card = lines.join('\n')
-  }
-  // Cross-session memory: shelf overview + top dead-ends (silent when empty)
-  try {
-    const shelf = shelfSummary()
-    if (shelf) card += '\n\n' + shelf + '\n(新装工具→tool_memory register；踩坑/证伪→tool_memory note，须带证据)'
-  } catch {
-    // ledger unavailable — route card stays clean
   }
   // Advisory ledger: did the agent act on what earlier cards/hooks told it?
   try {

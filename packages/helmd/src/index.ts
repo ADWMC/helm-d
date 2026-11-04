@@ -18,7 +18,6 @@ import { registerToolboxTools } from './tools/toolbox.js'
 import { registerTeamTools } from './tools/team.js'
 import { registerTeamPolicy } from './team-policy.js'
 import { registerTeamContext } from './team-context.js'
-import { registerLedgerTool } from './ledger.js'
 import { registerIcaContext } from './ica-context.js'
 import { registerGate } from './gate.js'
 
@@ -56,8 +55,6 @@ export function apply(ctx: Context): void {
     // Router tools: skill_catalog + read_reference + route_task + analysis_mode
     registerRouterTools(ctx)
 
-    // Tool Ledger: tool_memory register/note/search — cross-session tool memory
-    registerLedgerTool(ctx)
 
     // Local team protocol: role guard + orchestrator contract + dispatch.
     registerTeamPolicy(ctx)

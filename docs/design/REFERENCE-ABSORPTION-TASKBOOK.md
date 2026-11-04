@@ -65,7 +65,7 @@
 | 项 | 内容 |
 |---|---|
 | 机制来源 | VulnClaw near-miss NO_PATH 守卫（首次终结结论遇高信号证据即驳回，`solver.py:322-372,765-777`）+ reflexion 同类连败升级（`reflexion.py:47-105`）；redamon LATS 跨树探针硬去重（`lats.py:382-429`、`state.py:1175`）；Dark-Moon 重复命令拦（`execution_guard.py:203-216`） |
-| 落点 | `persist.ts` + `autonomy.ts`：用真实 `tool/call` 轨迹统计（session-log）——同一 tool+args 连续 ≥3 次且证据无新增 → autonomy packet 顶部硬提示 NO_PATH + 建议换路径；与 `tool_memory` deadend 联动 |
+| 落点 | `persist.ts` + `autonomy.ts`：用真实 `tool/call` 轨迹统计（session-log）——同一 tool+args 连续 ≥3 次且证据无新增 → autonomy packet 顶部硬提示 NO_PATH + 建议换路径；与 case 内 dead-end 记录联动 |
 | 验收（单元） | 构造重复序列 → packet 出现 NO_PATH；有新证据 → 不触发 |
 | 验收（真机） | 模型连续重复被提示后改变路径或显式 blocked |
 | 许可 | MIT / AGPL（VulnClaw MIT；redamon MIT）→ 判据吸收 |
@@ -141,12 +141,9 @@
 
 ### T-12 Toolbox 2.0（工具货架/选型/健康/缓存）（P1）
 
-**现状（已实现，作为基线）**：
-- `tool_recommend`：60+ 条静态 keyword→tool 规则 + `references/toolbox/tool-matrix.md` 全矩阵（`packages/helmd/src/tools/toolbox.ts:8-100`）。
-- `tool_memory`：`$DSH_HOME/helmd-tools/TOOLS.md` 货架（register/note/deadend/search，note 必须带证据），`route_task` 自动注入 shelf 摘要（`packages/helmd/src/ledger.ts:83-160,280-330`）。
-- **缺口**：静态规则无健康探测/成功率/延迟/缓存；TOOLS.md 已有 `(待补职责)` 与失效路径；无 MCP 工具发现；无 per-role 工具策略。
-
-**现状审计（2026-11-04，本机实测）**：
+**状态（2026-11-04）**：`tool_memory` 已按操作者决定删除——模型乱记账，77 条里 35 条未登记、67 条路径不可解析；`TOOLS.md`/`DEAD_ENDS.md` 文件保留在磁盘但不读不写，`route_task`/`case_status` 不再注入账本。保留 `tool_recommend`（65 条静态规则 + `references/toolbox/tool-matrix.md`，`toolbox.ts:8-100`）。
+**剩余缺口**：静态规则无健康探测/成功率/延迟/缓存；无 MCP 工具发现；无 per-role 工具策略。
+**以下审计保留为「为什么删除」的证据（对应代码已删）**：
 - TOOLS.md 46 KB / **77 条**：`installed` 24（日期字符串）、`noted` 35、**无状态 18**；53 条没有 `用法` 模板。
 - **67 条路径在磁盘上不可解析**（含 35 条 `(未登记)`、WSL 规格串、npm 包名、URL）——推荐可能指向不存在的工具。
 - `route_task` 每次注入**全部 77 行**（≈3.1 KB / 约 1k tokens），无 top-N、无相关性排序（`router.ts:126`、`ledger.ts:245-262`）。
@@ -158,12 +155,12 @@
 
 | 子项 | 机制来源 | 要求 | 验收 |
 |---|---|---|---|
-| T-12.1 健康探测 | VulnClaw MCP `ProbeMixin` / `MCPRegistry` / diagnostics（`vulnclaw/mcp/_probe_mixin.py:43-68`、`mcp/registry.py:59`、`mcp/diagnostics.py`）；DSH MCP 连接探测（`mcp-client/src/connection.ts:163-172`） | register 时验证 path/版本/命令（存在且可执行）；周期复检；状态 `verified/missing/stale`；TOOLS.md 显式标红失效条目 | 单元：假路径→missing、版本变化→stale；真机：货架状态与文件系统一致 |
+| T-12.1 健康探测（只读） | VulnClaw MCP `ProbeMixin` / `MCPRegistry` / diagnostics（`vulnclaw/mcp/_probe_mixin.py:43-68`、`mcp/registry.py:59`、`mcp/diagnostics.py`）；DSH MCP 连接探测（`mcp-client/src/connection.ts:163-172`） | 对 `tool_recommend` 规则里提到的本机命令做**只读探测**（存在/可执行/版本），返回 `verified/missing/stale` 附注；不写账本、不创建条目 | 单元：假命令→missing；真机：推荐结果带健康注记 |
 | T-12.2 选型评分 | hexstrike 目标画像选型 + 攻击链成功率（`hexstrike_server.py:1003-1060,1462-1550`） | `tool_recommend` 从关键词升级为**打分排序**：signal 匹配 + successRate + latency + 最近使用 + 降级链；返回 top-N 与理由 | 单元：排序稳定/降级链；真机：重复任务推荐收敛 |
-| T-12.3 MCP/工具注册 | ZCode manifest（`plugin-components.ts:28-55`）；OpenAgentsControl registry（`registry.json:11-30`）；DSH MCP 前缀 `mcp__server__tool` | 枚举本机 MCP server 工具并入货架；记录 server/health/tool 列表；不引入外部服务 | 单元：fixture MCP 清单；真机：挂一个本地 stdio server |
+| T-12.3 MCP 只读发现 | ZCode manifest（`plugin-components.ts:28-55`）；OpenAgentsControl registry（`registry.json:11-30`）；DSH MCP 前缀 `mcp__server__tool` | 只读枚举本机 MCP server 工具，供 `tool_recommend` 展示；不写账本、不引入外部服务 | 单元：fixture MCP 清单；真机：挂一个本地 stdio server |
 | T-12.4 只读缓存 | hexstrike LRU+TTL（`hexstrike_server.py:5091-5213`） | 确定性只读命令（版本/帮助/hash 类）短 TTL 缓存；命中仍写证据引用；写操作永不缓存 | 单元：命中/过期/写不缓存 |
 | T-12.5 角色工具策略 | DSH agent-team 工具面 + 我们的 team-policy | 由 settings 配 per-role allowlist/denylist（当前只硬编码 3 个名字）；越权拒绝并记录 | 单元：worker 调 orchestrator-only 工具被拒；真机：策略生效 |
-| T-12.6 来源/信任 | T3MP3ST arsenal riskTier（`arsenal/approval.ts:39-116`）；Dark-Moon 工具白名单（`executor.py:18-40`） | 货架条目带 source/license/trust（installed/verified/untrusted）；finding 可拒绝引用 untrusted 工具产物 | 单元：untrusted 条目不进 top-N；真机：finding 拒绝 |
+| T-12.6 来源/信任 | T3MP3ST arsenal riskTier（`arsenal/approval.ts:39-116`）；Dark-Moon 工具白名单（`executor.py:18-40`） | 推荐条目带 source/license/trust（verified/untrusted）；finding 可拒绝引用 untrusted 工具产物 | 单元：untrusted 条目不进 top-N；真机：finding 拒绝 |
 
 **验收（整体）**：`pnpm test:checks` 新增 `toolbox-health`/`toolbox-score` 用例；真机跑 `tool_recommend`+`tool_memory`（health→推荐→缓存→失效标记）一轮。
 **许可**：MIT/Apache 参考；VulnClaw/hexstrike 仅语义吸收。
@@ -423,7 +420,7 @@ Sprint 6:
 | N-02 | **HTTP 捕获/重放/差分** | redamon `traffic_tools.py:330`（proxy_to_curl）、`:293`（proxy_diff）；ARTEX `finding_traffic.go:364` | PoC/复现/回归都缺原始请求回放；HAR 只解析不重放 | 中：本地代理或 HAR 导入 + 回放器 | P1 |
 | N-03 | **攻击图 / kill-chain 组合** | T3MP3ST `attack-graph.ts:47-52,106-196`；Swarm `internal/attackgraph/graph.go:15-104`、`build.go:20`；Decepticon `kg_internal/summary.py:52-98` | T-14 只做资产清单；缺"资产→finding→下一步"的路径评分 | 中：图结构 + 路径打分 | P1 |
 | N-04 | **独立 verifier / 模型议会** | T3MP3ST refuter 3 票（`adjudicate.ts:95-116,466-553`）；xalgorix verifier 三态（`verifier.go:48,215`）；Decepticon verifier agent（`finding_verifier.py:22`） | 现在 critic 与 worker 同模型；high/critical 缺独立复核 | 低-中：可先做多轮独立复跑，再做多模型 | P1 |
-| N-05 | **跨会话经验库（lessons）** | harness2 教训库（`core/library.py:19`、`prompts.py:1126-1147`）；openclaude memdir 限 200 行/25KB（`memdir.ts:36-39,247-249`，**仅概念**）；dgm 自知识提示 | `tool_memory` 只记工具；没有"这类目标为何失败"的经验复用 | 低：按 case/域存 lesson + 检索注入 | P1 |
+| N-05 | **跨会话经验库（lessons）** | harness2 教训库（`core/library.py:19`、`prompts.py:1126-1147`）；openclaude memdir 限 200 行/25KB（`memdir.ts:36-39,247-249`，**仅概念**）；dgm 自知识提示 | 没有"这类目标为何失败"的经验复用（旧 tool_memory 已删除，且它只记工具） | 低：按 case/域存 lesson + 检索注入 | P1 |
 | N-06 | **计划复用 / 成功路径缓存** | 论文 2512.21309；SkillOpt best_skill（`trainer.py:568-622`）；dgm archive（`DGM_outer.py:174-190`） | 每次从零规划；同类任务重复试错 | 中：plan 模板 + 适用条件 + 命中率 | P2 |
 | N-07 | **本地安全基准/回归语料** | deadend XBOW 流程（`benchmarks/run_xbow_benchmark.sh:1-15`）；HackSynth `run.py:29-52`；NASim `environment.py:143-228`；dgm 阈值追加评测（`self_improve_step.py:152-178`） | team-eval 只有指标，没有固定任务语料；进化无法防回归 | 中：fixtures + 判据 + CI 任务 | P1 |
 | N-08 | **OPSEC / 出站策略** | T3MP3ST `opsec/index.ts:50-75,235`；红队 stealth profile（redamon `recon_settings/loader.py:174-191`）；hexstrike 参数改写（`:4837`）；xalgorix 限速（`ratelimit.go:21-87`） | recon/PoC 有 scope/限速但没有 UA/jitter/egress 策略 | 低：执行器统一策略对象 | P2 |

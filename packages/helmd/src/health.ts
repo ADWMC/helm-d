@@ -30,7 +30,6 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { readShelfTools } from './ledger.js'
 import { registerHelmdApi } from './api-routes.js'
 import { saveSettings } from './settings.js'
 
@@ -92,8 +91,6 @@ export interface HelmdHealth {
    * `unavailable (…)` / `failed (…)` otherwise.
    */
   autoHeal: string
-  /** Dynamic shelf tools loaded from TOOLS.md (JSON stringified). */
-  tools: string
 }
 
 /** Preset-patch tails per host generation, newest first (mirrors gen-preset.mjs). */
@@ -313,7 +310,6 @@ function evaluateHealthCore(): HelmdHealth {
     checkedAt: new Date().toISOString(),
     version,
     autoHeal: 'off',
-    tools: JSON.stringify(readShelfTools()),
   }
 
   const hostPath = locateHostStandard()

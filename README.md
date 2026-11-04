@@ -9,7 +9,7 @@
 
 **DeepSeek Harness 的破甲安全分析插件。**
 
-38 个工具 · 362 篇按需参考 · 证据链强制入链 · 四档破甲热切换 · 本地 Team 协作
+37 个工具 · 362 篇按需参考 · 证据链强制入链 · 四档破甲热切换 · 本地 Team 协作
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -56,7 +56,7 @@ Telegram / 推特 / 苹果 / 谷歌 / GPT 账号与会员，支持查单与售�
 
 helm-d 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的插件，不修改宿主二进制，通过 cordis 钩子给模型加四样东西：
 
-- **38 个工具**：Android / Web / Native / Protocol / Malware / AI-Security，加上 Case 生命周期、路由、工具账本与本地 Team 调度。
+- **37 个工具**：Android / Web / Native / Protocol / Malware / AI-Security，加上 Case 生命周期、路由与本地 Team 调度。
 - **证据链**：工具输出自动落 `evidence/`，结论必须引用 E 编号和可复现的 `repro_cmd`。
 - **按需知识**：362 篇参考文档由 `read_reference` 读取，不塞进 system prompt。
 - **四档破甲**：ds4.1f / stealth / redteam-max / gpt-6x，工作台一键热切换，下一次模型调用生效。
@@ -82,7 +82,7 @@ dsh web
 
 1. 新建 DSH 会话，把 Agent 预设切到 **helmd**。
 2. 发送 `helmd` 激活。
-3. 先做一个读文件/列目录动作。首轮只暴露 `shell + read`，下一轮 38 个工具（含 `begin_case`）才会出现——这是宿主晋升机制，不是插件坏了。
+3. 先做一个读文件/列目录动作。首轮只暴露 `shell + read`，下一轮 37 个工具（含 `begin_case`）才会出现——这是宿主晋升机制，不是插件坏了。
 4. 直接下任务，例如：
 
    > 分析 `samples/app.apk` 的加固方式，建 case、收集证据，最后给出带 `repro_cmd` 的结论。
@@ -139,7 +139,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 最常用的入口：`begin_case` / `case_status` / `record_finding` / `update_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode` / `team_create` / `team_dispatch` / `team_status`。
 
 <details>
-<summary><strong>38 个工具（按域展开）</strong></summary>
+<summary><strong>37 个工具（按域展开）</strong></summary>
 
 | 域 | 工具 |
 |----|------|
@@ -153,7 +153,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 | **Malware** | `malware_reference` `ioc_extract` `yara_gen` |
 | **AI-Security** | `ai_reference` `llm_sim` |
 | **Evidence** | `evidence_reference` `triage_artifact` `hash_artifact` |
-| **Toolbox** | `tool_recommend` `tool_memory` |
+| **Toolbox** | `tool_recommend` |
 | **Team** | `team_dispatch` `team_create` `team_status` `team_report` |
 
 </details>

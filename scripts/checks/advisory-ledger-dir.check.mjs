@@ -1,6 +1,6 @@
 // Subject: the advisory ledger must survive its own directory not existing yet.
-// The ledger shares the tool-ledger directory, and only tool_memory ever created it — so on
-// a machine where tool_memory was never called, every verdict was written with a bare
+// The advisory ledger shares the runtime state directory; nothing guarantees it exists yet — so on
+// a fresh machine every verdict was written with a bare
 // appendFileSync into a missing directory, threw ENOENT into an empty catch, and vanished:
 // the adoption card stayed empty and every adaptive reminder kept teaching forever.
 // This check pins the fresh-machine shape: the directory does not exist when the first

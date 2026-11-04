@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 工具面
+
+- **删除 `tool_memory`**：模型持续把临时命令/猜测写成"工具账本"，实测 77 条里 35 条未登记、67 条路径不可解析；同时 stop `route_task` 注入全部 77 行货架、`case_status` 注入死路、`/api/helmd/health.tools` 的货架 JSON。工具数 38 → 37，检查集 28 → 27；`TOOLS.md`/`DEAD_ENDS.md` 保留在磁盘（不再读写），`tool_recommend` 与 `references/toolbox/` 保留
+
 ### 漏洞登记与定级
 
 - **findings.json 注册表**：`record_finding` 升级为结构化登记（`F-xxx`、severity/status/confidence/vuln_class/target/cvss/seen_count），markdown 保留审计；旧 `findings.md` 自动兼容读取

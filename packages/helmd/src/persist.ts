@@ -15,7 +15,7 @@ const NO_PERSIST = new Set([
   'skill_catalog', 'read_reference', 'analysis_mode', 'route_task',
   'evidence_reference', 'native_reference', 'web_reference',
   'malware_reference', 'ai_reference', 'protocol_reference',
-  'tool_recommend', 'tool_memory',
+  'tool_recommend',
   // coordination, not an artifact of the analysis
   'team_dispatch',
   // case lifecycle / ledger bookkeeping itself
