@@ -718,6 +718,7 @@ exports.apply = function apply(ctx) {
 					h("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" } },
 						h("span", { style: { fontSize: 13, fontWeight: 600 } }, entry.name),
 						h("span", { style: S.pill(TONE.muted, true) }, entry.category),
+						entry.license ? h("span", { style: S.pill(TONE.muted, true) }, entry.license) : null,
 						h("span", { style: S.pill(entry.kind === "release" ? TONE.info : TONE.muted, entry.kind !== "release") }, entry.kind),
 						h("span", { style: S.pill(isInstalled ? TONE.success : TONE.muted, !isInstalled) }, isInstalled ? "已安装 " + (health.version || "") : "未安装"),
 						h("span", { style: { flex: 1 } }),

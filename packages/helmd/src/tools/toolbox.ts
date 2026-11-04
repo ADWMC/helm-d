@@ -27,6 +27,10 @@ const rules: Record<string, string> = {
   dex: 'DEX → garlic https://github.com/neocanable/garlic/releases (首选) | 替代: jadx/Fernflower | 存证: Java 源码',
   apktool: 'apktool https://github.com/ibotpeaches/apktool/releases — APK 解包/重打包/smali 调试 | 下载: Releases 选 `apktool_x.x.x.jar`',
   apk: 'APK → garlic (快速反编译) + apktool (解包) | 存证: Java 源码/smali/manifest',
+  mobsf: 'MobSF https://github.com/MobSF/Mobile-Security-Framework-MobSF — 静态+动态一体化移动应用评估 | docker run -p 8000:8000 opensecurity/mobile-security-framework-mobsf | 存证: 报告/流量',
+  objection: 'objection https://github.com/sensepost/objection — Frida 运行时移动探索 | pip install objection | objection -g <pkg> explore',
+  quark: 'Quark Engine https://github.com/ev-flow/quark-engine — 安卓恶意行为评分 | pip install quark-engine | quark -a app.apk -s',
+  apkid: 'APKiD https://github.com/rednaga/APKiD — 壳/保护器/混淆器识别 | pip install apkid | apkid app.apk',
   androguard: 'androguard https://github.com/androguard/androguard — pip install androguard | APK 静态分析',
   unidbg: 'unidbg https://github.com/zhkl0228/unidbg — Android native SO 模拟执行 | 下载: Releases 或 mvnw package 构建',
   emulat: '模拟执行 → unidbg | 替代: angr/unicorn',
@@ -56,6 +60,12 @@ const rules: Record<string, string> = {
   decrypt: '解密 → CipherBridge https://github.com/CuriousLearnerDev/CipherBridge/releases',
   aes: 'AES → CipherBridge https://github.com/CuriousLearnerDev/CipherBridge/releases',
   sign: '签名 → CipherBridge https://github.com/CuriousLearnerDev/CipherBridge/releases',
+  nuclei: 'Nuclei https://github.com/projectdiscovery/nuclei — 模板化漏洞扫描 | UI 工具页直接装 Windows 包 | nuclei -u <target> -severity high,critical',
+  ffuf: 'ffuf https://github.com/ffuf/ffuf — Web 目录/参数 fuzz | UI 工具页直接装 Windows 包 | ffuf -w wordlist.txt -u https://target/FUZZ',
+  mitm: 'mitmproxy https://github.com/mitmproxy/mitmproxy — TLS 拦截/重放 | pip install mitmproxy | mitmproxy -p 8080',
+  impacket: 'Impacket https://github.com/fortra/impacket — SMB/WMI/Kerberos 协议工具 | pip install impacket | python -m impacket.examples.secretsdump -h',
+  netexec: 'NetExec https://github.com/Pennyw0rth/NetExec — 网络/AD 枚举与执行 | pipx install git+https://github.com/Pennyw0rth/NetExec | nxc smb 10.0.0.0/24',
+  sqlmap: 'sqlmap https://github.com/sqlmapproject/sqlmap — SQL 注入检测/利用 | git clone + python sqlmap.py -u "<url>" --batch',
 
   // 4. Native / 二进制
   'headless-ida': 'headless-ida https://github.com/DennyDai/headless-ida — pip install headless-ida | IDA idalib 无界面跑脚本',
@@ -63,6 +73,16 @@ const rules: Record<string, string> = {
   ida: 'IDA 反汇编 → headless-ida + IDA Pro | 替代: Ghidra/radare2',
   radare2: 'radare2 https://github.com/radareorg/radare2/releases — 命令行逆向框架 | 下载: Releases 选平台二进制 | scoop install radare2',
   r2: 'r2 → radare2 https://github.com/radareorg/radare2/releases',
+  rizin: 'Rizin https://github.com/rizinorg/rizin/releases — radare2 分支，CLI 逆向框架 | UI 工具页可直接装 Windows 静态包 | rizin -A sample.bin',
+  capa: 'capa https://github.com/mandiant/capa — 识别可执行文件能力并映射 ATT&CK/MBC | pip install flare-capa | capa sample.exe',
+  floss: 'FLOSS https://github.com/mandiant/flare-floss — 提取混淆/栈字符串 | pip install flare-floss | floss sample.exe',
+  angr: 'angr https://github.com/angr/angr — 符号执行/二进制分析平台 | pip install angr',
+  pwntools: 'pwntools https://github.com/Gallopsled/pwntools — 漏洞利用开发/CTF | pip install pwntools (建议 WSL/Kali) | pwn checksec ./bin',
+  rop: 'ROPgadget https://github.com/JonathanSalwan/ROPgadget — 搜索 ROP/JOP gadget | pip install ROPgadget | ROPgadget --binary ./bin',
+  ghidra: 'Ghidra https://github.com/NationalSecurityAgency/ghidra/releases — 反编译套件 | 约 570MB，建议手动下载 | GhidraMCP https://github.com/LaurieWired/GhidraMCP 提供 agent 接口',
+  firmware: '固件提取 → binwalk (cargo install binwalk / 手动下载) + unblob (Linux/WSL: pip install unblob) | binwalk firmware.bin',
+  semgrep: 'Semgrep https://github.com/semgrep/semgrep — 模式化源码审计 | pip install semgrep | semgrep --config auto .',
+  joern: 'Joern https://github.com/joernio/joern — 代码属性图/数据流查询 | 下载 joern-cli-windows-x86_64.zip (~1.7GB) | joern --script query.sc',
 
   // 5. Windows
   vmp: 'VMP → VMPStaticUnpacker https://github.com/YuroGod/VMPStaticUnpacker/releases | 下载: Releases 选 `VMPStaticUnpacker.exe`',
@@ -86,12 +106,17 @@ const rules: Record<string, string> = {
   // 8. 恶意样本
   pe_inspector: 'PE 恶意检测 → pe-inspector https://github.com/la-1314/pe-inspector/releases | 下载: Releases 选平台二进制',
   malware: '恶意样本检测 → pe-inspector https://github.com/la-1314/pe-inspector/releases',
-  yara: 'YARA 规则 → pe-inspector https://github.com/la-1314/pe-inspector/releases / yara_gen',
-  ember: 'EMBER → pe-inspector https://github.com/la-1314/pe-inspector/releases',
+  yara: 'YARA https://github.com/VirusTotal/yara — 规则匹配/样本分类 | UI 工具页装 Windows 包 | yara rule.yar sample.exe',
+  ember: 'EMBER/PE 特征 → pe-inspector https://github.com/la-1314/pe-inspector/releases / yara_gen',
+  volatility: 'Volatility 3 https://github.com/volatilityfoundation/volatility3 — 内存取证 | pip install volatility3 | vol -f memory.raw windows.pslist',
+  oletools: 'oletools https://github.com/decalage2/oletools — Office/OLE 宏分析 | pip install oletools | olevba sample.doc',
+  pesieve: 'PE-sieve https://github.com/hasherezade/pe-sieve — 进程注入/内存 implant 检测 | UI 工具页装 Windows 包 | pe-sieve64.exe /pid <pid>',
+  hollows: 'hollows_hunter https://github.com/hasherezade/hollows_hunter — 扫描进程 hollowing/injection | UI 工具页装 Windows 包 | hollows_hunter64.exe /loop',
 
   // 9. AI / LLM 安全
+  garak: 'garak https://github.com/NVIDIA/garak — LLM 漏洞/越狱扫描 | pip install garak | garak --model_type rest --model_name <endpoint>',
   jailbreak: '模型安全评测 -> references/ai-security/{model-security-analysis-guide,bypass-framework-matrix}.md；在自有测试样本上比较响应分类、拒答一致性和审计记录',
-  llm: 'LLM 应用安全评测 -> references/ai-security/ + llm_sim 工具',
+  llm: 'LLM 应用安全评测 -> garak + references/ai-security/ + llm_sim 工具',
 }
 
 export function registerToolboxTools(ctx: Context): void {
@@ -143,7 +168,9 @@ export function registerToolboxTools(ctx: Context): void {
               : 'not installed'
             return '- ' + entry.id + ' (' + entry.category + ') — ' + entry.purpose + '\n'
               + '  repo: ' + entry.repo + '\n'
-              + '  kind: ' + entry.kind + ' | ' + status + '\n'
+              + '  kind: ' + entry.kind + ' | ' + status
+              + (entry.license !== undefined ? ' | license: ' + entry.license : '') + '\n'
+              + (entry.installHint !== undefined ? '  install: ' + entry.installHint + '\n' : '')
               + '  usage: ' + entry.usage
           })
         return rows.length > 0 ? rows.join('\n') : 'no catalog entries match'

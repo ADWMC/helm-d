@@ -8,7 +8,7 @@
 
 ### 工具面
 
-- **外部工具下载器（T-17 MVP）**：新增 `toolbox` 工具 + WebUI「工具」tab。catalog 只含**已核实 GitHub 仓库**的外部工具（r2/jadx/garlic/radare2/ghidra/upx/x64dbg… 27 项；无 GitHub 的 IDA/ExeinfoPE/gdb/nook 不入 catalog）；安装来源固定为对应仓库 latest release，资产必须带 GitHub sha256 digest，缺失即拒绝；解压抗 symlink 逃逸、按 `<id>/<tag>/` 隔离、失败回滚；pip/manual 条目只给命令不代执行。模型侧 `toolbox(action=catalog|status|install)`，安装默认被 `toolbox.modelInstall=false` 挡住（仅 UI/操作者安装）。真实 release 审计 10/10 可解析，UPX 与 BootKey.exe 已真机完成下载→sha256→安装→健康→卸载；多资产用固定名或版本无关 `assetPattern` 锁定，下载跟随 302，Windows 用系统 bsdtar 解 zip，工具根目录跟随 `$DSH_HOME`。工具数 37 → 38，检查集 27 → 28
+- **外部工具下载器（T-17 MVP）**：新增 `toolbox` 工具 + WebUI「工具」tab。catalog 只含**已核实 GitHub 仓库**的外部工具（54 项：release 16 / pip 18 / manual 20；新增 rizin/capa/FLOSS/YARA/angr/pwntools/ROPgadget/GhidraMCP、MobSF/objection/Quark/APKiD、nuclei/ffuf/mitmproxy/Impacket/NetExec/sqlmap、Volatility3/oletools/PE-sieve/hollows_hunter、Semgrep/Joern、binwalk/unblob、garak 等；无 GitHub 的 IDA/ExeinfoPE/gdb/nook 不入 catalog）；安装来源固定为对应仓库 latest release，资产必须带 GitHub sha256 digest，缺失即拒绝；解压抗 symlink 逃逸、按 `<id>/<tag>/` 隔离、失败回滚；pip/manual 条目只给命令不代执行，新增条目记录 upstream license。模型侧 `toolbox(action=catalog|status|install)`，安装默认被 `toolbox.modelInstall=false` 挡住（仅 UI/操作者安装）。真实 release 审计 16/16 可解析，UPX 与 BootKey.exe 已真机完成下载→sha256→安装→健康→卸载；多资产用固定名或版本无关 `assetPattern` 锁定，下载跟随 302，Windows 用系统 bsdtar 解 zip，工具根目录跟随 `$DSH_HOME`。工具数 37 → 38，检查集 27 → 28
 
 
 - **删除 `tool_memory`**：模型持续把临时命令/猜测写成"工具账本"，实测 77 条里 35 条未登记、67 条路径不可解析；同时 stop `route_task` 注入全部 77 行货架、`case_status` 注入死路、`/api/helmd/health.tools` 的货架 JSON。工具数 38 → 37，检查集 28 → 27；`TOOLS.md`/`DEAD_ENDS.md` 保留在磁盘（不再读写），`tool_recommend` 与 `references/toolbox/` 保留

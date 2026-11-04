@@ -258,7 +258,7 @@
 
 ### T-17 工具下载器 + 工具注册表（P1，MVP 已落地 2026-11-04）
 
-**状态**：T-17.1 catalog/registry、T-17.2 GitHub release 安装器（sha256 必填/抗 symlink/版本隔离）、T-17.3 WebUI「工具」tab、T-17.4 模型 `toolbox(action=catalog|status|install)` 已落地；catalog 27 项（release 10 / pip 5 / manual 12）。2026-11-04 真实 release 审计 10/10 可解析；UPX（zip）与 HashDump BootKey.exe（裸 exe）已真机走完下载 → sha256 → 安装 → 健康 → 卸载。模型安装默认 `toolbox.modelInstall=false`（仅操作者可在 UI 安装或显式开启）；更新/离线镜像未做。
+**状态**：T-17.1 catalog/registry、T-17.2 GitHub release 安装器（sha256 必填/抗 symlink/版本隔离）、T-17.3 WebUI「工具」tab、T-17.4 模型 `toolbox(action=catalog|status|install)` 已落地；catalog 54 项（release 16 / pip 18 / manual 20），覆盖 Android、Native、Firmware、Code、Web/AD、Malware、AI、Runtime、Protocol。2026-11-04 真实 release 审计 16/16 可解析；UPX（zip）与 HashDump BootKey.exe（裸 exe）已真机走完下载 → sha256 → 安装 → 健康 → 卸载。模型安装默认 `toolbox.modelInstall=false`（仅操作者可在 UI 安装或显式开启）；更新/离线镜像未做。
 **实现备注**：多资产 release 用 `asset`（固定名）或 `assetPattern`（版本无关正则）锁定，歧义即拒绝；`requestBuffer` 跟随最多 5 跳 302（GitHub 资产跳转）且跨域剥离 Authorization；Windows 优先用系统 bsdtar（可解 zip，GNU tar 不可）；工具根目录跟随 `$DSH_HOME`，隔离 profile/测试不污染操作者状态。
 **定位**：**catalog-driven installer（目录驱动安装器）**，不是"模型随便下工具"。catalog 只含已核实 GitHub 仓库的工具；无 GitHub 链接的 IDA/ExeinfoPE/gdb/nook 不入目录。
 
