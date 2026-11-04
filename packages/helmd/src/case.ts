@@ -282,8 +282,8 @@ export async function saveEvidence(
 
 /** T-02 claim audit: hash-like tokens in a finding detail must appear verbatim
  *  in at least one cited evidence file; E-id references must be cited. */
-export async function uncitedClaims(caseDir: string, detail: string, evidenceIds: string[]): Promise<string[]> {
-  const citations = new Set(evidenceIds)
+export async function uncitedClaims(caseDir: string, detail: string, evidenceIds: string[], negativeIds: string[] = []): Promise<string[]> {
+  const citations = new Set([...evidenceIds, ...negativeIds])
   const brokenCitations = [...new Set((detail.match(/\bE-\d{3,}\b/gi) ?? []))]
     .filter((id) => !citations.has(id.toUpperCase()))
   const hashes = [...new Set((detail.match(/\b[a-f0-9]{32,64}\b/gi) ?? []).map((value) => value.toLowerCase()))]

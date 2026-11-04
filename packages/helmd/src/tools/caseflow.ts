@@ -313,7 +313,7 @@ export function registerCaseflowTools(ctx: Context): void {
           return 'REJECTED — negative_control is required when negative_evidence_ids are supplied.'
         }
       }
-      const uncited = await uncitedClaims(active.dir, args.detail, args.evidence_ids ?? [])
+      const uncited = await uncitedClaims(active.dir, args.detail, args.evidence_ids ?? [], negativeIds)
       if (uncited.length > 0) {
         return [
           `REJECTED — detail contains claims not found verbatim in the cited evidence: ${uncited.slice(0, 8).join(', ')}`,

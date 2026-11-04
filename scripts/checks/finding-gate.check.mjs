@@ -139,7 +139,7 @@ await report.check('negative control must be independent evidence', async () => 
   )
   assert.match(overlap, /negative control must use independent evidence/)
   const accepted = await finding.execute(
-    { title: 'independent', detail: 'observed', evidence_ids: [positive.id], repro_cmd: 'cmd', severity: 'medium', negative_evidence_ids: [negative.id], negative_control: 'benign path does not reproduce' },
+    { title: 'independent', detail: `positive observed; negative control ${negative.id} did not reproduce`, evidence_ids: [positive.id], repro_cmd: 'cmd', severity: 'medium', negative_evidence_ids: [negative.id], negative_control: 'benign path does not reproduce' },
     { agent },
   )
   assert.match(accepted, /finding recorded/)
