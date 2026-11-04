@@ -146,6 +146,16 @@
 - `tool_memory`：`$DSH_HOME/helmd-tools/TOOLS.md` 货架（register/note/deadend/search，note 必须带证据），`route_task` 自动注入 shelf 摘要（`packages/helmd/src/ledger.ts:83-160,280-330`）。
 - **缺口**：静态规则无健康探测/成功率/延迟/缓存；TOOLS.md 已有 `(待补职责)` 与失效路径；无 MCP 工具发现；无 per-role 工具策略。
 
+**现状审计（2026-11-04，本机实测）**：
+- TOOLS.md 46 KB / **77 条**：`installed` 24（日期字符串）、`noted` 35、**无状态 18**；53 条没有 `用法` 模板。
+- **67 条路径在磁盘上不可解析**（含 35 条 `(未登记)`、WSL 规格串、npm 包名、URL）——推荐可能指向不存在的工具。
+- `route_task` 每次注入**全部 77 行**（≈3.1 KB / 约 1k tokens），无 top-N、无相关性排序（`router.ts:126`、`ledger.ts:245-262`）。
+- `readShelfTools()` 只进 `/api/helmd/health.tools`，**前端没有任何渲染消费**（`health.ts:316`；`client.js` 无引用）→ 货架在 UI 上不可见。
+- `tool_recommend` 纯 `q.includes(key)` 子串匹配，无词边界/排序/去重语义；英文常见词 `web/android/fuzz/python` 命中 0 条，`ida` 误命中 5 条（`toolbox.ts:100-115`）。
+- `registerToolEntry` 无条件在账本目录创建同名**空目录**，不校验路径是否存在（`ledger.ts:84-86`）；`noteTool` 的 implicit registration 就是 `(待补职责)/(未登记)` 的来源（`ledger.ts:112-120`）。
+- `note` 的 `evidence` 是自由字符串，不校验是否是真实 case/E-id（与 `record_finding` 的门禁不同）。
+- 无 denylist/deprecate/merge；无 MCP/DSH 原生工具发现；38 个插件工具完全不在货架。
+
 | 子项 | 机制来源 | 要求 | 验收 |
 |---|---|---|---|
 | T-12.1 健康探测 | VulnClaw MCP `ProbeMixin` / `MCPRegistry` / diagnostics（`vulnclaw/mcp/_probe_mixin.py:43-68`、`mcp/registry.py:59`、`mcp/diagnostics.py`）；DSH MCP 连接探测（`mcp-client/src/connection.ts:163-172`） | register 时验证 path/版本/命令（存在且可执行）；周期复检；状态 `verified/missing/stale`；TOOLS.md 显式标红失效条目 | 单元：假路径→missing、版本变化→stale；真机：货架状态与文件系统一致 |
