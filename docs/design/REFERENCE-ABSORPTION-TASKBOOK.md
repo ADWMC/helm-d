@@ -151,16 +151,50 @@
 
 ---
 
-### T-13 漏洞登记 + 定级（P0，**已落地**）
+### T-13 漏洞登记 + 定级 + UI 展示（P0）
 
-| 项 | 内容 |
+**机制来源**：ARTEX findings 表 + critical/high/medium/low + 9 态 triage（`db/findings.go:39-78`）；xalgorix CVSS→severity + 弱证据降一级（`internal/tools/reporting/reporting.go:3512-3531,777-798`）；Decepticon critical/high 需 2+ 验证方法 + confidence 独立轴（`decepticon_core/types/engagement.py:102-125`）；T3MP3ST provenance 封顶 + `assertedSeverity`（`src/operators/index.ts:723-745`）；VulnClaw `vuln_type+location` 去重（`config/domain_models.py:266-289`）；antares 同 title+target 自动 duplicate（`internal/findings/findings.go:129-181`）。
+**许可**：AGPL（ARTEX/T3MP3ST）/ Apache（xalgorix/Decepticon）/ MIT（VulnClaw/antares）→ 判据吸收，零复制。
+
+#### T-13.0 核心注册表（✅ 已落地 2026-11-04，commit `1b1d9e8`）
+
+| 项 | 内容 | 状态 |
+|---|---|---|
+| 存储 | `findings.json` 为事实源（`F-xxx`/severity/status/confidence/vuln_class/target/cvss/assertedSeverity/evidenceIds/repro/seenCount），`findings.md` 保留审计；旧 markdown 自动兼容 | ✅ |
+| 定级规则 | CVSS 权威覆盖 + asserted 留档；`unverified` 封顶 medium；critical/high 需 ≥2 条独立 E-id，否则降一级；未知 severity 归一 info | ✅ |
+| 去重 | `vuln_class + target + 归一化 title` 同键合并：证据并集、取最高等级、`seen_count++` | ✅ |
+| 生命周期 | 新工具 `update_finding`：candidate → verified → rejected/duplicate/wontfix（note 进 timeline） | ✅ |
+| 统计 | `case_status` 输出 severity/status 计数行；`severityCounts`/`findingStatusCounts` | ✅ |
+| 门禁链 | 先过反假装门禁（真实 `read_reference` 轨迹 + 工具证据溯源），再进定级规则 | ✅ |
+| 验收 | `finding-registry.check.mjs` 7 项 + 真机 RATING 测试（CVSS 覆盖/合并/降级/状态/统计） | ✅ |
+
+#### T-13.1 UI 展示（P0，**部分落地：徽章与计数已有，交互缺**）
+
+| 子项 | 要求 | 落点 | 状态 |
+|---|---|---|---|
+| 徽章与计数 | Case tab finding 卡片显示 `SEVERITY` 徽章、status 徽章、`F-xxx`、`×seenCount`；卡片头显示 `总数 · C/H/M/L` 分档 | `client.js` CaseTab（已实现 `SEVERITY_COLOR`/`severitySummary`） | ✅ |
+| 状态编辑 | 每条 finding 提供 verify / reject / duplicate / wontfix 按钮（带 note 输入），走 `POST /api/helmd/case/findings` 或新 `/finding` 路由调用 `updateFinding`；操作后刷新 | `client.js` + `api-routes.ts` 新增写路由 | ⬜ |
+| 过滤与排序 | 按 severity（critical→info）与 status（verified/candidate/rejected）过滤/排序；默认 critical 优先 | `client.js` CaseTab | ⬜ |
+| 工作台头部 | 头部摘要加 `critical N / high N`（有未决 critical 时高亮） | `client.js` workbench header | ⬜ |
+| Case 列表 | 未绑定 case 时的“磁盘最近 case”行显示 severity 计数 | `/api/helmd/case` + `client.js` | ⬜ |
+| Team 报告 | ticket 报告/角色统计带 severity 计数（worker 报告中的 finding 等级汇总） | `team.ts`/`api-routes.ts` | ⬜ |
+| 验收 | 单元：stats 路由对 `updateFinding` 的合法/非法状态；真机：UI 点击 reject 后 `findings.json` 状态变化、case_status 计数同步；负向：非法状态返回 400 | — | — |
+
+#### T-13.2 导出与报告（P1）
+
+| 子项 | 要求 |
 |---|---|
-| 机制来源 | ARTEX findings 表 + critical/high/medium/low + 9 态 triage（`db/findings.go:39-78`）；xalgorix CVSS→severity + 弱证据降一级（`internal/tools/reporting/reporting.go:3512-3531,777-798`）；Decepticon critical/high 需 2+ 验证方法 + confidence 独立轴（`decepticon_core/types/engagement.py:102-125`）；T3MP3ST provenance 封顶 + `assertedSeverity`（`src/operators/index.ts:723-745`）；VulnClaw `vuln_type+location` 去重（`config/domain_models.py:266-289`）；anatares 同 title+target 自动 duplicate（`internal/findings/findings.go:129-181`） |
-| 落点 | `case.ts`：findings.json 注册表 + `recordFinding/updateFinding/severityCounts`；`tools/caseflow.ts`：`record_finding` 新参数 + `update_finding` 工具 + case_status 统计；`client.js` Case tab severity/status 徽章与计数 |
-| 验收（单元） | `finding-registry.check.mjs` 7 项：单证据 critical 降级 / 双证据 critical 通过 / CVSS 覆盖 + asserted 审计 / unverified 封顶 / 同键合并 / 状态流转 + 非法枚举 / 旧 findings.md 兼容 |
-| 验收（真机） | 定级注册测试：CVSS 覆盖、同键 merge、单证据降级原文、update rejected、case_status 统计行 |
-| 状态 | **已实现（2026-11-04，28 checks PASS）**；剩余：UI 状态编辑按钮、SARIF/报告导出（未做） |
-| 许可 | AGPL（ARTEX/T3MP3ST）/ Apache（xalgorix/Decepticon）/ MIT（VulnClaw/antares）→ 判据吸收 |
+| SARIF 导出 | finding → SARIF 2.1.0（severity 映射 critical/high→error、medium→warning、low/info→note；带 E-id/repro 引用） |
+| 报告渲染 | `end_case` 摘要按 severity 排序，分 verified/candidate/rejected 三组；空字段显式 NOT RUN |
+| 验收 | 同一 case 两次导出字节一致；SARIF 校验器通过；rejected 不进正文 |
+
+#### T-13.3 CVSS 向量与趋势（P2）
+
+| 子项 | 要求 |
+|---|---|
+| CVSS 向量解析 | 支持 `CVSS:3.1/...` 向量算分（当前只接受 0-10 分数）；向量与分数不一致时以向量为准并留档 |
+| 趋势统计 | 按 case 时间线输出 severity 变化（新增/升级/降级/rejected），供报告与 UI 使用 |
+| 验收 | 向量算分与 NVD 示例一致（≥10 组）；趋势统计与 timeline 一致 |
 
 ## 3. 顺序与依赖
 
@@ -171,12 +205,15 @@ Sprint 1（并行两条线）:
 Sprint 2:
   T-05 预算/finish gate  →  T-06 证据版本绑定  →  T-07 进化 gate 强化
 Sprint 3:
-  T-08 上下文纪律  →  T-09 审批 fail-safe
+  T-13.1 finding UI（状态编辑/过滤/头部/Case 列表/Team 报告）
+  →  T-08 上下文纪律  →  T-09 审批 fail-safe
 Sprint 4:
-  T-10 UI 工程化  →  T-12 工具评分/缓存  →  T-11（先补证）
+  T-13.2 SARIF/报告导出  →  T-10 UI 工程化  →  T-12 工具评分/缓存
+Sprint 5:
+  T-13.3 CVSS 向量/趋势  →  T-11（先补证）
 ```
 
-依赖：T-07 依赖 T-02 的审计字段；T-06 依赖 T-02 的证据元数据；T-05 依赖 T-03 的 task 预算归属。
+依赖：T-07 依赖 T-02 的审计字段；T-06 依赖 T-02 的证据元数据；T-05 依赖 T-03 的 task 预算归属；T-13.1/.2/.3 依赖 T-13.0（已落地）。
 
 每项必须带**设置开关**（settings + DSH Config），默认保守，可一键回退。
 
