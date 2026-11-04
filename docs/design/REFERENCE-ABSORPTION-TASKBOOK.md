@@ -151,6 +151,17 @@
 
 ---
 
+### T-13 漏洞登记 + 定级（P0，**已落地**）
+
+| 项 | 内容 |
+|---|---|
+| 机制来源 | ARTEX findings 表 + critical/high/medium/low + 9 态 triage（`db/findings.go:39-78`）；xalgorix CVSS→severity + 弱证据降一级（`internal/tools/reporting/reporting.go:3512-3531,777-798`）；Decepticon critical/high 需 2+ 验证方法 + confidence 独立轴（`decepticon_core/types/engagement.py:102-125`）；T3MP3ST provenance 封顶 + `assertedSeverity`（`src/operators/index.ts:723-745`）；VulnClaw `vuln_type+location` 去重（`config/domain_models.py:266-289`）；anatares 同 title+target 自动 duplicate（`internal/findings/findings.go:129-181`） |
+| 落点 | `case.ts`：findings.json 注册表 + `recordFinding/updateFinding/severityCounts`；`tools/caseflow.ts`：`record_finding` 新参数 + `update_finding` 工具 + case_status 统计；`client.js` Case tab severity/status 徽章与计数 |
+| 验收（单元） | `finding-registry.check.mjs` 7 项：单证据 critical 降级 / 双证据 critical 通过 / CVSS 覆盖 + asserted 审计 / unverified 封顶 / 同键合并 / 状态流转 + 非法枚举 / 旧 findings.md 兼容 |
+| 验收（真机） | 定级注册测试：CVSS 覆盖、同键 merge、单证据降级原文、update rejected、case_status 统计行 |
+| 状态 | **已实现（2026-11-04，28 checks PASS）**；剩余：UI 状态编辑按钮、SARIF/报告导出（未做） |
+| 许可 | AGPL（ARTEX/T3MP3ST）/ Apache（xalgorix/Decepticon）/ MIT（VulnClaw/antares）→ 判据吸收 |
+
 ## 3. 顺序与依赖
 
 ```text

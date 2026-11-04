@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+### 漏洞登记与定级
+
+- **findings.json 注册表**：`record_finding` 升级为结构化登记（`F-xxx`、severity/status/confidence/vuln_class/target/cvss/seen_count），markdown 保留审计；旧 `findings.md` 自动兼容读取
+- **等级判定不靠模型自报**：CVSS 区间权威覆盖并保留 assertedSeverity 审计；unverified confidence 封顶 medium；critical/high 需 ≥2 条独立 E-id，否则降一级（对齐 xalgorix/Decepticon/T3MP3ST 的"证据强度封顶"）
+- **去重与生命周期**：`vuln_class + target + 归一化 title` 同键合并（证据并集、取最高等级、seen_count++）；新增 `update_finding` 走 candidate → verified → rejected/duplicate/wontfix；`case_status` 输出 severity/status 统计
+- 工具数 37 → 38；新增 `finding-registry` 检查（降级/CVSS/置信度/去重/状态流转/旧档兼容），检查集 28 项
+
 ### Team v2（自主基质）
 
 - **`HELMD_BOOTSTRAP=off` 逃生阀**：插件以宿主级 scope 挂载（headless / 自动化工装）时，晋升监听不触发、会话会钉死在 `shell+read`——新增环境开关跳过首轮过滤，直接暴露全量编目；真机三轮实机冒烟据此打通（web preset 作用域不受影响）

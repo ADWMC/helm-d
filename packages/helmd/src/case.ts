@@ -278,49 +278,295 @@ export async function validateEvidenceIds(
   return { ok: missing.length === 0, missing, known }
 }
 
-export async function appendFinding(
-  caseDir: string,
-  title: string,
-  detail: string,
-  ids: string[],
-  reproCmd?: string,
-): Promise<void> {
-  const repro = reproCmd?.trim()
-  await appendFile(
-    join(caseDir, 'findings.md'),
-    `\n## ${title}\n${detail}\nevidence: ${ids.join(', ')}\n${repro ? `repro: ${repro}\n` : ''}`,
-    'utf8',
-  )
-  await appendTimeline(caseDir, `FINDING — ${title} (${ids.join(', ')})`)
+// ── Finding registry ────────────────────────────────────────────────────────
+// A finding is no longer prose in findings.md alone: findings.json is the
+// source of truth (severity / status / confidence / dedup counters), while the
+// markdown stays the human audit trail. Design surveyed from ARTEX (severity +
+// 9-state triage), xalgorix (CVSS→severity + weak-evidence downgrade),
+// Decepticon (critical/high need 2+ verification methods), T3MP3ST
+// (provenance caps severity), VulnClaw (verified-gate + dedup by type+location).
+
+export const FINDING_SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'] as const
+export type FindingSeverity = (typeof FINDING_SEVERITIES)[number]
+export const FINDING_STATUSES = ['candidate', 'verified', 'rejected', 'duplicate', 'wontfix'] as const
+export type FindingStatus = (typeof FINDING_STATUSES)[number]
+export const FINDING_CONFIDENCES = ['verified', 'probable', 'unverified'] as const
+export type FindingConfidence = (typeof FINDING_CONFIDENCES)[number]
+
+const SEVERITY_RANK: Record<FindingSeverity, number> = { info: 0, low: 1, medium: 2, high: 3, critical: 4 }
+const STATUS_STRENGTH: Record<FindingStatus, number> = { candidate: 1, verified: 2, rejected: 3, duplicate: 3, wontfix: 3 }
+
+export function isSeverity(value: unknown): value is FindingSeverity {
+  return typeof value === 'string' && (FINDING_SEVERITIES as readonly string[]).includes(value)
+}
+export function isFindingStatus(value: unknown): value is FindingStatus {
+  return typeof value === 'string' && (FINDING_STATUSES as readonly string[]).includes(value)
+}
+export function isConfidence(value: unknown): value is FindingConfidence {
+  return typeof value === 'string' && (FINDING_CONFIDENCES as readonly string[]).includes(value)
+}
+
+/** CVSS v3 bands (xalgorix uses the same HackerOne-aligned buckets). */
+export function cvssToSeverity(score: number): FindingSeverity {
+  if (score >= 9.0) return 'critical'
+  if (score >= 7.0) return 'high'
+  if (score >= 4.0) return 'medium'
+  if (score > 0) return 'low'
+  return 'info'
+}
+
+function severityAtMost(severity: FindingSeverity, cap: FindingSeverity): FindingSeverity {
+  return SEVERITY_RANK[severity] > SEVERITY_RANK[cap] ? cap : severity
+}
+function downgradeOne(severity: FindingSeverity): FindingSeverity {
+  const order: FindingSeverity[] = ['info', 'low', 'medium', 'high', 'critical']
+  const idx = Math.max(0, order.indexOf(severity) - 1)
+  return order[idx]
 }
 
 export interface Finding {
+  id: string
   title: string
   detail: string
+  severity: FindingSeverity
+  status: FindingStatus
+  confidence: FindingConfidence
+  vulnClass: string
+  target?: string
+  cvss?: number
+  /** Severity the model asserted before CVSS / evidence-strength rules ran. */
+  assertedSeverity?: FindingSeverity
   evidence: string
+  evidenceIds: string[]
+  repro?: string
+  seenCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FindingInput {
+  title: string
+  detail: string
+  evidenceIds: string[]
+  severity: FindingSeverity
+  vulnClass?: string
+  target?: string
+  confidence?: FindingConfidence
+  cvss?: number
+  status?: FindingStatus
   repro?: string
 }
 
-/** Parse findings.md into structured entries for case_status and the WebUI. */
+export interface RecordedFinding {
+  finding: Finding
+  merged: boolean
+  notes: string[]
+}
+
+function findingsPath(caseDir: string): string {
+  return join(caseDir, 'findings.json')
+}
+
+function normalizeKey(value: string | undefined): string {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+/** Stable dedup key: vuln class + target + normalized title (xalgorix/VulnClaw). */
+function findingKey(finding: Pick<Finding, 'vulnClass' | 'target' | 'title'>): string {
+  return `${normalizeKey(finding.vulnClass || 'unspecified')}|${normalizeKey(finding.target)}|${normalizeKey(finding.title)}`
+}
+
+function normalizeFinding(raw: Partial<Finding> & { title?: string }, index: number): Finding {
+  const severity = isSeverity(raw.severity) ? raw.severity : 'info'
+  return {
+    id: typeof raw.id === 'string' && /^F-\d+$/.test(raw.id) ? raw.id : `F-${String(index + 1).padStart(3, '0')}`,
+    title: typeof raw.title === 'string' ? raw.title : '',
+    detail: typeof raw.detail === 'string' ? raw.detail : '',
+    severity,
+    status: isFindingStatus(raw.status) ? raw.status : 'verified',
+    confidence: isConfidence(raw.confidence) ? raw.confidence : 'probable',
+    vulnClass: typeof raw.vulnClass === 'string' && raw.vulnClass.trim() !== '' ? raw.vulnClass : 'unspecified',
+    ...(typeof raw.target === 'string' && raw.target.trim() !== '' ? { target: raw.target } : {}),
+    ...(typeof raw.cvss === 'number' && Number.isFinite(raw.cvss) ? { cvss: raw.cvss } : {}),
+    ...(isSeverity(raw.assertedSeverity) ? { assertedSeverity: raw.assertedSeverity } : {}),
+    evidence: typeof raw.evidence === 'string' ? raw.evidence : (raw.evidenceIds ?? []).join(', '),
+    evidenceIds: Array.isArray(raw.evidenceIds) ? raw.evidenceIds.map(String) : [],
+    ...(typeof raw.repro === 'string' && raw.repro.trim() !== '' ? { repro: raw.repro } : {}),
+    seenCount: typeof raw.seenCount === 'number' && raw.seenCount > 0 ? raw.seenCount : 1,
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+  }
+}
+
+/** Legacy markdown fallback: entries written before findings.json existed. */
+function parseFindingsMarkdown(raw: string): Finding[] {
+  return raw.split(/^## /m).slice(1).map((chunk, index) => {
+    const lines = chunk.split('\n')
+    const title = (lines.shift() ?? '').trim()
+    const meta = (name: string): string | undefined => {
+      const line = lines.find((entry) => new RegExp(`^[-*]?\\s*${name}:`, 'i').test(entry))
+      return line?.replace(new RegExp(`^[-*]?\\s*${name}:\\s*`, 'i'), '').trim()
+    }
+    const evidenceLine = lines.find((line) => /^evidence:/i.test(line)) ?? ''
+    const reproLine = lines.find((line) => /^repro:/i.test(line)) ?? ''
+    const detail = lines.filter((line) => !/^([-*]?\s*(severity|status|confidence|vuln_class):|evidence:|repro:)/i.test(line)).join('\n').trim()
+    return normalizeFinding({
+      id: `F-${String(index + 1).padStart(3, '0')}`,
+      title,
+      detail: detail.slice(0, 500),
+      severity: (meta('severity') as FindingSeverity) ?? 'info',
+      status: (meta('status') as FindingStatus) ?? 'verified',
+      confidence: (meta('confidence') as FindingConfidence) ?? 'probable',
+      vulnClass: meta('vuln_class'),
+      evidence: evidenceLine.replace(/^evidence:\s*/i, ''),
+      evidenceIds: evidenceLine.replace(/^evidence:\s*/i, '').split(/[,\s]+/).filter(Boolean),
+      repro: reproLine.replace(/^repro:\s*/i, ''),
+    }, index)
+  }).filter((finding) => finding.title !== '')
+}
+
+/** Findings: findings.json is authoritative; markdown is the legacy fallback. */
 export async function loadFindings(caseDir: string): Promise<Finding[]> {
   try {
+    const parsed: unknown = JSON.parse(await readFile(findingsPath(caseDir), 'utf8'))
+    if (Array.isArray(parsed)) return parsed.map((entry, index) => normalizeFinding(entry as Partial<Finding>, index))
+  } catch { /* no registry yet: fall through to markdown */ }
+  try {
     const raw = await readFile(join(caseDir, 'findings.md'), 'utf8')
-    return raw.split(/^## /m).slice(1).map((chunk) => {
-      const lines = chunk.split('\n')
-      const title = (lines.shift() ?? '').trim()
-      const evidenceLine = lines.find((line) => /^evidence:/i.test(line)) ?? ''
-      const reproLine = lines.find((line) => /^repro:/i.test(line)) ?? ''
-      const detail = lines.filter((line) => !/^(evidence|repro):/i.test(line)).join('\n').trim()
-      return {
-        title,
-        detail: detail.slice(0, 500),
-        evidence: evidenceLine.replace(/^evidence:\s*/i, ''),
-        repro: reproLine.replace(/^repro:\s*/i, ''),
-      }
-    }).filter((finding) => finding.title !== '')
+    return parseFindingsMarkdown(raw)
   } catch {
     return []
   }
+}
+
+async function saveFindings(caseDir: string, findings: Finding[]): Promise<void> {
+  await writeFile(findingsPath(caseDir), JSON.stringify(findings, null, 2), 'utf8')
+}
+
+/** Record one finding with severity/status/confidence rules.
+ *  - CVSS, when supplied, is authoritative; the asserted value is kept for audit.
+ *  - unverified confidence caps severity at medium; critical/high need >= 2
+ *    independent evidence ids, otherwise they are downgraded one band.
+ *  - identical vuln class + target + normalized title merges into the existing
+ *    finding (evidence union, max severity, seen_count). */
+export async function recordFinding(caseDir: string, input: FindingInput): Promise<RecordedFinding> {
+  const title = input.title.trim()
+  const detail = input.detail.trim()
+  if (title === '') throw new Error('finding title is required')
+  if (detail === '') throw new Error('finding detail is required')
+  const evidenceIds = [...new Set(input.evidenceIds.map((id) => id.trim()).filter(Boolean))]
+  if (evidenceIds.length === 0) throw new Error('at least one evidence id is required')
+
+  const notes: string[] = []
+  let severity: FindingSeverity = isSeverity(input.severity) ? input.severity : 'info'
+  if (!isSeverity(input.severity)) notes.push(`unknown severity "${String(input.severity)}" coerced to info`)
+  const assertedSeverity = severity
+  let asserted: FindingSeverity | undefined
+
+  if (typeof input.cvss === 'number' && Number.isFinite(input.cvss)) {
+    const fromCvss = cvssToSeverity(Math.max(0, Math.min(10, input.cvss)))
+    if (fromCvss !== severity) {
+      asserted = severity
+      severity = fromCvss
+      notes.push(`severity overridden by CVSS ${input.cvss} → ${fromCvss} (asserted ${assertedSeverity})`)
+    }
+  }
+  const confidence = isConfidence(input.confidence) ? input.confidence : 'probable'
+  const capped = severityAtMost(severity, confidence === 'unverified' ? 'medium' : 'critical')
+  if (capped !== severity) {
+    notes.push(`severity capped at ${capped}: confidence=${confidence}`)
+    severity = capped
+  }
+  if ((severity === 'critical' || severity === 'high') && evidenceIds.length < 2) {
+    const next = downgradeOne(severity)
+    notes.push(`severity downgraded ${severity} → ${next}: ${severity} requires >= 2 evidence ids, got ${evidenceIds.length}`)
+    severity = next
+  }
+
+  const findings = await loadFindings(caseDir)
+  const status: FindingStatus = isFindingStatus(input.status) ? input.status : 'verified'
+  const key = findingKey({ vulnClass: input.vulnClass ?? '', target: input.target, title })
+  const existing = findings.find((finding) => findingKey(finding) === key)
+  const nowIso = new Date().toISOString()
+  if (existing !== undefined) {
+    existing.evidenceIds = [...new Set([...existing.evidenceIds, ...evidenceIds])]
+    existing.evidence = existing.evidenceIds.join(', ')
+    existing.seenCount += 1
+    existing.updatedAt = nowIso
+    if (SEVERITY_RANK[severity] > SEVERITY_RANK[existing.severity]) existing.severity = severity
+    if (STATUS_STRENGTH[status] > STATUS_STRENGTH[existing.status] && existing.status === 'candidate') existing.status = status
+    await saveFindings(caseDir, findings)
+    await appendTimeline(caseDir, `FINDING merge — ${existing.id} ${title} (+${evidenceIds.join(', ')})`)
+    return { finding: existing, merged: true, notes }
+  }
+
+  const nextNumber = findings.reduce((best, finding) => {
+    const match = /^F-(\d+)$/.exec(finding.id)
+    return match ? Math.max(best, Number(match[1])) : best
+  }, 0) + 1
+  const finding: Finding = {
+    id: `F-${String(nextNumber).padStart(3, '0')}`,
+    title,
+    detail,
+    severity,
+    status,
+    confidence,
+    vulnClass: (input.vulnClass ?? 'unspecified').trim() || 'unspecified',
+    ...(input.target !== undefined && input.target.trim() !== '' ? { target: input.target.trim() } : {}),
+    ...(typeof input.cvss === 'number' ? { cvss: input.cvss } : {}),
+    ...(asserted !== undefined ? { assertedSeverity: asserted } : {}),
+    evidence: evidenceIds.join(', '),
+    evidenceIds,
+    ...(input.repro !== undefined && input.repro.trim() !== '' ? { repro: input.repro.trim() } : {}),
+    seenCount: 1,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  }
+  findings.push(finding)
+  await saveFindings(caseDir, findings)
+  await appendFile(
+    join(caseDir, 'findings.md'),
+    `\n## ${title}\n- severity: ${severity}\n- status: ${status}\n- confidence: ${confidence}\n- vuln_class: ${finding.vulnClass}\n${finding.target ? `- target: ${finding.target}\n` : ''}${finding.cvss !== undefined ? `- cvss: ${finding.cvss}\n` : ''}${detail}\nevidence: ${evidenceIds.join(', ')}\n${finding.repro ? `repro: ${finding.repro}\n` : ''}`,
+    'utf8',
+  )
+  await appendTimeline(caseDir, `FINDING ${finding.id} — ${title} [${severity}/${status}] (${evidenceIds.join(', ')})`)
+  return { finding, merged: false, notes }
+}
+
+/** Update one finding's triage state/severity (lifecycle: candidate → verified
+ *  → rejected/duplicate/wontfix). Evidence and repro are immutable here. */
+export async function updateFinding(
+  caseDir: string,
+  id: string,
+  patch: { status?: FindingStatus; severity?: FindingSeverity; note?: string },
+): Promise<Finding | undefined> {
+  const findings = await loadFindings(caseDir)
+  const finding = findings.find((entry) => entry.id === id)
+  if (finding === undefined) return undefined
+  if (patch.status !== undefined) {
+    if (!isFindingStatus(patch.status)) throw new Error(`unknown finding status: ${String(patch.status)}`)
+    finding.status = patch.status
+  }
+  if (patch.severity !== undefined) {
+    if (!isSeverity(patch.severity)) throw new Error(`unknown severity: ${String(patch.severity)}`)
+    finding.severity = patch.severity
+  }
+  finding.updatedAt = new Date().toISOString()
+  await saveFindings(caseDir, findings)
+  await appendTimeline(caseDir, `FINDING ${id} → ${finding.status}${patch.severity ? ` (${patch.severity})` : ''}${patch.note ? ` — ${patch.note}` : ''}`)
+  return finding
+}
+
+export function severityCounts(findings: Finding[]): Record<FindingSeverity, number> {
+  const counts: Record<FindingSeverity, number> = { critical: 0, high: 0, medium: 0, low: 0, info: 0 }
+  for (const finding of findings) counts[finding.severity] += 1
+  return counts
+}
+
+export function findingStatusCounts(findings: Finding[]): Record<FindingStatus, number> {
+  const counts: Record<FindingStatus, number> = { candidate: 0, verified: 0, rejected: 0, duplicate: 0, wontfix: 0 }
+  for (const finding of findings) counts[finding.status] += 1
+  return counts
 }
 
 export async function closeCase(caseDir: string, summary?: string): Promise<void> {

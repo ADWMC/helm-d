@@ -7,11 +7,14 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
   bindCase, getCase, unbindCase, createCaseDir, loadCaseMd, closeCase,
-  validateEvidenceIds, appendFinding, saveEvidence, countEvidence,
+  validateEvidenceIds, recordFinding, updateFinding, saveEvidence, countEvidence,
+  severityCounts, findingStatusCounts,
   casesRoot, findOpenCaseOnDisk, loadCaseInfoFromDisk, auditCasesRoot,
   listLooseFilesInCase,
   recordHypothesis, updateHypothesis, loadHypotheses, getOpenHypothesisCount,
   listEvidence, loadFindings,
+  FINDING_SEVERITIES, FINDING_STATUSES, FINDING_CONFIDENCES,
+  type FindingSeverity, type FindingStatus, type FindingConfidence,
 } from '../case.js'
 import { getLevel } from '../mode.js'
 import { renderAdvisoryStats } from '../advisory.js'
@@ -184,6 +187,11 @@ export function registerCaseflowTools(ctx: Context): void {
       const hypotheses = await loadHypotheses(active.dir)
       const findings = await loadFindings(active.dir)
       const evidence = await listEvidence(active.dir)
+      const bySeverity = severityCounts(findings)
+      const byStatus = findingStatusCounts(findings)
+      const findingStats = findings.length === 0
+        ? 'findings: none'
+        : `findings: ${findings.length} — critical ${bySeverity.critical} · high ${bySeverity.high} · medium ${bySeverity.medium} · low ${bySeverity.low} · info ${bySeverity.info} | verified ${byStatus.verified} · candidate ${byStatus.candidate} · rejected ${byStatus.rejected} · duplicate ${byStatus.duplicate} · wontfix ${byStatus.wontfix}`
       const packet = loadSettings().advisory.autonomyPacket
         ? renderAutonomyPacket({
           mode: getLevel(exec?.agent?.id),
@@ -207,6 +215,8 @@ export function registerCaseflowTools(ctx: Context): void {
         ...(resume ? ['', resume] : []),
         ...(packet !== '' ? ['', packet] : []),
         '',
+        findingStats,
+        '',
         RULES,
         ...(renderAdvisoryStats() ? ['', renderAdvisoryStats()] : []),
         ...(getStreamInterceptionStats().count > 0
@@ -219,17 +229,42 @@ export function registerCaseflowTools(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'record_finding',
     description:
-      'Record a conclusion into findings.md. Every evidence id you cite is validated against the evidence/ directory — ' +
-      'citing ids that do not exist is rejected. Pass repro_cmd (a command that reproduces the result); ' +
-      'DEEP mode requires it before the case can close.',
+      'Register a finding in the case register (findings.json + findings.md). severity is required; CVSS (when given) is ' +
+      'authoritative and the asserted value is kept for audit. critical/high need >= 2 evidence ids and non-unverified ' +
+      'confidence, otherwise the severity is downgraded. Identical vuln_class+target+title merges into the existing finding. ' +
+      'Every evidence id is validated; citing unknown ids or self-authored evidence is rejected.',
     parameters: {
-      title: { type: 'string', required: true },
-      detail: { type: 'string', required: true },
-      evidence_ids: { type: 'array', items: { type: 'string' }, required: true, description: 'e.g. ["E-002","E-005"]' },
+      title: { type: 'string', required: true, description: 'Finding title, e.g. "License check is a plaintext base64 compare".' },
+      detail: { type: 'string', required: true, description: 'What was found, how it was observed, and the impact.' },
+      evidence_ids: { type: 'array', items: { type: 'string' }, required: true, description: 'e.g. ["E-002","E-005"].' },
       repro_cmd: { type: 'string', required: true, description: 'Reusable command/tool call that reproduces the conclusion.' },
+      severity: {
+        type: 'string',
+        required: true,
+        description: `One of: ${FINDING_SEVERITIES.join(' | ')}. critical/high require >= 2 evidence ids.`,
+      },
+      vuln_class: { type: 'string', description: 'Vulnerability class, e.g. auth-bypass / xss / license-bypass; used for dedup.' },
+      target: { type: 'string', description: 'Affected target/endpoint/file; used for dedup.' },
+      confidence: { type: 'string', description: `One of: ${FINDING_CONFIDENCES.join(' | ')} (default probable). unverified caps severity at medium.` },
+      cvss: { type: 'number', description: 'CVSS v3 score 0-10; when supplied it overrides severity by the standard bands.' },
+      status: { type: 'string', description: `Initial triage state: ${FINDING_STATUSES.join(' | ')} (default verified after the gates).` },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: { title: string; detail: string; evidence_ids: string[]; repro_cmd: string }, exec?: ExecLike) {
+    async execute(
+      args: {
+        title: string
+        detail: string
+        evidence_ids: string[]
+        repro_cmd: string
+        severity: string
+        vuln_class?: string
+        target?: string
+        confidence?: string
+        cvss?: number
+        status?: string
+      },
+      exec?: ExecLike,
+    ) {
       const active = getCase(exec?.agent?.id)
       if (!active) return 'No active case. begin_case() first — findings need an evidence chain.'
       const check = await validateEvidenceIds(active.dir, args.evidence_ids ?? [])
@@ -272,8 +307,58 @@ export function registerCaseflowTools(ctx: Context): void {
           ].join('\n')
         }
       }
-      await appendFinding(active.dir, args.title, args.detail, args.evidence_ids ?? [], args.repro_cmd)
-      return `finding recorded: ${args.title} [${(args.evidence_ids ?? []).join(', ')}]\nrepro: ${args.repro_cmd.trim()}`
+      try {
+        const recorded = await recordFinding(active.dir, {
+          title: args.title,
+          detail: args.detail,
+          evidenceIds: args.evidence_ids ?? [],
+          severity: args.severity as FindingSeverity,
+          vulnClass: args.vuln_class,
+          target: args.target,
+          confidence: args.confidence as FindingConfidence | undefined,
+          cvss: typeof args.cvss === 'number' ? args.cvss : undefined,
+          status: args.status as FindingStatus | undefined,
+          repro: args.repro_cmd,
+        })
+        const f = recorded.finding
+        return [
+          `${recorded.merged ? 'finding merged' : 'finding recorded'}: ${f.id} [${f.severity}/${f.status}] ${f.title}`,
+          `evidence: ${f.evidenceIds.join(', ')} | vuln_class: ${f.vulnClass}${f.cvss !== undefined ? ` | cvss: ${f.cvss}` : ''}${f.assertedSeverity ? ` | asserted: ${f.assertedSeverity}` : ''}`,
+          ...(recorded.notes.length > 0 ? [`rules: ${recorded.notes.join('; ')}`] : []),
+          `repro: ${args.repro_cmd.trim()}`,
+        ].join('\n')
+      } catch (error) {
+        return `REJECTED — ${error instanceof Error ? error.message : String(error)}`
+      }
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'update_finding',
+    description:
+      'Move one finding through its triage lifecycle (candidate → verified → rejected/duplicate/wontfix) or correct its ' +
+      'severity with an audit note. Evidence and repro are immutable; use a new record_finding for new evidence.',
+    parameters: {
+      finding_id: { type: 'string', required: true, description: 'F-xxx id from the finding register.' },
+      status: { type: 'string', description: `New status: ${FINDING_STATUSES.join(' | ')}.` },
+      severity: { type: 'string', description: `Corrected severity: ${FINDING_SEVERITIES.join(' | ')}.` },
+      note: { type: 'string', description: 'Why the triage changed (written to the case timeline).' },
+    },
+    output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
+    async execute(args: { finding_id: string; status?: string; severity?: string; note?: string }, exec?: ExecLike) {
+      const active = getCase(exec?.agent?.id)
+      if (!active) return 'No active case. begin_case() first.'
+      try {
+        const updated = await updateFinding(active.dir, args.finding_id, {
+          status: args.status as FindingStatus | undefined,
+          severity: args.severity as FindingSeverity | undefined,
+          note: args.note,
+        })
+        if (updated === undefined) return `REJECTED — unknown finding id: ${args.finding_id}`
+        return `finding updated: ${updated.id} [${updated.severity}/${updated.status}] ${updated.title}`
+      } catch (error) {
+        return `REJECTED — ${error instanceof Error ? error.message : String(error)}`
+      }
     },
   }))
 

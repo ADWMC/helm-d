@@ -46,7 +46,7 @@ function agentWith(calls) {
 
 async function record(agent, ids) {
   return finding.execute(
-    { title: 't', detail: 'd', evidence_ids: ids, repro_cmd: 'cmd' },
+    { title: 't', detail: 'd', evidence_ids: ids, repro_cmd: 'cmd', severity: 'medium' },
     { agent },
   )
 }
@@ -65,7 +65,7 @@ await report.check('rejects when no real read_reference call exists in the sessi
 
 await report.check('accepts real tool evidence + a real read_reference call', async () => {
   const out = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
-  assert.match(out, /finding recorded: t/)
+  assert.match(out, /finding recorded: F-\d+/)
   assert.match(readFileSync(join(caseDir, 'findings.md'), 'utf8'), /E-002/)
 })
 
@@ -74,7 +74,9 @@ await report.check('both gates can be switched off in settings', async () => {
   try {
     writeFileSync(join(caseDir, 'evidence', 'E-003-manual_fake.txt'), 'invented again')
     const out = await record(agentWith([]), ['E-003'])
-    assert.match(out, /finding recorded: t/, 'gates off must restore the old behaviour')
+    // Same title/vuln_class/target as the earlier accepted finding → the
+    // register legitimately merges it; either verb proves the gate let it in.
+    assert.match(out, /finding (?:recorded|merged): F-\d+/, 'gates off must restore the old behaviour')
   } finally {
     settingsApi.saveSettings({ advisory: { requireDocRead: true, requireToolEvidence: true } })
   }

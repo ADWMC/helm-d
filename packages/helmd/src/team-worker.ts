@@ -269,7 +269,7 @@ export function renderWorkerPrompt(input: {
     '1. `case_status()` first — the autonomy packet gives the goal, hypotheses, matched playbook and next action.',
     '2. `route_task(goal)` — then `read_reference(<matched refs>)` the routed references BEFORE claiming anything. Domain knowledge lives in references; do not guess from memory.',
     '3. Prefer domain tools over raw shell one-liners. Every tool output auto-persists into evidence/ — cite those E-ids in any claim.',
-    '4. Guesses go through `record_hypothesis`; conclusions through `record_finding` (repro_cmd required). No evidence, no claim.',
+    '4. Guesses go through `record_hypothesis`; conclusions through `record_finding` (repro_cmd required, and always pass severity; critical/high need >= 2 evidence ids). No evidence, no claim.',
     '5. Finish with the JSON report block below. state=blocked with the exact missing input when something is missing — never fabricate evidence or repro.',
     '',
     '## rules',

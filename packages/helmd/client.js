@@ -384,6 +384,20 @@ exports.apply = function apply(ctx) {
 		},
 	};
 
+	const SEVERITY_COLOR = {
+		critical: "var(--dsw-alias-state-error-primary)",
+		high: "var(--dsw-alias-state-warn-primary)",
+		medium: "var(--dsw-alias-state-business-primary)",
+		low: "var(--dsw-alias-label-secondary)",
+		info: "var(--dsw-alias-label-tertiary)",
+	};
+	function severitySummary(findings) {
+		if (!Array.isArray(findings) || findings.length === 0) return "0";
+		var counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+		findings.forEach(function (f) { if (counts[f.severity] !== undefined) counts[f.severity] += 1; });
+		return findings.length + " · C" + counts.critical + " H" + counts.high + " M" + counts.medium + " L" + counts.low;
+	}
+
 	function CaseIcon() {
 		return h("svg", {
 			viewBox: "0 0 24 24", width: 24, height: 24, fill: "none", stroke: "currentColor",
@@ -553,11 +567,12 @@ exports.apply = function apply(ctx) {
 			h("div", { style: S.card },
 				h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: findings.length ? 6 : 0 } },
 					h("span", { style: S.title }, "结论"),
-					h("span", { style: S.caption }, String(findings.length))
+					h("span", { style: S.caption }, severitySummary(findings))
 				),
 				findings.length > 0
 					? h("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
 						findings.map(function (f, index) {
+							var sevColor = SEVERITY_COLOR[f.severity] || TONE.muted;
 							return h("div", {
 								key: "finding-" + index,
 								style: {
@@ -566,7 +581,14 @@ exports.apply = function apply(ctx) {
 									border: "0.5px solid var(--dsw-alias-border-l1)",
 								},
 							},
-								h("div", { style: { fontSize: 12, fontWeight: 500, color: "var(--dsw-alias-label-primary)" } }, f.title),
+								h("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+									h("span", { style: S.pill(sevColor) }, String(f.severity || "info").toUpperCase()),
+									f.status ? h("span", { style: S.pill(TONE.muted, true) }, f.status) : null,
+									f.id ? h("span", { style: { fontFamily: CODE, fontSize: 10, color: TONE.muted } }, f.id) : null,
+									h("span", { style: { flex: 1 } }),
+									f.seenCount > 1 ? h("span", { style: S.caption }, "×" + f.seenCount) : null
+								),
+								h("div", { style: { marginTop: 3, fontSize: 12, fontWeight: 500, color: "var(--dsw-alias-label-primary)" } }, f.title),
 								f.detail ? h("div", { style: { marginTop: 2, fontSize: 11, lineHeight: "17px", color: "var(--dsw-alias-label-secondary)", whiteSpace: "pre-wrap" } }, f.detail.slice(0, 240)) : null,
 								f.evidence ? h("div", { style: { marginTop: 3, fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, f.evidence) : null,
 								f.repro
