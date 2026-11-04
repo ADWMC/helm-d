@@ -29,8 +29,20 @@ pnpm test:checks
 | preset 层校验 | `presets/persona.txt` | `gen-preset.mjs` sanity check |
 | preset 平台行 | 宿主 `standard.patch.yml` | `gen-preset.mjs` → `preset.generated.patch.yml` |
 | 参考知识 | `references/` | `build-sealed.mjs` → `references.dat` |
+| 参考索引 | `scripts/gen-references-index.mjs`（正文 + 分类规则 + 任务路由） | `references/index.md`、`references/<domain>/index.md`（禁止手改） |
 | 工具清单 | `src/**` 的 `defineTool` | `tool-catalog.check.mjs` |
 | 版本号 | `packages/helmd/package.json` | README 安装 URL（版本化）/ Release badge（动态）/ tag / CHANGELOG |
+
+## 参考索引
+
+`references/index.md` 与 8 个领域索引是**生成物**，不要手改。新增/删除/重命名正文后：
+
+```bash
+pnpm gen:refs    # 重建总索引与领域索引
+pnpm check:refs  # 只校验是否漂移（test:checks 也会跑）
+```
+
+生成器负责标题/摘要提取、领域子类归类、任务路由；未归类的文件会直接报错，避免静默漏项。`SUMMARY_OVERRIDES` 用于修正首段是导航/技术片段的文档。索引不写时间戳，保证 diff 可复现。
 
 ## 更新日志与版本同步
 

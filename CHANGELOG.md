@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 参考知识
+
+- **references 总索引重建**：`references/index.md` 从 38 行领域清单重做为「任务路由（48 条信号 → 具体文档）+ 领域总览 + 353 篇全量目录」；8 个领域索引同步改为按子类组织的表格，含每篇标题/摘要/类型/来源，修复旧索引的失效文件与错误计数。索引由 `scripts/gen-references-index.mjs` 从正文生成（标题取 H1、摘要取首段或 H2 大纲、特殊文档用 override），新增 `references-index` 检查（生成物一致、每篇恰好一次、链接可达、领域计数一致），检查集 28 → 29
+
 ### 工具面
 
 - **外部工具下载器（T-17 MVP）**：新增 `toolbox` 工具 + WebUI「工具」tab。catalog 只含**已核实 GitHub 仓库**的外部工具（54 项：release 16 / pip 18 / manual 20；新增 rizin/capa/FLOSS/YARA/angr/pwntools/ROPgadget/GhidraMCP、MobSF/objection/Quark/APKiD、nuclei/ffuf/mitmproxy/Impacket/NetExec/sqlmap、Volatility3/oletools/PE-sieve/hollows_hunter、Semgrep/Joern、binwalk/unblob、garak 等；无 GitHub 的 IDA/ExeinfoPE/gdb/nook 不入 catalog）；安装来源固定为对应仓库 latest release，资产必须带 GitHub sha256 digest，缺失即拒绝；解压抗 symlink 逃逸、按 `<id>/<tag>/` 隔离、失败回滚；pip/manual 条目只给命令不代执行，新增条目记录 upstream license。模型侧 `toolbox(action=catalog|status|install)`，安装默认被 `toolbox.modelInstall=false` 挡住（仅 UI/操作者安装）。真实 release 审计 16/16 可解析，UPX 与 BootKey.exe 已真机完成下载→sha256→安装→健康→卸载；多资产用固定名或版本无关 `assetPattern` 锁定，下载跟随 302，Windows 用系统 bsdtar 解 zip，工具根目录跟随 `$DSH_HOME`。工具数 37 → 38，检查集 27 → 28

@@ -8,6 +8,8 @@
     "test": "pnpm build && pnpm test:checks",
     "test:preset": "node scripts/test-gen-preset.mjs",
     "test:checks": "node scripts/checks/run-all.mjs",
+    "gen:refs": "node scripts/gen-references-index.mjs",
+    "check:refs": "node scripts/gen-references-index.mjs --check",
     "team:eval": "node scripts/team-eval.mjs",
     "test:pack": "node scripts/verify-pack.mjs",
     "check": "pnpm build && pnpm typecheck && pnpm test:checks"

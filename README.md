@@ -9,7 +9,7 @@
 
 **DeepSeek Harness 的破甲安全分析插件。**
 
-38 个工具 · 362 篇按需参考 · 证据链强制入链 · 四档破甲热切换 · 本地 Team 协作
+38 个工具 · 353 篇参考正文 + 9 个索引 · 证据链强制入链 · 四档破甲热切换 · 本地 Team 协作
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -58,7 +58,7 @@ helm-d 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) �
 
 - **38 个工具**：Android / Web / Native / Protocol / Malware / AI-Security，加上 Case 生命周期、路由与本地 Team 调度。
 - **证据链**：工具输出自动落 `evidence/`，结论必须引用 E 编号和可复现的 `repro_cmd`。
-- **按需知识**：362 篇参考文档由 `read_reference` 读取，不塞进 system prompt。
+- **按需知识**：353 篇参考正文 + 9 个索引由 `read_reference` 读取，不塞进 system prompt。
 - **四档破甲**：ds4.1f / stealth / redteam-max / gpt-6x，工作台一键热切换，下一次模型调用生效。
 
 它 **不是** 引擎补丁：不落盘改审批/沙箱，也不起独立进程。和补丁类工具可以同装，分工不同。
@@ -105,7 +105,7 @@ begin_case(goal, samples)
 | **六域工具** | Android 脱壳/Frida、Web 漏洞、Native 壳与反逆向、Protocol 抓包、Malware IOC/YARA、AI-Security |
 | **Case 与证据链** | 磁盘工作区 + 自动入链 + E 编号校验 + `repro_cmd` 门禁；压缩上下文后 `case_status` 能从磁盘恢复 |
 | **四档破甲** | ds4.1f / stealth / redteam-max / gpt-6x，`POST /api/helmd/profile` 原地重注册 persona section，无需重启 |
-| **按需参考** | 362 篇文档，`skill_catalog` 路由、`read_reference` 按需读取，不占 system prompt |
+| **按需参考** | 353 篇正文 + 9 个索引，`skill_catalog` 路由、`read_reference` 按需读取，不占 system prompt |
 | **自主状态包** | `case_status` 返回假设链、findings、证据、dead ends、匹配 playbook、下一步建议 |
 | **工作台** | 破甲 / Case / Team / 工具 / 拦截 / 设置 / 关于七个 tab，侧边栏入口，数据走 `/api/helmd/*` |
 
@@ -161,7 +161,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 
 ## 参考资料
 
-362 篇文档在 [`references/`](packages/helmd/references/index.md)，包括 Android 脱壳与 Frida 模板、Web 漏洞 playbook、Native 壳识别与反逆向、Protocol 抓包与状态机、Malware IOC/YARA、AI-Security 提示注入、Evidence 报告模板。模型用 `read_reference` 按需读取，参考是弹药，不是硬规则。
+353 篇正文 + 9 个索引在 [`references/`](packages/helmd/references/index.md)，包括 Android 脱壳与 Frida 模板、Web 漏洞 playbook、Native 壳识别与反逆向、Protocol 抓包与状态机、Malware IOC/YARA、AI-Security 提示注入、Evidence 报告模板。模型用 `read_reference` 按需读取，参考是弹药，不是硬规则。
 
 ## 运行方式
 

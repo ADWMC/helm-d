@@ -1,23 +1,28 @@
-# toolbox references index
+# 工具箱 参考索引
 
-知识按需读，模型自主判断，不作为硬性规则。
+> 自动生成，勿手改。共 **6** 篇；总索引：[../index.md](../index.md)。重新生成：`node scripts/gen-references-index.mjs`。
 
-## 快速导航
+**职责边界**：分诊决策、方法论、模式速查、工具选择/安装与出站通道。任何领域都能先经过这里，但不替代领域文档。
 
-| 文档 | 内容 | 何时读取 |
-|------|------|---------|
-| [decision-tree.md](decision-tree.md) | 分诊决策树 | 拿到样本后先走这里 |
-| [methodology.md](methodology.md) | 方法论 — 分析流程、工具选择、实战案例 | 需要分析流程指导时 |
-| [patterns.md](patterns.md) | 模式速查 — 保护器签名、反分析技术、Patch 编码 | 需要快速查表时 |
-| [tool-install.md](tool-install.md) | 工具安装指南 — 下载、安装、验证 | 需要安装工具时 |
-| [tool-matrix.md](tool-matrix.md) | 工具推荐矩阵 — 按任务分类的工具推荐 | 需要选择工具时 |
-| [network-egress.md](network-egress.md) | 出站通道规则 — 代理发现与直连回退 | 外部请求超时 / DNS 异常 / 连不上时 |
+**先读**：[Decision Tree — 安全分析路由](./decision-tree.md) · [方法论 — 安全分析工作流](./methodology.md) · [工具矩阵（Tool Matrix）](./tool-matrix.md) · [出站通道规则 — 代理发现与直连回退](./network-egress.md)
 
-## 路由规则
+## 入口与决策（2）
 
-- 样本分诊 → `decision-tree.md`
-- 工具选择 → `tool-matrix.md` 或 `methodology.md`
-- 工具安装 → `tool-install.md`
-- 出站失败（超时 / DNS 污染 / 连不上 / 下载挂）→ `network-egress.md`
-- 保护器识别 → `patterns.md`
-- 报告模板 → `../evidence/reporting.md`
+| 文档 | 讲什么 | 类型 |
+|---|---|---|
+| [方法论 — 安全分析工作流](./methodology.md) | 分析流程、工具选择、环境配置、实战案例。按需读取，不强制执行。 | 方法论 |
+| [Decision Tree — 安全分析路由](./decision-tree.md) | 拿到样本后，先走分诊决策树，再进入具体领域分析。 | 参考 |
+
+## 速查与选型（2）
+
+| 文档 | 讲什么 | 类型 |
+|---|---|---|
+| [工具矩阵（Tool Matrix）](./tool-matrix.md) | 按任务分类，每类填「首选 \| 替代 \| 存证」。 | 手册 |
+| [Patterns — 安全分析模式速查](./patterns.md) | 常见保护器签名、反分析技术、Patch 编码速查表。 | 手册 |
+
+## 环境与出站（2）
+
+| 文档 | 讲什么 | 类型 |
+|---|---|---|
+| [出站通道规则 — 代理发现与直连回退](./network-egress.md) | 先探当前这台机器有没有可用代理，有就用，没有或连不上就直连。 | 参考 |
+| [工具安装指南](./tool-install.md) | 安全工具的下载、安装、验证。按需读取。 | 参考 |

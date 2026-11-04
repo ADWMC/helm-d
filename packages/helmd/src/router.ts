@@ -253,7 +253,7 @@ export function registerRouterTools(ctx: Context): void {
           '- protocol/index.md (网络协议与抓包分析)',
           '- evidence/index.md (证据链与报告规范)',
           '- toolbox/index.md (决策树与通用工具箱)',
-          '调用 read_reference(path: "index.md") 可查看总索引。',
+          '调用 read_reference(path: "index.md") 可查看总索引（任务路由 + 全量目录）。',
         ].join('\n')
       }
     },

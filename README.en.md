@@ -9,7 +9,7 @@
 
 **A security-analysis plugin for DeepSeek Harness.**
 
-38 tools · 362 on-demand references · enforced evidence chain · four hot-swappable persona profiles · local Team collaboration
+38 tools · 353 reference docs + 9 indexes · enforced evidence chain · four hot-swappable persona profiles · local Team collaboration
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -58,7 +58,7 @@ helm-d is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 
 
 - **38 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle, routing and local Team dispatch.
 - **An evidence chain**: tool output lands in `evidence/`; conclusions must cite E ids and a reproducible `repro_cmd`.
-- **On-demand knowledge**: 362 reference documents read through `read_reference`, never stuffed into the system prompt.
+- **On-demand knowledge**: 353 reference docs plus 9 indexes read through `read_reference`, never stuffed into the system prompt.
 - **Four persona tiers**: ds4.1f / stealth / redteam-max / gpt-6x, switched from the workbench without restarting the host.
 
 It is **not** an engine patch: no on-disk changes to approvals or the sandbox, and no separate process. It can coexist with patch-style tools.
@@ -105,7 +105,7 @@ Citing an E id that does not exist is rejected. `repro_cmd` is required: a concl
 | **Six domains** | Android unpacking/Frida, Web exploitation, Native packers and anti-reversing, Protocol capture, Malware IOC/YARA, AI-Security |
 | **Case & evidence** | On-disk workspace, automatic evidence capture, E-id validation, `repro_cmd` gate; `case_status` restores context after compaction |
 | **Persona profiles** | ds4.1f / stealth / redteam-max / gpt-6x; `POST /api/helmd/profile` disposes and re-registers the persona section in place — no host restart |
-| **On-demand references** | 362 documents routed by `skill_catalog` and read by `read_reference`, not injected into the system prompt |
+| **On-demand references** | 353 docs plus 9 indexes routed by `skill_catalog` and read by `read_reference`, not injected into the system prompt |
 | **Autonomy packet** | `case_status` returns hypotheses, findings, evidence, dead ends, the matching playbook and the next action |
 | **Workbench** | Seven tabs — Armor / Case / Team / Tools / Intercept / Settings / About — with a sidebar-first entry, backed by `/api/helmd/*` |
 
@@ -161,7 +161,7 @@ Most-used entry points: `begin_case` / `case_status` / `record_finding` / `updat
 
 ## References
 
-The 362 documents live in [`references/`](packages/helmd/references/index.md): Android unpacking and Frida templates, Web exploitation playbooks, Native packer and anti-reversing notes, Protocol capture and state machines, Malware IOC/YARA, AI-Security prompt injection, and evidence/report templates. The model reads them on demand; they are ammunition, not hard rules.
+The 353 reference docs plus 9 indexes live in [`references/`](packages/helmd/references/index.md): Android unpacking and Frida templates, Web exploitation playbooks, Native packer and anti-reversing notes, Protocol capture and state machines, Malware IOC/YARA, AI-Security prompt injection, and evidence/report templates. The model reads them on demand; they are ammunition, not hard rules.
 
 ## How it runs
 
