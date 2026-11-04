@@ -23,7 +23,8 @@ export function registerMiningTools(ctx: Context): void {
     async execute(args: { path: string; target: string; format?: string }, exec?: ExecLike) {
       const active = getCase(exec?.agent?.id)
       if (active === undefined) throw new Error('no active case; begin_case() first')
-      const text = readFileSync(args.path, 'utf8')
+      const binary = /\.(apk|dex|so|dll|exe|bin|elf|macho|dylib)$/i.test(args.path)
+      const text = readFileSync(args.path, binary ? 'latin1' : 'utf8')
       const format = args.format === 'har' || args.format === 'openapi' || args.format === 'text'
         ? args.format
         : args.path.toLowerCase().endsWith('.har')

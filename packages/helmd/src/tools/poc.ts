@@ -8,6 +8,7 @@ import { getCase, saveEvidence } from '../case.js'
 import { ReconLimiter, checkReconTarget } from '../recon.js'
 import { classifyPoc, recipeById, renderPocRequest, type PocRequest } from '../poc.js'
 import { loadSettings } from '../settings.js'
+import { pollOob, startOob, stopOob } from '../oob.js'
 
 interface ExecLike { agent?: { id?: string } }
 
@@ -107,6 +108,36 @@ export function registerPocTools(ctx: Context): void {
         `verdict: ${verdict.verdict} — ${verdict.reason}`,
         `finding link: positive_evidence_ids=[${positiveEvidence.id}] negative_evidence_ids=[${negativeEvidence.id}]`,
       ].join('\n')
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'oob_start',
+    description: 'Start a loopback-only OOB callback listener (lab use). Returns a one-time URL/token and expiry; no external service.',
+    parameters: { ttl_sec: { type: 'number', description: 'Listener lifetime seconds (default 300, max 900).' } },
+    output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
+    async execute(args: { ttl_sec?: number }) {
+      const session = await startOob((args.ttl_sec ?? 300) * 1000)
+      return `oob session: ${session.id}\nurl: ${session.url}\nexpires: ${session.expiresAt}\nPlace this URL in the payload, then poll with oob_poll(id).`
+    },
+  }))
+  ctx.tools.register(defineTool({
+    name: 'oob_poll',
+    description: 'Poll a loopback OOB session for callback hits; returns method/url/body/at.',
+    parameters: { id: { type: 'string', required: true, description: 'OOB session id from oob_start.' } },
+    output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
+    async execute(args: { id: string }) {
+      const hits = pollOob(args.id)
+      return hits.length === 0 ? 'no OOB hits yet' : JSON.stringify(hits, null, 2)
+    },
+  }))
+  ctx.tools.register(defineTool({
+    name: 'oob_stop',
+    description: 'Stop a loopback OOB session and free its port.',
+    parameters: { id: { type: 'string', required: true, description: 'OOB session id.' } },
+    output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
+    async execute(args: { id: string }) {
+      return stopOob(args.id) ? `stopped ${args.id}` : `unknown or expired ${args.id}`
     },
   }))
 }

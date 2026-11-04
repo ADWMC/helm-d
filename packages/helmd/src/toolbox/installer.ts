@@ -209,13 +209,22 @@ export async function updateCatalogTool(id: string, assetName?: string): Promise
   const entry = catalogEntry(id)
   if (entry === undefined) throw new Error(`unknown catalog tool: ${id}`)
   if (entry.kind !== 'release') throw new Error(`${entry.name} is a ${entry.kind} tool; use: ${entry.installHint ?? entry.usage}`)
+  const backup = `${existing.path}.old-${Date.now()}`
+  let moved = false
+  if (existsSync(existing.path)) {
+    renameSync(existing.path, backup)
+    moved = true
+  }
   removeInstalled(id)
   try {
     const installed = await installCatalogTool(id, assetName)
-    if (installed.path !== existing.path) rmSync(existing.path, { recursive: true, force: true })
+    if (moved) rmSync(backup, { recursive: true, force: true })
+    if (installed.path !== existing.path && existsSync(existing.path)) rmSync(existing.path, { recursive: true, force: true })
     return installed
   } catch (error) {
     upsertInstalled(existing)
+    if (moved && !existsSync(existing.path)) renameSync(backup, existing.path)
+    else if (moved) rmSync(backup, { recursive: true, force: true })
     throw error
   }
 }

@@ -9,7 +9,7 @@
 
 **A security-analysis plugin for DeepSeek Harness.**
 
-46 tools · 353 reference docs + 9 indexes · enforced evidence chain · four hot-swappable persona profiles · local Team collaboration
+49 tools · 353 reference docs + 9 indexes · enforced evidence chain · four hot-swappable persona profiles · local Team collaboration
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -56,7 +56,7 @@ Telegram / X / Apple / Google / GPT accounts and memberships, with order lookup 
 
 helm-d is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin. It does not modify the host binary; it adds four things through cordis hooks:
 
-- **46 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle, routing and local Team dispatch.
+- **49 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle, routing and local Team dispatch.
 - **An evidence chain**: tool output lands in `evidence/`; conclusions must cite E ids and a reproducible `repro_cmd`.
 - **On-demand knowledge**: 353 reference docs plus 9 indexes read through `read_reference`, never stuffed into the system prompt.
 - **Four persona tiers**: ds4.1f / stealth / redteam-max / gpt-6x, switched from the workbench without restarting the host.
@@ -140,7 +140,7 @@ Click the `helmd` workbench button in the DSH session header. It opens the right
 Most-used entry points: `begin_case` / `case_status` / `record_finding` / `update_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode` / `team_create` / `team_dispatch` / `team_status`.
 
 <details>
-<summary><strong>All 46 tools (expand by domain)</strong></summary>
+<summary><strong>All 49 tools (expand by domain)</strong></summary>
 
 | Domain | Tools |
 |---|---|
@@ -155,7 +155,7 @@ Most-used entry points: `begin_case` / `case_status` / `record_finding` / `updat
 | **AI-Security** | `ai_reference` `llm_sim` |
 | **Evidence** | `evidence_reference` `triage_artifact` `hash_artifact` |
 | **Recon** | `recon_passive` `recon_ports` `recon_http` `recon_crawl` `recon_import` |
-| **PoC / Mining** | `run_poc` `mine_candidates` |
+| **PoC / Mining / OOB** | `run_poc` `mine_candidates` `oob_start` `oob_poll` `oob_stop` |
 | **Toolbox** | `tool_recommend` `toolbox` |
 | **Team** | `team_dispatch` `team_create` `team_status` `team_report` `team_steer` |
 

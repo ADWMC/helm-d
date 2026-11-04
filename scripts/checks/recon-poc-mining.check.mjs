@@ -105,5 +105,17 @@ await report.check('local lab PoC sends positive and negative requests and recor
   }
 })
 
+await report.check('loopback OOB listener records one callback and stops cleanly', async () => {
+  const oob = await import(pathToFileURL(join(distDir, 'oob.js')).href)
+  const session = await oob.startOob(60_000)
+  assert.match(session.url, /^http:\/\/127\.0\.0\.1:\d+\//)
+  await fetch(session.url + '?canary=1')
+  const hits = oob.pollOob(session.id)
+  assert.equal(hits.length, 1)
+  assert.match(hits[0].url, /canary=1/)
+  assert.equal(oob.stopOob(session.id), true)
+  assert.equal(oob.stopOob(session.id), false)
+})
+
 rmSync(home, { recursive: true, force: true })
 report.finish()

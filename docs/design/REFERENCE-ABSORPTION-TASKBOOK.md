@@ -18,16 +18,16 @@
 | T-06 证据版本绑定 | ✅ MVP | `meta.json` sha256/prevHash、finding `evidenceHash`、stale 标记 |
 | T-07 进化 gate | ✅ MVP | 噪声宽限、最小改善、holdout、diff budget、父代选择 |
 | T-08 上下文纪律 | ✅ MVP | >256KB 完整落证据 + head/tail stub |
-| T-09 审批 fail-safe | ◐ 部分 | role policy + dynamic 高风险 ask/deny；宿主审批超时由 DSH 管理 |
-| T-10 UI 工程化 | ◐ 部分 | token 检查；滚动/IME 待补 |
+| T-09 审批 fail-safe | ✅ MVP | role policy + 审批队列（5 分钟超时/单次批准/拒绝） |
+| T-10 UI 工程化 | ✅ MVP | token 检查、滚动钉底、IME 防误发 |
 | T-11 确定性报告 | ✅ MVP | `renderCaseReport` 固定字段/NOT RUN |
 | T-12 Toolbox 2.0 | ✅ MVP | 评分、MCP 只读发现、probe TTL、角色策略、来源标注 |
-| T-13.1 finding UI | ◐ 部分 | 状态按钮/过滤/头部/Case 计数；Team 报告 severity 待补 |
+| T-13.1 finding UI | ✅ MVP | 状态按钮/过滤/头部/Case 计数/Team severity |
 | T-13.2 SARIF/报告 | ✅ MVP | SARIF 2.1.0 + 确定性 markdown |
 | T-13.3 CVSS/趋势 | ✅ MVP | CVSS 3.1 向量算分 + 日趋势 |
 | T-14 recon | ✅ MVP | scope/限速/资产账本/被动/端口/HTTP/crawl/import/覆盖 |
-| T-15 PoC 闭环 | ✅ MVP | recipe + 正负对照 + evidence 链接；OOB listener 待补 |
-| T-16 mining | ✅ MVP | HAR/OpenAPI/JS 候选 + 去重/优先级/覆盖行；APK/二进制待补 |
+| T-15 PoC 闭环 | ✅ MVP | recipe + 正负对照 + evidence 链接 + loopback OOB |
+| T-16 mining | ✅ MVP | HAR/OpenAPI/JS + 二进制 strings 候选 + 去重/优先级/覆盖行 |
 | T-17.5 更新/镜像 | ✅ MVP | update 原子回退、本地镜像 sha256 |
 
 ---
@@ -282,7 +282,7 @@
 
 ### T-17 工具下载器 + 工具注册表（P1，MVP 已落地 2026-11-04）
 
-**状态**：T-17.1 catalog/registry、T-17.2 GitHub release 安装器（sha256 必填/抗 symlink/版本隔离）、T-17.3 WebUI「工具」tab、T-17.4 模型 `toolbox(action=catalog|status|install)` 已落地；catalog 54 项（release 16 / pip 18 / manual 20），覆盖 Android、Native、Firmware、Code、Web/AD、Malware、AI、Runtime、Protocol。2026-11-04 真实 release 审计 16/16 可解析；UPX（zip）与 HashDump BootKey.exe（裸 exe）已真机走完下载 → sha256 → 安装 → 健康 → 卸载。模型安装默认 `toolbox.modelInstall=false`（仅操作者可在 UI 安装或显式开启）；更新/离线镜像未做。
+**状态**：T-17.1 catalog/registry、T-17.2 GitHub release 安装器（sha256 必填/抗 symlink/版本隔离）、T-17.3 WebUI「工具」tab、T-17.4 模型 `toolbox(action=catalog|status|install|update|mirror|probe|mcp)` 已落地；catalog 54 项（release 16 / pip 18 / manual 20），覆盖 Android、Native、Firmware、Code、Web/AD、Malware、AI、Runtime、Protocol。2026-11-04 真实 release 审计 16/16 可解析；UPX（zip）与 HashDump BootKey.exe（裸 exe）已真机走完下载 → sha256 → 安装 → 健康 → 卸载；ffuf update 与本地 mirror 已真机验证（备份→重装→回退）。模型安装默认 `toolbox.modelInstall=false`（仅操作者可在 UI 安装或显式开启）。
 **实现备注**：多资产 release 用 `asset`（固定名）或 `assetPattern`（版本无关正则）锁定，歧义即拒绝；`requestBuffer` 跟随最多 5 跳 302（GitHub 资产跳转）且跨域剥离 Authorization；Windows 优先用系统 bsdtar（可解 zip，GNU tar 不可）；工具根目录跟随 `$DSH_HOME`，隔离 profile/测试不污染操作者状态。
 **定位**：**catalog-driven installer（目录驱动安装器）**，不是"模型随便下工具"。catalog 只含已核实 GitHub 仓库的工具；无 GitHub 链接的 IDA/ExeinfoPE/gdb/nook 不入目录。
 

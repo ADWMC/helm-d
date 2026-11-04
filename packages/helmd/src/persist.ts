@@ -24,6 +24,7 @@ const NO_PERSIST = new Set([
   // recon tools persist raw output and the asset/evidence link themselves
   'recon_passive', 'recon_ports', 'recon_http', 'recon_crawl', 'recon_import',
   'run_poc',
+  'oob_start', 'oob_poll', 'oob_stop',
   'mine_candidates',
 ])
 

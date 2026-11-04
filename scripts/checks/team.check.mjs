@@ -20,6 +20,7 @@ const caseApi = await import(pathToFileURL(join(distDir, 'case.js')).href)
 const teamTools = await import(pathToFileURL(join(distDir, 'tools', 'team.js')).href)
 const policyApi = await import(pathToFileURL(join(distDir, 'team-policy.js')).href)
 const settingsApi = await import(pathToFileURL(join(distDir, 'settings.js')).href)
+const approvalApi = await import(pathToFileURL(join(distDir, 'approval.js')).href)
 const report = createReporter('team')
 
 await report.check('ticket -> role assignment -> report -> handoff -> close', () => {
@@ -328,6 +329,29 @@ await report.check('team policy denies risky dynamic commands and honors role al
     assert.match(denied.reason, /policy denies bash/)
   } finally {
     settingsApi.saveSettings({ team: { riskApproval: 'ask', roleToolPolicy: {} } })
+  }
+})
+
+await report.check('risky command waits for an approved queue entry, then runs exactly once', async () => {
+  let listener
+  policyApi.registerTeamPolicy({ on: (event, fn) => { if (event === 'tools/pre-execute') listener = fn } })
+  const ticket = team.createTicket({ goal: 'approval', caseDir: join(home, 'approval-case'), roles: ['dynamic'] })
+  team.assignRole(ticket.id, 'dynamic', 'approval-dynamic')
+  settingsApi.saveSettings({ team: { riskApproval: 'ask', approvalTimeoutSec: 300 } })
+  try {
+    const exec = { agent: { id: 'approval-dynamic' }, name: 'bash', args: { command: 'rm -rf /tmp/approval' } }
+    const pending = await listener(exec, async () => ({ kind: 'pass' }))
+    assert.equal(pending.kind, 'deny')
+    const approvalId = /A-\d{3}/.exec(pending.reason)?.[0]
+    assert.ok(approvalId, 'denial must carry an approval id')
+    assert.equal(approvalApi.listApprovals().some((entry) => entry.id === approvalId && entry.status === 'pending'), true)
+    approvalApi.decideApproval(approvalId, 'approved')
+    const allowed = await listener(exec, async () => ({ kind: 'pass' }))
+    assert.equal(allowed.kind, 'pass')
+    const reused = await listener(exec, async () => ({ kind: 'pass' }))
+    assert.equal(reused.kind, 'deny', 'approval is single-use')
+  } finally {
+    settingsApi.saveSettings({ team: { riskApproval: 'ask', approvalTimeoutSec: 300 } })
   }
 })
 

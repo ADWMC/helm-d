@@ -8,6 +8,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { sessionRole } from './team.js'
 import { loadSettings } from './settings.js'
+import { requestApproval } from './approval.js'
 
 const ORCHESTRATOR_ONLY = new Set(['team_dispatch', 'begin_case', 'end_case'])
 const SHELL_TOOLS = new Set(['bash', 'shell', 'pwsh', 'powershell'])
@@ -62,13 +63,17 @@ export function registerTeamPolicy(ctx: Context): void {
           return { kind: 'deny', reason: 'dynamic worker high-risk command denied by team.riskApproval=deny' }
         }
         if (approval === 'ask') {
+          const pending = requestApproval({
+            sessionId: String(exec?.agent?.id ?? ''),
+            tool: name,
+            args: exec?.args ?? exec?.arguments,
+            summary: `${role}/${name}: ${text.slice(0, 300)}`,
+          })
+          if (pending.allowed) return next()
           return {
-            kind: 'ask',
-            reason: 'dynamic worker requested a high-risk command; operator approval required',
-            displayReason: {
-              en: 'A dynamic worker wants to run a high-risk command. Allow this call?',
-              zh: '动态 worker 请求执行高风险命令，是否允许本次调用？',
-            },
+            kind: 'deny',
+            reason: `approval required: ${pending.approval.id} is pending (expires ${pending.approval.expiresAt}). `
+              + 'Approve it in the workbench approval queue, then retry the exact command.',
           }
         }
       }

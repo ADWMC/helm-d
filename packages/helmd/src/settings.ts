@@ -25,6 +25,8 @@ export interface HelmdSettings {
     defaultWallTimeMin: number
     /** dynamic worker 的高风险命令审批：ask | deny | allow（默认 ask）。 */
     riskApproval: 'ask' | 'deny' | 'allow'
+    /** 审批队列超时秒数（1-3600；超时即拒）。 */
+    approvalTimeoutSec: number
     /** 每角色工具 allow/deny（deny 优先；allow 非空时只放行列出的工具）。 */
     roleToolPolicy: Record<string, { allow?: string[]; deny?: string[] }>
   }
@@ -59,6 +61,7 @@ export const DEFAULT_SETTINGS: HelmdSettings = {
     maxParallelWorkers: 4,
     defaultWallTimeMin: 15,
     riskApproval: 'ask',
+    approvalTimeoutSec: 300,
     roleToolPolicy: {},
   },
   intercept: { enabled: true },
@@ -112,6 +115,7 @@ function normalizeSettings(raw: unknown): HelmdSettings {
       maxParallelWorkers: clampNumber(team.maxParallelWorkers, 1, 8, d.team.maxParallelWorkers),
       defaultWallTimeMin: clampNumber(team.defaultWallTimeMin, 1, 60, d.team.defaultWallTimeMin),
       riskApproval,
+      approvalTimeoutSec: clampNumber(team.approvalTimeoutSec, 1, 3600, d.team.approvalTimeoutSec),
       roleToolPolicy,
     },
     intercept: { enabled: clampBool(intercept.enabled, d.intercept.enabled) },

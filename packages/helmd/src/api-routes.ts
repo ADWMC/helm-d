@@ -25,6 +25,7 @@ import {
 } from './team.js'
 import { startTeamWorker } from './team-worker.js'
 import { loadSettings, saveSettings } from './settings.js'
+import { listApprovals, decideApproval } from './approval.js'
 import { TOOL_CATALOG, catalogEntry } from './toolbox/catalog.js'
 import { installCatalogTool, installCatalogMirror, latestRelease, toolHealth, uninstallCatalogTool, updateCatalogTool } from './toolbox/installer.js'
 
@@ -302,6 +303,22 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
         ...(c.findingsBySeverity !== undefined ? { findingsBySeverity: c.findingsBySeverity } : {}),
         ...(c.staleFindings !== undefined ? { staleFindings: c.staleFindings } : {}),
       })),
+    }
+  })
+
+  // Local approval queue for dynamic-worker high-risk commands (T-09).
+  route(`${ROUTE_BASE}/approvals`, async (req) => {
+    const method = String(req?.method ?? 'GET').toUpperCase()
+    if (method !== 'POST') return listApprovals(true)
+    requireJson(req)
+    const body = await readJsonBody(req) as Record<string, unknown> | undefined
+    const id = typeof body?.id === 'string' ? body.id.trim() : ''
+    const decision = body?.decision === 'deny' ? 'denied' : 'approved'
+    if (id === '') throw new HttpError(400, 'id is required')
+    try {
+      return decideApproval(id, decision)
+    } catch (error) {
+      throw new HttpError(400, error instanceof Error ? error.message : String(error))
     }
   })
 

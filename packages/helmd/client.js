@@ -949,12 +949,15 @@ exports.apply = function apply(ctx) {
 						h(SettingsRow, { label: "默认 worker 超时", hint: "分钟（1-60），budget artifact 可覆盖" },
 							h(SettingsNumber, { value: form.team.defaultWallTimeMin, min: 1, max: 60, onChange: function (v) { setIn("team.defaultWallTimeMin", v); } })
 						),
-						h(SettingsRow, { label: "动态 worker 高风险命令", hint: "ask 走宿主审批；deny 直接拒绝；allow 放行" },
+						h(SettingsRow, { label: "动态 worker 高风险命令", hint: "ask 走审批队列；deny 直接拒绝；allow 放行" },
 							h("select", {
 								value: (form.team && form.team.riskApproval) || "ask",
 								onChange: function (e) { setIn("team.riskApproval", e.target.value); },
 								style: { height: 24, borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: 11 },
 							}, ["ask", "deny", "allow"].map(function (v) { return h("option", { key: v, value: v }, v); }))
+						),
+						h(SettingsRow, { label: "审批超时", hint: "秒（1-3600）；超时即拒" },
+							h(SettingsNumber, { value: (form.team && form.team.approvalTimeoutSec) || 300, min: 1, max: 3600, onChange: function (v) { setIn("team.approvalTimeoutSec", v); } })
 						)
 				)
 			),
@@ -984,6 +987,37 @@ exports.apply = function apply(ctx) {
 					h(SettingsRow, { label: "允许模型安装工具", hint: "只允许 catalog 内的 GitHub release；默认仅 WebUI 操作者安装" },
 						h(SettingsToggle, { checked: !!(form.toolbox && form.toolbox.modelInstall), onChange: function (v) { setIn("toolbox.modelInstall", v); } })
 					)
+				)
+			),
+			h("div", { style: S.card },
+				h("div", { style: S.title }, "审批队列"),
+				h("div", { style: { marginTop: 4 } },
+					(Array.isArray(props.approvals) ? props.approvals : []).filter(function (a) { return a.status === "pending" || a.status === "approved"; }).slice(0, 8).map(function (a) {
+						return h("div", { key: a.id, style: { display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: "0.5px solid var(--dsw-alias-border-l1)" } },
+							h("span", { style: { fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, a.id),
+							h("span", { style: { flex: 1, minWidth: 0, fontSize: 11, color: "var(--dsw-alias-label-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, a.summary || a.tool),
+							h("span", { style: S.pill(a.status === "approved" ? TONE.success : TONE.warn, true) }, a.status),
+							h("button", {
+								type: "button", disabled: a.status !== "pending",
+								onClick: function () {
+									fetch("/api/helmd/approvals", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: a.id, decision: "approve" }) })
+										.then(function () { if (props.onRefresh) props.onRefresh(); });
+								},
+								style: { height: 20, padding: "0 6px", borderRadius: 3, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: TONE.success, fontSize: 10, cursor: "pointer" },
+							}, "允许"),
+							h("button", {
+								type: "button", disabled: a.status !== "pending",
+								onClick: function () {
+									fetch("/api/helmd/approvals", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: a.id, decision: "deny" }) })
+										.then(function () { if (props.onRefresh) props.onRefresh(); });
+								},
+								style: { height: 20, padding: "0 6px", borderRadius: 3, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: TONE.warn, fontSize: 10, cursor: "pointer" },
+							}, "拒绝")
+						);
+					}),
+					(!props.approvals || props.approvals.filter(function (a) { return a.status === "pending" || a.status === "approved"; }).length === 0)
+						? h("div", { style: S.caption }, "没有待审批的高风险命令")
+						: null
 				)
 			),
 			h("div", { style: S.card },
@@ -1266,7 +1300,7 @@ exports.apply = function apply(ctx) {
 						type: "text", value: goalInput,
 						placeholder: "分析目标（goal），例如：分析 samples/app.apk 的加固方式",
 						onChange: function (e) { setGoalInput(e.target.value); },
-						onKeyDown: function (e) { if (e.key === "Enter") createTicket(); },
+						onKeyDown: function (e) { if (e.key === "Enter" && !(e.nativeEvent && e.nativeEvent.isComposing)) createTicket(); },
 						style: {
 							width: "100%", height: 28, padding: "0 8px", borderRadius: "var(--dsw-radius-sm)",
 							border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
@@ -1634,6 +1668,7 @@ exports.apply = function apply(ctx) {
 					fetch('/api/helmd/team/versions').then(function(r){return r.json()}).catch(function(){return null}),
 					fetch('/api/helmd/settings').then(function(r){return r.json()}).catch(function(){return null}),
 					fetch('/api/helmd/tools/catalog').then(function(r){return r.json()}).catch(function(){return null}),
+					fetch('/api/helmd/approvals').then(function(r){return r.json()}).catch(function(){return null}),
 				]).then(function(results) {
 					if (!alive) return;
 					setData({
@@ -1648,6 +1683,7 @@ exports.apply = function apply(ctx) {
 						versions: (results[8] && results[8].data) || null,
 						settings: (results[9] && results[9].data) || null,
 						catalog: (results[10] && results[10].data) || null,
+						approvals: (results[11] && results[11].data) || [],
 						sessionId: sid || null,
 					});
 				});
@@ -1659,6 +1695,12 @@ exports.apply = function apply(ctx) {
 		function refresh() { setReloadTick(function (n) { return n + 1; }); }
 		var active = React.useState("profile");
 		var tab = active[0]; var setTab = active[1];
+		var scrollRef = React.useRef(null);
+		var stickBottom = React.useRef(true);
+		React.useEffect(function () {
+			var el = scrollRef.current;
+			if (el && stickBottom.current) el.scrollTop = el.scrollHeight;
+		}, [data, tab]);
 		React.useEffect(function () { if (tab === "case" || tab === "team") refresh(); }, [tab]);
 		var switching = React.useState(false);
 		var isSwitching = switching[0]; var setSwitching = switching[1];
@@ -1774,6 +1816,11 @@ exports.apply = function apply(ctx) {
 			h("div", {
 				className: "hm-scroll",
 				style: { flex: 1, overflowY: "auto", padding: 12 },
+				ref: scrollRef,
+				onScroll: function (e) {
+					var el = e.currentTarget;
+					stickBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+				},
 			},
 				h("div", {
 					key: tab, className: "hm-fade",
@@ -1790,7 +1837,7 @@ exports.apply = function apply(ctx) {
 					}) : null,
 					tab === "tools" ? h(ToolsTab, { catalog: data.catalog, onRefresh: refresh }) : null,
 					tab === "intercept" ? h(InterceptTab, { interceptData: data.intercept }) : null,
-					tab === "settings" ? h(SettingsTab, { settings: data.settings, onRefresh: refresh }) : null,
+					tab === "settings" ? h(SettingsTab, { settings: data.settings, approvals: data.approvals, onRefresh: refresh }) : null,
 					tab === "about" ? h(AboutTab, { version: (data.health && data.health.version) || "unknown" }) : null
 				)
 			)

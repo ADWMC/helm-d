@@ -22,7 +22,7 @@ process.env.HELMD_CASES_DIR = mkdtempSync(join(tmpdir(), 'helmd-api-cases-'))
 const report = createReporter('api-routes')
 
 const ROUTE_BASE = '/api/helmd'
-const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry', 'settings', 'tools/catalog', 'tools/update', 'tools/mirror', 'case/sarif', 'case/report']
+const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry', 'settings', 'tools/catalog', 'tools/update', 'tools/mirror', 'case/sarif', 'case/report', 'approvals']
 
 /** Registry contents, reachable only through register/schemas — no layer internals. */
 const registered = []
