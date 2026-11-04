@@ -14,7 +14,7 @@
 - **审批与 UI**：dynamic worker 高风险命令按 `team.riskApproval` ask/deny/allow，per-role allow/deny；Case tab 支持 finding 状态按钮、severity/status 过滤、critical/high 头部、Case 列表计数；SARIF 2.1.0 / 确定性报告 / CVSS 向量 / 趋势
 - **Recon / PoC / Mining**：资产账本 + scope/限速/六维覆盖；recon_passive/ports/http/crawl/import；确定性 PoC recipe + 正负对照三态；HAR/OpenAPI/JS 候选提取与候选账本
 - **Toolbox 2.0**：catalog 评分排序、MCP 只读发现、command probe TTL 缓存、离线镜像（sha256 必填）、update 原子回退
-- 工具数 38 → 49，检查集 29 → 33；任务书各项残留（APK/binary mining 的完整清单解析、真实模型 E2E）标记为后续增量
+- 工具数 38 → 49，检查集 29 → 33；APK AXML、二进制 strings、OOB、审批队列、滚动/IME、update/mirror 均已补齐；真实模型 E2E 仍需可用端点
 
 ### 参考知识
 

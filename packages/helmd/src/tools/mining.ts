@@ -12,27 +12,30 @@ export function registerMiningTools(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'mine_candidates',
     description:
-      'Extract candidate endpoints/parameters from a local HAR, OpenAPI/Swagger, or JS/HTML artifact into ' +
-      'mining/candidates.jsonl. Deterministic, offline, and proposals only — run_poc must prove them.',
+      'Extract candidate endpoints/parameters from a local HAR, OpenAPI/Swagger, JS/HTML, APK manifest or binary strings ' +
+      'into mining/candidates.jsonl. Deterministic, offline, and proposals only — run_poc must prove them.',
     parameters: {
       path: { type: 'string', required: true, description: 'Local artifact path (HAR/OpenAPI/JS/HTML).' },
       target: { type: 'string', required: true, description: 'Target label for the candidates, e.g. https://example.com.' },
-      format: { type: 'string', description: 'har | openapi | text (inferred from extension/content when omitted).' },
+      format: { type: 'string', description: 'har | openapi | text | apk (inferred from extension/content when omitted).' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: { path: string; target: string; format?: string }, exec?: ExecLike) {
       const active = getCase(exec?.agent?.id)
       if (active === undefined) throw new Error('no active case; begin_case() first')
-      const binary = /\.(apk|dex|so|dll|exe|bin|elf|macho|dylib)$/i.test(args.path)
+      const isApk = args.path.toLowerCase().endsWith('.apk')
+      const binary = isApk || /\.(dex|so|dll|exe|bin|elf|macho|dylib)$/i.test(args.path)
       const text = readFileSync(args.path, binary ? 'latin1' : 'utf8')
-      const format = args.format === 'har' || args.format === 'openapi' || args.format === 'text'
+      const format = args.format === 'har' || args.format === 'openapi' || args.format === 'text' || args.format === 'apk'
         ? args.format
-        : args.path.toLowerCase().endsWith('.har')
-          ? 'har'
-          : /"openapi"|"swagger"/.test(text.slice(0, 2048))
-            ? 'openapi'
-            : 'text'
-      const candidates = extractCandidates(text, args.target, format)
+        : isApk
+          ? 'apk'
+          : args.path.toLowerCase().endsWith('.har')
+            ? 'har'
+            : /"openapi"|"swagger"/.test(text.slice(0, 2048))
+              ? 'openapi'
+              : 'text'
+      const candidates = extractCandidates(text, args.target, format, args.path)
       writeCandidates(active.dir, candidates)
       const evidence = await saveEvidence(active.dir, 'mine_candidates', JSON.stringify(candidates, null, 2), `${format} candidates`)
       return [

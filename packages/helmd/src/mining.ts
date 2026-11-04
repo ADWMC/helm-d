@@ -4,6 +4,7 @@
 
 import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
 
 export interface Candidate {
   class: string
@@ -134,11 +135,90 @@ export function extractText(text: string, target: string): Candidate[] {
   return dedupeCandidates(rows)
 }
 
-export function extractCandidates(text: string, target: string, format: 'har' | 'openapi' | 'text'): Candidate[] {
+/** Minimal Android binary XML string-pool reader. It does not need the full
+ *  resource map: package/activity/permission/URL strings are enough to mine
+ *  candidates from a compiled AndroidManifest.xml. */
+export function decodeAxmlStrings(buffer: Buffer): string[] {
+  const strings: string[] = []
+  let offset = 0
+  const read8 = (at: number): [number, number] => {
+    let length = buffer[at]
+    let cursor = at + 1
+    if ((length & 0x80) !== 0) {
+      length = ((length & 0x7f) << 8) | buffer[cursor]
+      cursor += 1
+    }
+    return [length, cursor]
+  }
+  const read16 = (at: number): [number, number] => {
+    let length = buffer.readUInt16LE(at)
+    let cursor = at + 2
+    if ((length & 0x8000) !== 0) {
+      length = ((length & 0x7fff) << 16) | buffer.readUInt16LE(cursor)
+      cursor += 2
+    }
+    return [length, cursor]
+  }
+  while (offset + 8 <= buffer.length) {
+    const type = buffer.readUInt16LE(offset)
+    const headerSize = buffer.readUInt16LE(offset + 2)
+    const size = buffer.readUInt32LE(offset + 4)
+    if (size <= 0 || offset + size > buffer.length) break
+    if (type === 0x0001 && headerSize >= 28) {
+      const stringCount = buffer.readUInt32LE(offset + 8)
+      const flags = buffer.readUInt32LE(offset + 16)
+      const stringsStart = buffer.readUInt32LE(offset + 20)
+      const utf8 = (flags & 0x100) !== 0
+      for (let index = 0; index < stringCount; index += 1) {
+        const stringOffset = buffer.readUInt32LE(offset + headerSize + index * 4)
+        let cursor = offset + stringsStart + stringOffset
+        if (utf8) {
+          // UTF-8 pool strings are: UTF-16 character length (1-2 bytes),
+          // UTF-8 byte length (1-2 bytes), then bytes.
+          const [, afterChars] = read8(cursor)
+          const [byteLength, start] = read8(afterChars)
+          cursor = start
+          const raw = buffer.subarray(cursor, cursor + byteLength).toString('utf8')
+          strings.push(raw)
+        } else {
+          const [charLength, start] = read16(cursor)
+          cursor = start
+          const raw = buffer.subarray(cursor, cursor + charLength * 2).toString('utf16le')
+          strings.push(raw)
+        }
+      }
+    }
+    offset += size
+  }
+  return strings
+}
+
+/** Read one entry from an APK/zip without extracting the whole archive. */
+export function readApkEntry(apkPath: string, entry = 'AndroidManifest.xml'): Buffer | undefined {
+  const tar = process.platform === 'win32'
+    ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
+    : 'tar'
+  const result = spawnSync(tar, ['-xOf', apkPath, entry], { encoding: 'buffer', maxBuffer: 64 * 1024 * 1024, timeout: 20_000 })
+  if (result.status === 0 && result.stdout !== null && result.stdout.length > 0) return Buffer.from(result.stdout)
+  return undefined
+}
+
+/** Manifest string candidates for an APK: URLs, API paths and package-ish
+ *  component names from the binary string pool. */
+export function extractApk(text: string, target: string, apkPath?: string): Candidate[] {
+  const strings = apkPath !== undefined
+    ? decodeAxmlStrings(readApkEntry(apkPath) ?? Buffer.alloc(0))
+    : []
+  return extractText([...strings, text].join('\n'), target)
+}
+
+export function extractCandidates(text: string, target: string, format: 'har' | 'openapi' | 'text' | 'apk', apkPath?: string): Candidate[] {
   if (format === 'har') return extractHar(text, target)
   if (format === 'openapi') return extractOpenApi(text, target)
+  if (format === 'apk') return extractApk(text, target, apkPath)
   return extractText(text, target)
 }
+
 
 export function candidatesPath(caseDir: string): string {
   return join(caseDir, 'mining', 'candidates.jsonl')

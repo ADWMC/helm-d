@@ -117,5 +117,35 @@ await report.check('loopback OOB listener records one callback and stops cleanly
   assert.equal(oob.stopOob(session.id), false)
 })
 
+await report.check('Android binary XML string pool is decoded without aapt', () => {
+  const strings = ['com.example.app', 'https://api.example.com/v1/user?id=1', 'android.permission.INTERNET']
+  const encoded = strings.map((value) => {
+    const bytes = Buffer.from(value, 'utf8')
+    return Buffer.concat([Buffer.from([value.length, bytes.length]), bytes, Buffer.from([0])])
+  })
+  const headerSize = 28
+  const stringsStart = headerSize + strings.length * 4
+  const data = Buffer.concat(encoded)
+  const size = stringsStart + data.length
+  const buffer = Buffer.alloc(size)
+  buffer.writeUInt16LE(0x0001, 0)
+  buffer.writeUInt16LE(headerSize, 2)
+  buffer.writeUInt32LE(size, 4)
+  buffer.writeUInt32LE(strings.length, 8)
+  buffer.writeUInt32LE(0, 12)
+  buffer.writeUInt32LE(0x100, 16)
+  buffer.writeUInt32LE(stringsStart, 20)
+  buffer.writeUInt32LE(0, 24)
+  let offset = 0
+  for (let i = 0; i < encoded.length; i += 1) {
+    buffer.writeUInt32LE(offset, headerSize + i * 4)
+    offset += encoded[i].length
+  }
+  data.copy(buffer, stringsStart)
+  assert.deepEqual(mining.decodeAxmlStrings(buffer), strings)
+  const candidates = mining.extractCandidates('', 'https://api.example.com', 'apk')
+  assert.ok(Array.isArray(candidates))
+})
+
 rmSync(home, { recursive: true, force: true })
 report.finish()

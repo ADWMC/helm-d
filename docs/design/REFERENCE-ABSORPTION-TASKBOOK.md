@@ -27,7 +27,7 @@
 | T-13.3 CVSS/趋势 | ✅ MVP | CVSS 3.1 向量算分 + 日趋势 |
 | T-14 recon | ✅ MVP | scope/限速/资产账本/被动/端口/HTTP/crawl/import/覆盖 |
 | T-15 PoC 闭环 | ✅ MVP | recipe + 正负对照 + evidence 链接 + loopback OOB |
-| T-16 mining | ✅ MVP | HAR/OpenAPI/JS + 二进制 strings 候选 + 去重/优先级/覆盖行 |
+| T-16 mining | ✅ MVP | APK AXML / HAR / OpenAPI / JS / 二进制 strings 候选 + 去重/优先级/覆盖行 |
 | T-17.5 更新/镜像 | ✅ MVP | update 原子回退、本地镜像 sha256 |
 
 ---
