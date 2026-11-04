@@ -363,7 +363,15 @@ Sprint 6:
 
 ---
 
-## 8. 附录 C：脚本 / 模板 / 字典来源清单（recon · PoC · 挖掘）
+## 8. 附录 B：反模式（不要吸收）
+
+- 「exhausted ≠ done」把失败当完成；必须显式 blocked（ARTEX/pentagi 教训）。
+- 工具自声明安全（模型说 safe 不等于安全）；闸门不得接受模型标签降级（VulnClaw `exec_gate.py:157-170`）。
+- 参考文档当证据：read_reference 只提供方法，finding 必须引用样本证据 E-id。
+- 全量工具平铺 / 40 域 scorecard 仪式（既有调研已排除）。
+- 多进程 Team / 远程成员（experimental agent-team 明确不支持）。
+
+## 9. 附录 C：脚本 / 模板 / 字典来源清单（recon · PoC · 挖掘）
 
 > 结论：**没有一个可直接 vendor 的「安全脚本库」**；可用的是「解析器契约 + recipe 结构 + 验证器结构」，以及可选的本机 CLI。代码按许可分三类处理。
 
@@ -386,7 +394,7 @@ Sprint 6:
 3. AGPL/GPL 来源只重写结构与判据；MIT/Apache 可参考实现但按仓库规范仍以自写为准，引用需署名。
 4. 所有脚本输出统一走 `save_evidence`（sha256 去重）与 scope 围栏，不新增第二套数据层。
 
-## 9. 附录 D：净新增能力探索池（未排期；排除已有功能与 T-01…T-16）
+## 10. 附录 D：净新增能力探索池（未排期；排除已有功能与 T-01…T-16）
 
 > 排除项：case/evidence/finding 注册表与定级、team 协作、进化 gate、recon/PoC/挖掘、UI/审批/上下文压缩——这些已在实现或 T-01…T-16。下表是**仍然没有的新能力**。
 
@@ -410,11 +418,3 @@ Sprint 6:
 | N-16 | **执行隔离（网络/进程）** | Decepticon Docker（`bash.py:446`）；Swarm LocalRunner（`runner.go:140`） | DSH sandbox 只限文件写，无 netns/容器 | 高：Windows 容器/受限账户工程 | P3 |
 
 **净新增优先级建议**：N-01 检索 → N-07 基准 → N-04 独立 verifier → N-09 脱敏 → N-13 信任标签（都是低成本、直接补质量门）；N-02/N-03/N-15 依赖 recon/PoC 任务落地后再做；N-05/N-06/N-10 属于效率层；N-12/N-16 成本最高，最后评估。
-
-## 10. 附录 B：反模式（不要吸收）
-
-- 「exhausted ≠ done」把失败当完成；必须显式 blocked（ARTEX/pentagi 教训）。
-- 工具自声明安全（模型说 safe 不等于安全）；闸门不得接受模型标签降级（VulnClaw `exec_gate.py:157-170`）。
-- 参考文档当证据：read_reference 只提供方法，finding 必须引用样本证据 E-id。
-- 全量工具平铺 / 40 域 scorecard 仪式（既有调研已排除）。
-- 多进程 Team / 远程成员（experimental agent-team 明确不支持）。
