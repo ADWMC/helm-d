@@ -139,15 +139,24 @@
 | 验收 | 同一输入两次渲染字节一致；缺失字段显式 NOT RUN |
 | 前置 | **先补源码位置证据**，再立项 |
 
-### T-12 工具选型评分 + 缓存（P2）
+### T-12 Toolbox 2.0（工具货架/选型/健康/缓存）（P1）
 
-| 项 | 内容 |
-|---|---|
-| 机制来源 | hexstrike-ai 按目标画像工具效能评分（`hexstrike_server.py:572-640`）+ 命令 TTL/LRU 缓存（`:5085-5140`）；ZCode 插件 manifest 分组枚举（`plugin-components.ts:28-55`） |
-| 落点 | `tool_recommend`/`tool_memory` 货架增加 successRate/latency/最近使用；同一命令短 TTL 缓存（仅本地只读命令） |
-| 验收（单元） | 缓存命中/过期；评分按最近成功率排序 |
-| 验收（真机） | 重复只读命令第二次为缓存命中且证据仍落盘 |
-| 许可 | MIT → 语义吸收 |
+**现状（已实现，作为基线）**：
+- `tool_recommend`：60+ 条静态 keyword→tool 规则 + `references/toolbox/tool-matrix.md` 全矩阵（`packages/helmd/src/tools/toolbox.ts:8-100`）。
+- `tool_memory`：`$DSH_HOME/helmd-tools/TOOLS.md` 货架（register/note/deadend/search，note 必须带证据），`route_task` 自动注入 shelf 摘要（`packages/helmd/src/ledger.ts:83-160,280-330`）。
+- **缺口**：静态规则无健康探测/成功率/延迟/缓存；TOOLS.md 已有 `(待补职责)` 与失效路径；无 MCP 工具发现；无 per-role 工具策略。
+
+| 子项 | 机制来源 | 要求 | 验收 |
+|---|---|---|---|
+| T-12.1 健康探测 | VulnClaw MCP `ProbeMixin` / `MCPRegistry` / diagnostics（`vulnclaw/mcp/_probe_mixin.py:43-68`、`mcp/registry.py:59`、`mcp/diagnostics.py`）；DSH MCP 连接探测（`mcp-client/src/connection.ts:163-172`） | register 时验证 path/版本/命令（存在且可执行）；周期复检；状态 `verified/missing/stale`；TOOLS.md 显式标红失效条目 | 单元：假路径→missing、版本变化→stale；真机：货架状态与文件系统一致 |
+| T-12.2 选型评分 | hexstrike 目标画像选型 + 攻击链成功率（`hexstrike_server.py:1003-1060,1462-1550`） | `tool_recommend` 从关键词升级为**打分排序**：signal 匹配 + successRate + latency + 最近使用 + 降级链；返回 top-N 与理由 | 单元：排序稳定/降级链；真机：重复任务推荐收敛 |
+| T-12.3 MCP/工具注册 | ZCode manifest（`plugin-components.ts:28-55`）；OpenAgentsControl registry（`registry.json:11-30`）；DSH MCP 前缀 `mcp__server__tool` | 枚举本机 MCP server 工具并入货架；记录 server/health/tool 列表；不引入外部服务 | 单元：fixture MCP 清单；真机：挂一个本地 stdio server |
+| T-12.4 只读缓存 | hexstrike LRU+TTL（`hexstrike_server.py:5091-5213`） | 确定性只读命令（版本/帮助/hash 类）短 TTL 缓存；命中仍写证据引用；写操作永不缓存 | 单元：命中/过期/写不缓存 |
+| T-12.5 角色工具策略 | DSH agent-team 工具面 + 我们的 team-policy | 由 settings 配 per-role allowlist/denylist（当前只硬编码 3 个名字）；越权拒绝并记录 | 单元：worker 调 orchestrator-only 工具被拒；真机：策略生效 |
+| T-12.6 来源/信任 | T3MP3ST arsenal riskTier（`arsenal/approval.ts:39-116`）；Dark-Moon 工具白名单（`executor.py:18-40`） | 货架条目带 source/license/trust（installed/verified/untrusted）；finding 可拒绝引用 untrusted 工具产物 | 单元：untrusted 条目不进 top-N；真机：finding 拒绝 |
+
+**验收（整体）**：`pnpm test:checks` 新增 `toolbox-health`/`toolbox-score` 用例；真机跑 `tool_recommend`+`tool_memory`（health→推荐→缓存→失效标记）一轮。
+**许可**：MIT/Apache 参考；VulnClaw/hexstrike 仅语义吸收。
 
 ---
 
