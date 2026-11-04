@@ -9,10 +9,10 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import {
-  createTicket, getTicket, listTickets, recordReport, sessionRole, TEAM_ROLES,
+  createTicket, getTicket, listTickets, recordReport, recordSteer, sessionRole, TEAM_ROLES,
   type ReportState, type TeamRole,
 } from '../team.js'
-import { startTeamWorker } from '../team-worker.js'
+import { startTeamWorker, type TeamSubagentRuntime } from '../team-worker.js'
 import { getCase } from '../case.js'
 
 interface ExecLike {
@@ -46,11 +46,17 @@ function renderTicket(ticket: NonNullable<ReturnType<typeof getTicket>>): string
   const lastByRole = new Map<string, string>()
   for (const report of ticket.reports) lastByRole.set(report.role, `[${report.state}] ${report.summary}`)
   const reports = [...lastByRole.entries()].map(([role, line]) => `- ${role}: ${line}`).join('\n')
+  const tasks = (ticket.tasks ?? []).map((task) =>
+    `- ${task.id} ${task.role} [${task.state}]${task.owner ? ` owner=${task.owner}` : ''}${task.leaseUntil ? ` lease=${task.leaseUntil}` : ''}${task.blockedBy.length > 0 ? ` blockedBy=${task.blockedBy.join(',')}` : ''}`,
+  ).join('\n')
+  const steers = (ticket.steers ?? []).slice(-3).map((steer) => `- ${steer.role}: ${steer.message.slice(0, 120)}`).join('\n')
   return [
     `ticket ${ticket.id} [${ticket.state}] ${ticket.goal}`,
     `case: ${ticket.caseDir}`,
     `roles:\n${roles || '(none)'}`,
+    tasks !== '' ? `tasks:\n${tasks}` : '',
     reports !== '' ? `latest reports:\n${reports}` : 'latest reports: (none)',
+    steers !== '' ? `recent steers:\n${steers}` : '',
     ticket.revision ? `pinned revisions: ${JSON.stringify(ticket.artifactRevisions)}` : '',
   ].filter((line) => line !== '').join('\n')
 }
@@ -66,9 +72,11 @@ export function registerTeamTools(ctx: Context): void {
       roles: { type: 'array', items: { type: 'string' }, description: `Subset of: ${TEAM_ROLES.join(', ')}. Defaults to the configured default roles.` },
       roleDeps: { type: 'string', description: 'Role dependencies, format "role:dep1,dep2;role2:dep" — e.g. "critic:static,dynamic". A role starts only after its prerequisites are done.' },
       caseDir: { type: 'string', description: 'Ticket workspace directory; defaults to the active case or session cwd.' },
+      budgetMinutes: { type: 'number', description: 'Per-worker wall-time budget in minutes (1-60); workers report blocked when exhausted.' },
+      maxToolCalls: { type: 'number', description: 'Advisory tool-call budget for workers; recorded on the ticket.' },
     },
     output: { schema: { type: 'string' }, render: (_args: unknown, value: string) => [{ type: 'text', text: value }] },
-    async execute(args: { goal: string; roles?: string[]; roleDeps?: string; caseDir?: string }, exec?: ExecLike) {
+    async execute(args: { goal: string; roles?: string[]; roleDeps?: string; caseDir?: string; budgetMinutes?: number; maxToolCalls?: number }, exec?: ExecLike) {
       const caseDir = args.caseDir?.trim() || defaultCaseDir(exec)
       if (caseDir === undefined || caseDir === '') {
         throw new Error('no caseDir: bind a case with begin_case or pass caseDir explicitly')
@@ -89,6 +97,14 @@ export function registerTeamTools(ctx: Context): void {
         caseDir,
         roles: roles.length > 0 ? roles : undefined,
         roleDeps: Object.keys(roleDeps).length > 0 ? roleDeps : undefined,
+        ...(args.budgetMinutes !== undefined || args.maxToolCalls !== undefined
+          ? {
+            budget: {
+              ...(args.budgetMinutes !== undefined ? { wallTimeMs: Math.max(1, Math.min(60, Math.round(args.budgetMinutes))) * 60_000 } : {}),
+              ...(args.maxToolCalls !== undefined ? { maxToolCalls: Math.max(1, Math.round(args.maxToolCalls)) } : {}),
+            },
+          }
+          : {}),
       })
       return [
         `ticket created: ${ticket.id}`,
@@ -158,6 +174,51 @@ export function registerTeamTools(ctx: Context): void {
         source: 'manual',
       })
       return `report recorded on ${updated.id} as ${args.role}/${state} (ticket now ${updated.state})`
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'team_steer',
+    description:
+      'Steer a running role worker at its nearest step boundary. Only the orchestrator may steer; the message is ' +
+      'recorded on the ticket and delivered through the host subagent manager. Use it to narrow scope or stop a bad path.',
+    parameters: {
+      ticketId: { type: 'string', required: true, description: 'Ticket id.' },
+      role: { type: 'string', required: true, description: `Running role: ${TEAM_ROLES.join(', ')}.` },
+      message: { type: 'string', required: true, description: 'Instruction for the worker, e.g. "只做静态分析，然后 blocked 汇报".' },
+    },
+    output: { schema: { type: 'string' }, render: (_args: unknown, value: string) => [{ type: 'text', text: value }] },
+    async execute(args: { ticketId: string; role: string; message: string }, exec?: ExecLike) {
+      const callerRole = sessionRole(exec?.agent?.id)
+      if (callerRole !== undefined && callerRole !== 'orchestrator') {
+        throw new Error(`role ${callerRole} cannot steer workers; hand the request back to the orchestrator`)
+      }
+      if (!isTeamRole(args.role)) throw new Error(`unknown team role: ${args.role}`)
+      if (exec?.agent === undefined) throw new Error('team_steer requires a live calling agent')
+      if (exec.signal === undefined) throw new Error('team_steer requires the tool cancellation signal')
+      const ticket = getTicket(args.ticketId)
+      if (ticket === undefined) throw new Error(`unknown ticket ${args.ticketId}`)
+      const assignment = ticket.roles.find((item) => item.role === args.role)
+      if (assignment === undefined) throw new Error(`role ${args.role} is not part of ticket ${ticket.id}`)
+      if (assignment.state !== 'running' || assignment.sessionId === undefined) {
+        throw new Error(`role ${args.role} is not running (state=${assignment.state}); nothing to steer`)
+      }
+      let subagents: TeamSubagentRuntime | undefined
+      try {
+        subagents = (ctx as unknown as { get?: (name: string) => TeamSubagentRuntime | undefined }).get?.('subagents')
+      } catch { /* host without subagent seam */ }
+      if (subagents?.steerPrompt === undefined) {
+        throw new Error('host subagent manager does not expose steerPrompt; cannot steer a running worker')
+      }
+      await subagents.steerPrompt(
+        exec.agent,
+        assignment.sessionId,
+        [{ type: 'text', text: `[helm-d steer ${ticket.id}/${args.role}] ${args.message.trim()}` }],
+        { kind: 'user' },
+        exec.signal,
+      )
+      const steer = recordSteer(ticket.id, args.role, args.message)
+      return `steer accepted: ${steer.id} → ${args.role} (${assignment.sessionId})`
     },
   }))
 

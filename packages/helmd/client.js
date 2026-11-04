@@ -250,7 +250,7 @@ exports.apply = function apply(ctx) {
 					padding: "0 8px 0 6px",
 					borderRadius: 6,
 					border: `1px solid ${open || active ? "var(--dsw-alias-border-l1)" : hovered ? "var(--dsw-alias-border-l4)" : "var(--dsw-alias-border-l3)"}`,
-					background: open || active ? "var(--dsw-alias-fill-tsp-active)" : hovered ? "var(--dsw-alias-fill-tsp-primary)" : "var(--dsw-alias-fill-tsp-secondary)",
+					background: open || active ? "var(--dsw-alias-interactive-bg-active)" : hovered ? "var(--dsw-alias-interactive-bg-hover)" : "var(--dsw-alias-bg-layer-1)",
 					color: hovered || open ? "var(--dsw-alias-label-primary)" : "var(--dsw-alias-label-secondary)",
 					fontSize: 12,
 					fontWeight: 500,
@@ -470,7 +470,7 @@ exports.apply = function apply(ctx) {
 								style: {
 									display: "flex", alignItems: "baseline", gap: 8,
 									padding: "5px 6px", borderRadius: "var(--dsw-radius-xs)",
-									background: "var(--dsw-alias-fill-tsp-secondary)",
+									background: "var(--dsw-alias-bg-layer-1)",
 								},
 							},
 								h("span", { style: { fontFamily: CODE, fontSize: 11, color: TONE.muted, flex: "none" } }, c.status || "?"),
@@ -481,7 +481,11 @@ exports.apply = function apply(ctx) {
 										overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 									},
 								}, c.name),
-								h("span", { style: { fontSize: 11, color: TONE.muted, flex: "none" } }, (c.evidenceCount || 0) + " E")
+								h("span", { style: { fontSize: 11, color: TONE.muted, flex: "none" } },
+									(c.evidenceCount || 0) + " E" +
+									(c.findingsBySeverity ? " · C" + c.findingsBySeverity.critical + " H" + c.findingsBySeverity.high : "") +
+									(c.staleFindings ? " · STALE " + c.staleFindings : "")
+								)
 							);
 						})
 					)
@@ -494,6 +498,27 @@ exports.apply = function apply(ctx) {
 		var hyps = cd.hypotheses || [];
 		var findings = Array.isArray(props.findings) ? props.findings : [];
 		var evidence = Array.isArray(props.evidence) ? props.evidence : [];
+		var severityFilterState = React.useState("all"); var severityFilter = severityFilterState[0]; var setSeverityFilter = severityFilterState[1];
+		var statusFilterState = React.useState("all"); var statusFilter = statusFilterState[0]; var setStatusFilter = statusFilterState[1];
+		var findingBusyState = React.useState(""); var findingBusy = findingBusyState[0]; var setFindingBusy = findingBusyState[1];
+		var severityRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
+		var visibleFindings = findings
+			.filter(function (f) { return (severityFilter === "all" || f.severity === severityFilter) && (statusFilter === "all" || f.status === statusFilter); })
+			.slice().sort(function (a, b) { return (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0) || String(a.id || "").localeCompare(String(b.id || "")); });
+		var criticalCount = findings.filter(function (f) { return f.severity === "critical"; }).length;
+		var highCount = findings.filter(function (f) { return f.severity === "high"; }).length;
+		function patchFinding(f, status) {
+			if (!props.sessionId) return;
+			setFindingBusy(f.id + ":" + status);
+			fetch("/api/helmd/case/findings", {
+				method: "POST", headers: { "content-type": "application/json" },
+				body: JSON.stringify({ sessionId: props.sessionId, id: f.id, status: status, note: "workbench triage" }),
+			}).then(function (r) { return r.json(); }).then(function (res) {
+				if (!res || !res.ok) throw new Error((res && res.error) || "更新失败");
+				if (props.onRefresh) props.onRefresh();
+			}).catch(function (e) { if (props.onNotice) props.onNotice(String(e.message || e)); })
+				.then(function () { setFindingBusy(""); });
+		}
 		var hypRows = hyps.map(function (hh) {
 			var color = hh.status === "confirmed" ? TONE.success
 				: hh.status === "refuted" ? TONE.error
@@ -543,12 +568,17 @@ exports.apply = function apply(ctx) {
 					h("span", { style: S.pill(TONE.success) }, "OPEN")
 				),
 				cd.goal ? h("div", { style: Object.assign({}, S.body, { marginTop: 6 }) }, cd.goal) : null,
-				h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 } },
+				h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 } },
 					h(StatTile, { label: "Evidence", value: cd.evidenceCount || 0, tone: TONE.info }),
 					h(StatTile, {
 						label: "Open hypotheses",
 						value: cd.openHypotheses || 0,
 						tone: (cd.openHypotheses || 0) > 0 ? TONE.warn : TONE.success,
+					}),
+					h(StatTile, {
+						label: "Critical / High",
+						value: criticalCount + " / " + highCount,
+						tone: criticalCount > 0 ? TONE.error : highCount > 0 ? TONE.warn : TONE.success,
 					})
 				)
 			),
@@ -565,13 +595,21 @@ exports.apply = function apply(ctx) {
 					})
 			),
 			h("div", { style: S.card },
-				h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: findings.length ? 6 : 0 } },
+				h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: findings.length ? 6 : 0, gap: 8, flexWrap: "wrap" } },
 					h("span", { style: S.title }, "结论"),
-					h("span", { style: S.caption }, severitySummary(findings))
+					h("span", { style: S.caption }, severitySummary(findings)),
+					h("select", {
+						value: severityFilter, onChange: function (e) { setSeverityFilter(e.target.value); },
+						style: { height: 24, borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: 11 },
+					}, ["all", "critical", "high", "medium", "low", "info"].map(function (v) { return h("option", { key: v, value: v }, v === "all" ? "全部等级" : v); })),
+					h("select", {
+						value: statusFilter, onChange: function (e) { setStatusFilter(e.target.value); },
+						style: { height: 24, borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: 11 },
+					}, ["all", "candidate", "verified", "rejected", "duplicate", "wontfix"].map(function (v) { return h("option", { key: v, value: v }, v === "all" ? "全部状态" : v); }))
 				),
 				findings.length > 0
 					? h("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
-						findings.map(function (f, index) {
+						visibleFindings.map(function (f, index) {
 							var sevColor = SEVERITY_COLOR[f.severity] || TONE.muted;
 							return h("div", {
 								key: "finding-" + index,
@@ -593,7 +631,22 @@ exports.apply = function apply(ctx) {
 								f.evidence ? h("div", { style: { marginTop: 3, fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, f.evidence) : null,
 								f.repro
 									? h("div", { style: { marginTop: 2, fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, "repro: " + f.repro)
-									: h("div", { style: { marginTop: 2, fontSize: 10.5, color: TONE.warn } }, "repro: MISSING")
+									: h("div", { style: { marginTop: 2, fontSize: 10.5, color: TONE.warn } }, "repro: MISSING"),
+								f.id ? h("div", { style: { display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" } },
+									["verified", "rejected", "duplicate", "wontfix"].map(function (status) {
+										var busy = findingBusy === f.id + ":" + status;
+										return h("button", {
+											key: status, type: "button", disabled: !!findingBusy || f.status === status,
+											onClick: function () { patchFinding(f, status); },
+											style: {
+												height: 20, padding: "0 6px", borderRadius: 3,
+												border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent",
+												color: f.status === status ? TONE.muted : "var(--dsw-alias-label-secondary)",
+												fontSize: 10, cursor: findingBusy ? "default" : "pointer",
+											},
+										}, busy ? "…" : status);
+									})
+								) : null
 							);
 						})
 					)
@@ -657,6 +710,12 @@ exports.apply = function apply(ctx) {
 				.then(function (tool) { refresh("已安装 " + tool.name + " " + tool.version); })
 				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
 		}
+		function doUpdate(id, assetName) {
+			setBusy(id);
+			post("/api/helmd/tools/update", { id: id, assetName: assetName })
+				.then(function (tool) { refresh("已更新 " + tool.name + " " + tool.version); })
+				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
+		}
 		function pickRelease(id) {
 			var entry = entries.filter(function (e) { return e.id === id; })[0];
 			if (entry && entry.asset) { doInstall(id, entry.asset); return; }
@@ -690,7 +749,7 @@ exports.apply = function apply(ctx) {
 		var installed = entries.filter(function (e) { return e.health && e.health.installed; }).length;
 
 		return h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-			notice ? h("div", { style: { padding: "7px 9px", borderRadius: 4, fontSize: 11.5, lineHeight: "17px", color: TONE.info, background: "var(--dsw-alias-fill-tsp-secondary)" } }, notice) : null,
+			notice ? h("div", { style: { padding: "7px 9px", borderRadius: 4, fontSize: 11.5, lineHeight: "17px", color: TONE.info, background: "var(--dsw-alias-bg-layer-1)" } }, notice) : null,
 			h("div", { style: S.card },
 				h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
 					h("span", { style: S.title }, "外部工具"),
@@ -728,6 +787,11 @@ exports.apply = function apply(ctx) {
 					h("div", { style: Object.assign({}, S.caption, { marginTop: 2, fontFamily: CODE }) }, "usage: " + entry.usage),
 					health.path ? h("div", { style: Object.assign({}, S.caption, { fontFamily: CODE }) }, health.path) : null,
 					h("div", { style: { display: "flex", gap: 6, marginTop: 6, alignItems: "center" } },
+						isInstalled && entry.kind === "release" ? h("button", {
+							type: "button", className: "hm-btn", disabled: pending,
+							onClick: function () { doUpdate(entry.id); },
+							style: { height: 24, padding: "0 8px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: TONE.info, fontSize: 11, cursor: "pointer" },
+						}, pending ? "处理中" : "更新") : null,
 						isInstalled
 							? h("button", {
 								type: "button", className: "hm-btn", onClick: function () { uninstall(entry); }, disabled: pending,
@@ -776,7 +840,7 @@ exports.apply = function apply(ctx) {
 				display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px 3px 6px",
 				borderRadius: 999, cursor: "pointer", fontSize: 12,
 				border: "0.5px solid var(--dsw-alias-border-l3)",
-				background: props.checked ? "color-mix(in srgb, " + TONE.success + " 14%, transparent)" : "var(--dsw-alias-fill-tsp-secondary)",
+				background: props.checked ? "color-mix(in srgb, " + TONE.success + " 14%, transparent)" : "var(--dsw-alias-bg-layer-1)",
 				color: props.checked ? TONE.success : "var(--dsw-alias-label-secondary)",
 			},
 		},
@@ -853,7 +917,7 @@ exports.apply = function apply(ctx) {
 			color: "var(--dsw-alias-label-primary)", fontSize: 12.5, outline: "none", boxSizing: "border-box",
 		};
 		return h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-			notice ? h("div", { style: { padding: "7px 9px", borderRadius: 4, fontSize: 11.5, color: TONE.info, background: "var(--dsw-alias-fill-tsp-secondary)" } }, notice) : null,
+			notice ? h("div", { style: { padding: "7px 9px", borderRadius: 4, fontSize: 11.5, color: TONE.info, background: "var(--dsw-alias-bg-layer-1)" } }, notice) : null,
 			h("div", { style: S.card },
 				h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
 					h("span", { style: S.title }, "Team 协作"),
@@ -882,9 +946,16 @@ exports.apply = function apply(ctx) {
 					h(SettingsRow, { label: "并发 worker 上限", hint: "每 ticket 同时运行数（1-8）" },
 						h(SettingsNumber, { value: form.team.maxParallelWorkers, min: 1, max: 8, onChange: function (v) { setIn("team.maxParallelWorkers", v); } })
 					),
-					h(SettingsRow, { label: "默认 worker 超时", hint: "分钟（1-60），budget artifact 可覆盖" },
-						h(SettingsNumber, { value: form.team.defaultWallTimeMin, min: 1, max: 60, onChange: function (v) { setIn("team.defaultWallTimeMin", v); } })
-					)
+						h(SettingsRow, { label: "默认 worker 超时", hint: "分钟（1-60），budget artifact 可覆盖" },
+							h(SettingsNumber, { value: form.team.defaultWallTimeMin, min: 1, max: 60, onChange: function (v) { setIn("team.defaultWallTimeMin", v); } })
+						),
+						h(SettingsRow, { label: "动态 worker 高风险命令", hint: "ask 走宿主审批；deny 直接拒绝；allow 放行" },
+							h("select", {
+								value: (form.team && form.team.riskApproval) || "ask",
+								onChange: function (e) { setIn("team.riskApproval", e.target.value); },
+								style: { height: 24, borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: 11 },
+							}, ["ask", "deny", "allow"].map(function (v) { return h("option", { key: v, value: v }, v); }))
+						)
 				)
 			),
 			h("div", { style: S.card },
@@ -952,6 +1023,8 @@ exports.apply = function apply(ctx) {
 		var busy = busyState[0]; var setBusy = busyState[1];
 		var goalState = React.useState("");
 		var goalInput = goalState[0]; var setGoalInput = goalState[1];
+		var steerState = React.useState({});
+		var steerTexts = steerState[0]; var setSteerTexts = steerState[1];
 		var newRolesState = React.useState(["triage", "static", "critic", "reporter"]);
 		var newRoles = newRolesState[0]; var setNewRoles = newRolesState[1];
 		React.useEffect(function () {
@@ -1010,6 +1083,19 @@ exports.apply = function apply(ctx) {
 			}).then(function (res) { done("已启动 " + res.role + " · " + res.sessionId); })
 				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
 		}
+		function steerRole(role) {
+			if (!selected || !props.sessionId) { setNotice("当前面板没有会话 id。"); return; }
+			var message = String(steerTexts[role] || "").trim();
+			if (message === "") { setNotice("先填写纠偏指令。"); return; }
+			setBusy("steer:" + role);
+			callJson("/api/helmd/team", {
+				action: "steer", ticketId: selected.id, role: role,
+				message: message, parentSessionId: props.sessionId,
+			}).then(function (res) {
+				setSteerTexts(function (prev) { var next = Object.assign({}, prev); delete next[role]; return next; });
+				done("已纠偏 " + role + " · " + (res.id || ""));
+			}).catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
+		}
 		function closeTicket() {
 			if (!selected) return;
 			setBusy("close");
@@ -1056,6 +1142,7 @@ exports.apply = function apply(ctx) {
 					},
 				}, t.goal),
 				h("span", { style: S.pill(stateColor(t.state)) }, t.state),
+				t.findingsBySeverity ? h("span", { style: { fontSize: 10.5, color: TONE.warn, flex: "none" } }, "C" + t.findingsBySeverity.critical + " H" + t.findingsBySeverity.high) : null,
 				h("span", { style: { fontSize: 10.5, color: TONE.muted, flex: "none" } }, (t.reports || []).length + "R")
 			);
 		});
@@ -1078,6 +1165,27 @@ exports.apply = function apply(ctx) {
 				h("span", { style: Object.assign({}, S.caption, { flex: 1, minWidth: 0, fontFamily: CODE }) },
 					role.sessionId ? role.sessionId.slice(0, 12) : (unmet.length ? "waits: " + unmet.join(",") : "not started")),
 				h("span", { style: S.pill(stateColor(role.state), true) }, role.state),
+				role.state === "running" ? h("input", {
+					type: "text", value: steerTexts[role.role] || "", placeholder: "steer…",
+					onChange: function (e) {
+						var value = e.target.value;
+						setSteerTexts(function (prev) { return Object.assign({}, prev, { [role.role]: value }); });
+					},
+					style: {
+						width: 110, height: 22, padding: "0 6px", borderRadius: 4,
+						border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
+						color: "var(--dsw-alias-label-primary)", fontSize: 10.5, outline: "none",
+					},
+				}) : null,
+				role.state === "running" ? h("button", {
+					type: "button", className: "hm-btn", disabled: busy === "steer:" + role.role,
+					onClick: function () { steerRole(role.role); },
+					style: {
+						height: 22, padding: "0 7px", borderRadius: 4,
+						border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent",
+						color: "var(--dsw-alias-label-secondary)", fontSize: 11, cursor: "pointer",
+					},
+				}, busy === "steer:" + role.role ? "发送中" : "纠偏") : null,
 				h("button", {
 					type: "button", className: "hm-btn", disabled: role.state === "running" || busy === role.role,
 					onClick: function () { startRole(role.role); },
@@ -1120,7 +1228,7 @@ exports.apply = function apply(ctx) {
 				key: key + "@" + rev.revision,
 				style: {
 					display: "flex", alignItems: "center", gap: 6, padding: "5px 6px",
-					borderRadius: "var(--dsw-radius-xs)", background: isActive ? "var(--dsw-alias-fill-tsp-secondary)" : "transparent",
+					borderRadius: "var(--dsw-radius-xs)", background: isActive ? "var(--dsw-alias-bg-layer-1)" : "transparent",
 				},
 			},
 				h("span", { style: { fontFamily: CODE, fontSize: 10.5, color: TONE.muted, flex: "none" } }, key + "@" + rev.revision),
@@ -1145,7 +1253,7 @@ exports.apply = function apply(ctx) {
 			notice ? h("div", {
 				style: {
 					padding: "7px 9px", borderRadius: 4, fontSize: 11.5, lineHeight: "17px",
-					color: TONE.warn, background: "var(--dsw-alias-fill-tsp-secondary)",
+					color: TONE.warn, background: "var(--dsw-alias-bg-layer-1)",
 				},
 			}, notice) : null,
 			h("div", { style: S.card },
@@ -1312,7 +1420,7 @@ exports.apply = function apply(ctx) {
 				style: {
 					padding: "8px 10px", borderRadius: "var(--dsw-radius-sm)", fontSize: 12, lineHeight: "18px",
 					color: TONE.error,
-					background: "var(--dsw-alias-state-error-tertiary)",
+					background: "var(--dsw-alias-state-error-secondary)",
 					border: "0.5px solid color-mix(in srgb, " + TONE.error + " 35%, transparent)",
 				},
 			}, props.error) : null
@@ -1672,7 +1780,7 @@ exports.apply = function apply(ctx) {
 					style: { display: "flex", flexDirection: "column", gap: 10 },
 				},
 					tab === "profile" ? h(ProfileTab, { profileData: data.profile, onSwitch: switchTo, switching: isSwitching, error: profileErr }) : null,
-					tab === "case" ? h(CaseTab, { caseData: data.caseData, findings: data.findings, evidence: data.evidence, onRefresh: refresh }) : null,
+					tab === "case" ? h(CaseTab, { caseData: data.caseData, findings: data.findings, evidence: data.evidence, sessionId: data.sessionId, onRefresh: refresh }) : null,
 					tab === "team" ? h(TeamTab, {
 						teamData: data.teamData,
 						versions: data.versions,

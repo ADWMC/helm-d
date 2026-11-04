@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+### 参考项目吸收（T-01…T-17）
+
+- **Team 协作**：`team_steer` 对运行中 worker 实时纠偏（非 orchestrator 拒绝）；ticket 任务 DAG 支持 `claimTask` 租约/幂等/回收与依赖解锁；per-ticket budget + finish gate（预算/无实质结果 → blocked，不再伪装 ready）
+- **证据与验证**：`record_finding` 审计 detail 中的 hash/E-id 必须在 cited evidence 中逐字命中；支持独立 `negative_evidence_ids` + `negative_control`；证据落盘写 sha256/prevHash 链，篡改后 finding 自动标 stale；NO_PATH 对连续 3 次相同 tool+args 且证据无增长硬提示
+- **进化与上下文**：gate 增加 0.1 噪声宽限、最小改善、holdout、编辑预算、父代 score×1/(1+children)；>256KB 工具输出完整落证据、模型只看 head/tail
+- **审批与 UI**：dynamic worker 高风险命令按 `team.riskApproval` ask/deny/allow，per-role allow/deny；Case tab 支持 finding 状态按钮、severity/status 过滤、critical/high 头部、Case 列表计数；SARIF 2.1.0 / 确定性报告 / CVSS 向量 / 趋势
+- **Recon / PoC / Mining**：资产账本 + scope/限速/六维覆盖；recon_passive/ports/http/crawl/import；确定性 PoC recipe + 正负对照三态；HAR/OpenAPI/JS 候选提取与候选账本
+- **Toolbox 2.0**：catalog 评分排序、MCP 只读发现、command probe TTL 缓存、离线镜像（sha256 必填）、update 原子回退
+- 工具数 38 → 46，检查集 29 → 33；任务书各项残留（OOB listener、APK/binary mining、Team 报告 severity、UI 滚动/IME）标记为后续增量
+
 ### 参考知识
 
 - **references 总索引重建**：`references/index.md` 从 38 行领域清单重做为「任务路由（48 条信号 → 具体文档）+ 领域总览 + 353 篇全量目录」；8 个领域索引同步改为按子类组织的表格，含每篇标题/摘要/类型/来源，修复旧索引的失效文件与错误计数。索引由 `scripts/gen-references-index.mjs` 从正文生成（标题取 H1、摘要取首段或 H2 大纲、特殊文档用 override），新增 `references-index` 检查（生成物一致、每篇恰好一次、链接可达、领域计数一致），检查集 28 → 29

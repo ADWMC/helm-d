@@ -13,7 +13,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { basename } from 'node:path'
 import { bindCase } from './case.js'
 import {
-  activeRevision, assignRole, getTicket, listRevisions, pinArtifactRevisions,
+  activeRevision, assignRole, claimTask, completeTask, getTicket, listRevisions, pinArtifactRevisions,
   recordReport, type ArtifactKind, type ReportState, type TeamReport, type TeamRole,
 } from './team.js'
 import { loadSettings } from './settings.js'
@@ -104,6 +104,15 @@ export interface TeamActivationSpec {
 export interface TeamSubagentRuntime {
   getProvider(name: string): TeamSubagentProvider | undefined
   startActivation(spec: TeamActivationSpec): Promise<TeamActivation>
+  /** Host-native mid-turn steer (dsh-subagent manager). Optional: old hosts
+   *  only expose startActivation, and team_steer reports that clearly. */
+  steerPrompt?(
+    parent: unknown,
+    childId: string,
+    content: Array<{ type: 'text'; text: string }>,
+    source: unknown,
+    signal: AbortSignal,
+  ): Promise<unknown>
 }
 
 export interface TeamAgentRegistry {
@@ -195,6 +204,30 @@ export function extractWorkerReport(output: unknown, stopReason?: string): Worke
   }
 }
 
+/** T-05 finish gate: a "ready" report with no evidence and no substantive
+ *  summary is not a result; budget/stop-reason exhaustion becomes blocked,
+ *  never a normal completion. Exported for the unit check. */
+export function applyFinishGate(report: WorkerReport, elapsedMs: number, budgetMs: number): WorkerReport {
+  const summary = report.summary.trim()
+  const exhausted = report.stopReason !== undefined
+    && (/max.*token|length|budget|abort/i.test(report.stopReason) || elapsedMs >= budgetMs * 0.95)
+  if (exhausted) {
+    return {
+      ...report,
+      state: 'blocked',
+      summary: `budget/stop reason exhausted (${report.stopReason}, ${Math.round(elapsedMs / 1000)}s/${Math.round(budgetMs / 1000)}s): ${summary}`.slice(0, 4000),
+    }
+  }
+  if (report.state === 'ready' && report.evidenceIds.length === 0 && (summary.length < 20 || /^(done|ok|ready|完成|好的)$/i.test(summary))) {
+    return {
+      ...report,
+      state: 'blocked',
+      summary: 'finish gate: ready report has no substantive summary or evidence id',
+    }
+  }
+  return report
+}
+
 function revisionAt(kind: ArtifactKind, id: string, revision: number) {
   if (revision <= 0) return undefined
   return listRevisions(kind, id).find((item) => item.revision === revision)
@@ -269,6 +302,7 @@ export function renderWorkerPrompt(input: {
     '1. `case_status()` first — the autonomy packet gives the goal, hypotheses, matched playbook and next action.',
     '2. `route_task(goal)` — then `read_reference(<matched refs>)` the routed references BEFORE claiming anything. Domain knowledge lives in references; do not guess from memory.',
     '3. Prefer domain tools over raw shell one-liners. Every tool output auto-persists into evidence/ — cite those E-ids in any claim.',
+    '3b. Large output (>256KB) is stored in evidence and shown as head/tail only; read the E-file instead of pasting it into context.',
     '4. Guesses go through `record_hypothesis`; conclusions through `record_finding` (repro_cmd required, and always pass severity; critical/high need >= 2 evidence ids). No evidence, no claim.',
     '5. Finish with the JSON report block below. state=blocked with the exact missing input when something is missing — never fabricate evidence or repro.',
     '',
@@ -361,7 +395,10 @@ export async function startTeamWorker(input: StartWorkerInput): Promise<StartedW
   }
   pinArtifactRevisions(ticket.id, active)
   const pinned = getTicket(ticket.id)?.artifactRevisions ?? active
-  const budget = parseBudget(artifactValue(pinned, 'budget-policy', input.role) ?? artifactValue(pinned, 'budget-policy', 'common'))
+  const budget = Math.min(
+    MAX_WALL_TIME_MS,
+    ticket.budget?.wallTimeMs ?? parseBudget(artifactValue(pinned, 'budget-policy', input.role) ?? artifactValue(pinned, 'budget-policy', 'common')),
+  )
   const agentOptions = parseModelProfile(
     artifactValue(pinned, 'model-profile', input.role) ?? artifactValue(pinned, 'model-profile', 'common'),
   )
@@ -386,7 +423,12 @@ export async function startTeamWorker(input: StartWorkerInput): Promise<StartedW
   const startedAt = Date.now()
 
   let activation: TeamActivation
+  let claimed = false
   try {
+    if ((ticket.tasks ?? []).length > 0) {
+      claimTask(ticket.id, input.role, budget)
+      claimed = true
+    }
     activation = await subagents.startActivation({
       provider: provider.name,
       label: `${ticket.id}/${input.role}`,
@@ -402,6 +444,9 @@ export async function startTeamWorker(input: StartWorkerInput): Promise<StartedW
   } catch (error) {
     clearTimeout(timer)
     input.signal?.removeEventListener('abort', forwardAbort)
+    if (claimed) {
+      try { completeTask(ticket.id, input.role, 'blocked') } catch { /* no lease left */ }
+    }
     throw error
   }
 
@@ -419,7 +464,7 @@ export async function startTeamWorker(input: StartWorkerInput): Promise<StartedW
   const completion = (async (): Promise<TeamReport | undefined> => {
     try {
       const result = await activation.result
-      const report = extractWorkerReport(result.output, result.stopReason)
+      const report = applyFinishGate(extractWorkerReport(result.output, result.stopReason), Date.now() - startedAt, budget)
       const updated = recordReport({
         ticketId: ticket.id,
         role: input.role,

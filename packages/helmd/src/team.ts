@@ -47,6 +47,33 @@ export interface RoleAssignment {
   endedAt?: string
 }
 
+export type TaskState = 'ready' | 'blocked' | 'claimed' | 'done' | 'failed'
+
+export interface TeamTask {
+  id: string
+  role: TeamRole
+  /** Task ids that must be done before this task is claimable. */
+  blockedBy: string[]
+  state: TaskState
+  owner?: TeamRole
+  /** ISO timestamp; an expired lease can be reclaimed by another worker. */
+  leaseUntil?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TeamBudget {
+  wallTimeMs?: number
+  maxToolCalls?: number
+}
+
+export interface TeamSteer {
+  id: string
+  role: TeamRole
+  message: string
+  at: string
+}
+
 export interface TeamTicket {
   id: string
   goal: string
@@ -57,9 +84,14 @@ export interface TeamTicket {
   artifactRevisions: Record<string, number>
   /** Role dependencies: a role may only start once every listed role is done. */
   roleDeps?: Partial<Record<TeamRole, TeamRole[]>>
+  /** Per-ticket budget; inherited by workers (T-05). */
+  budget?: TeamBudget
+  /** Optional task DAG (T-03); legacy tickets without tasks keep the roleDeps gate. */
+  tasks?: TeamTask[]
   roles: RoleAssignment[]
   reports: TeamReport[]
   handoffs: TeamHandoff[]
+  steers?: TeamSteer[]
   createdAt: string
   updatedAt: string
 }
@@ -75,6 +107,12 @@ export interface EvalResult {
   candidate: Record<string, number>
   pass: boolean
   reasons: string[]
+  holdout?: {
+    baseline: Record<string, number>
+    candidate: Record<string, number>
+    pass: boolean
+    reasons: string[]
+  }
   at: string
 }
 
@@ -86,6 +124,8 @@ export interface ArtifactRevision {
   value: string
   source: string
   at: string
+  /** Added+removed lines relative to the active revision (edit budget). */
+  diffLines?: number
   eval?: EvalResult
 }
 
@@ -192,6 +232,13 @@ function loadState(): TeamState {
       roleDeps: ticket.roleDeps && typeof ticket.roleDeps === 'object'
         ? ticket.roleDeps
         : undefined,
+      tasks: Array.isArray(ticket.tasks)
+        ? ticket.tasks.map((task) => ({
+          ...task,
+          blockedBy: Array.isArray(task.blockedBy) ? task.blockedBy : [],
+        }))
+        : undefined,
+      steers: Array.isArray(ticket.steers) ? ticket.steers : undefined,
     })),
   }
 }
@@ -276,6 +323,8 @@ export function createTicket(input: {
   revision?: number
   artifactRevisions?: Record<string, number>
   roleDeps?: Partial<Record<TeamRole, TeamRole[]>>
+  budget?: TeamBudget
+  tasks?: Array<{ id?: string; role: TeamRole; blockedBy?: string[] }>
 }): TeamTicket {
   const goal = input.goal.trim()
   const caseDir = input.caseDir.trim()
@@ -287,6 +336,24 @@ export function createTicket(input: {
     const roles = (input.roles && input.roles.length > 0 ? input.roles : configuredDefaultRoles())
     const unique = [...new Set(roles)].filter((role) => TEAM_ROLES.includes(role))
     if (unique.length === 0) throw new Error('at least one valid role is required')
+    const timestamp = now()
+    const roleTaskIds = new Map(unique.map((role, index) => [role, `TK-${String(index + 1).padStart(3, '0')}`]))
+    const taskInputs: Array<{ id?: string; role: TeamRole; blockedBy?: string[] }> = input.tasks !== undefined && input.tasks.length > 0
+      ? input.tasks
+      : unique.map((role) => ({
+        role,
+        blockedBy: (input.roleDeps?.[role] ?? [])
+          .map((dep) => roleTaskIds.get(dep))
+          .filter((id): id is string => id !== undefined),
+      }))
+    const tasks: TeamTask[] = taskInputs.map((task, index) => ({
+      id: task.id ?? `TK-${String(index + 1).padStart(3, '0')}`,
+      role: task.role,
+      blockedBy: [...new Set(task.blockedBy ?? [])],
+      state: (task.blockedBy ?? []).length > 0 ? 'blocked' : 'ready',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }))
     const ticket: TeamTicket = {
       id: nextId('T', state.tickets),
       goal,
@@ -295,11 +362,13 @@ export function createTicket(input: {
       revision: input.revision ?? 0,
       artifactRevisions: { ...(input.artifactRevisions ?? {}) },
       ...(input.roleDeps !== undefined ? { roleDeps: input.roleDeps } : {}),
+      ...(input.budget !== undefined ? { budget: input.budget } : {}),
+      ...(tasks.length > 0 ? { tasks } : {}),
       roles: unique.map((role) => ({ role, state: 'idle' })),
       reports: [],
       handoffs: [],
-      createdAt: now(),
-      updatedAt: now(),
+      createdAt: timestamp,
+      updatedAt: timestamp,
     }
     state.tickets.push(ticket)
     saveState(state)
@@ -317,6 +386,93 @@ export function assignRole(ticketId: string, role: TeamRole, sessionId: string):
     assignment.state = 'running'
     assignment.startedAt ??= now()
     if (ticket.state === 'open') ticket.state = 'working'
+  })
+}
+
+/** Claim the role's next ready DAG task with a lease. Idempotent while the
+ *  caller still owns an unexpired lease; a different live owner is rejected. */
+export function claimTask(ticketId: string, role: TeamRole, leaseMs = 30 * 60 * 1000): TeamTask {
+  return withStoreLock(() => {
+    const state = loadState()
+    const ticket = state.tickets.find((item) => item.id === ticketId)
+    if (ticket === undefined) throw new Error(`unknown ticket ${ticketId}`)
+    if (ticket.tasks === undefined || ticket.tasks.length === 0) throw new Error(`ticket ${ticketId} has no task DAG`)
+    const byId = new Map(ticket.tasks.map((task) => [task.id, task]))
+    const ready = ticket.tasks.find((task) => {
+      if (task.role !== role || task.state === 'done' || task.state === 'failed') return false
+      const blockersDone = task.blockedBy.every((id) => byId.get(id)?.state === 'done')
+      return blockersDone
+    })
+    if (ready === undefined) {
+      const own = ticket.tasks.find((task) => task.role === role)
+      if (own !== undefined) throw new Error(`task ${own.id} is not ready (blocked by: ${own.blockedBy.join(', ') || 'state'})`)
+      throw new Error(`no task for role ${role} in ticket ${ticketId}`)
+    }
+    const current = Date.now()
+    const liveLease = ready.state === 'claimed'
+      && ready.owner !== undefined
+      && ready.leaseUntil !== undefined
+      && Date.parse(ready.leaseUntil) > current
+    if (liveLease && ready.owner !== role) {
+      throw new Error(`task ${ready.id} is leased by ${ready.owner} until ${ready.leaseUntil}`)
+    }
+    if (liveLease && ready.owner === role) return ready
+    ready.state = 'claimed'
+    ready.owner = role
+    ready.leaseUntil = new Date(current + Math.max(1000, leaseMs)).toISOString()
+    ready.updatedAt = now()
+    ticket.updatedAt = now()
+    if (ticket.state === 'open') ticket.state = 'working'
+    saveState(state)
+    return ready
+  })
+}
+
+/** Finish a claimed task. `done` unblocks dependents; `blocked`/`failed`
+ *  release the lease so another attempt can claim it. */
+export function completeTask(ticketId: string, role: TeamRole, outcome: 'done' | 'blocked' | 'failed'): TeamTask {
+  return withStoreLock(() => {
+    const state = loadState()
+    const ticket = state.tickets.find((item) => item.id === ticketId)
+    if (ticket === undefined) throw new Error(`unknown ticket ${ticketId}`)
+    const task = [...(ticket.tasks ?? [])].reverse().find((item) => item.role === role && item.state === 'claimed' && item.owner === role)
+    if (task === undefined) throw new Error(`role ${role} has no claimed task in ticket ${ticketId}`)
+    task.state = outcome
+    task.owner = undefined
+    task.leaseUntil = undefined
+    task.updatedAt = now()
+    if (outcome === 'done') {
+      for (const candidate of ticket.tasks ?? []) {
+        if (candidate.state === 'blocked' && candidate.blockedBy.every((id) => ticket.tasks?.find((item) => item.id === id)?.state === 'done')) {
+          candidate.state = 'ready'
+          candidate.updatedAt = now()
+        }
+      }
+    }
+    ticket.updatedAt = now()
+    saveState(state)
+    return task
+  })
+}
+
+/** Audit a steer instruction; delivery itself is performed by the caller. */
+export function recordSteer(ticketId: string, role: TeamRole, message: string): TeamSteer {
+  const text = message.trim()
+  if (text === '') throw new Error('steer message is required')
+  return withStoreLock(() => {
+    const state = loadState()
+    const ticket = state.tickets.find((item) => item.id === ticketId)
+    if (ticket === undefined) throw new Error(`unknown ticket ${ticketId}`)
+    const steer: TeamSteer = {
+      id: nextId('S', ticket.steers ?? []),
+      role,
+      message: text.slice(0, 4000),
+      at: now(),
+    }
+    ticket.steers = [...(ticket.steers ?? []), steer]
+    ticket.updatedAt = steer.at
+    saveState(state)
+    return steer
   })
 }
 
@@ -360,6 +516,26 @@ export function recordReport(input: {
       at: now(),
     }
     ticket.reports.push(report)
+    const claimedTask = [...(ticket.tasks ?? [])].reverse().find((task) => task.role === input.role && (task.state === 'claimed' || task.state === 'ready') && (task.owner === undefined || task.owner === input.role))
+    if (claimedTask !== undefined) {
+      if (input.state === 'ready') {
+        claimedTask.state = 'done'
+        claimedTask.owner = undefined
+        claimedTask.leaseUntil = undefined
+        claimedTask.updatedAt = now()
+        for (const candidate of ticket.tasks ?? []) {
+          if (candidate.state === 'blocked' && candidate.blockedBy.every((id) => ticket.tasks?.find((task) => task.id === id)?.state === 'done')) {
+            candidate.state = 'ready'
+            candidate.updatedAt = now()
+          }
+        }
+      } else if (input.state === 'blocked' || input.state === 'failed' || input.state === 'dropped') {
+        claimedTask.state = input.state === 'failed' ? 'failed' : 'blocked'
+        claimedTask.owner = undefined
+        claimedTask.leaseUntil = undefined
+        claimedTask.updatedAt = now()
+      }
+    }
     if (input.state === 'blocked' || input.state === 'failed') ticket.state = 'blocked'
     else if (input.state === 'dropped') ticket.state = 'dropped'
     else if (input.state === 'ready' && input.role === 'reporter') ticket.state = 'review'
@@ -414,7 +590,13 @@ export function activeRevision(kind: ArtifactKind, id: string): ArtifactRevision
   return revision === undefined ? undefined : versions.artifacts.find((item) => item.kind === kind && item.id === id && item.revision === revision)
 }
 
-export function proposeRevision(input: { kind: ArtifactKind; id: string; value: string; source: string }): ArtifactRevision {
+export function proposeRevision(input: {
+  kind: ArtifactKind
+  id: string
+  value: string
+  source: string
+  maxDiffLines?: number
+}): ArtifactRevision {
   if (input.id.trim() === '') throw new Error('artifact id is required')
   if (input.value.trim() === '') throw new Error('artifact value is required')
   return withStoreLock(() => {
@@ -422,6 +604,11 @@ export function proposeRevision(input: { kind: ArtifactKind; id: string; value: 
     const key = artifactKey(input.kind, input.id)
     const existing = versions.artifacts.filter((item) => item.kind === input.kind && item.id === input.id)
     const revision = existing.reduce((best, item) => Math.max(best, item.revision), 0) + 1
+    const active = versions.active[key]
+    const previous = active === undefined ? undefined : existing.find((item) => item.revision === active)
+    const diffLines = previous === undefined ? input.value.split('\n').length : changedLineCount(previous.value, input.value)
+    const limit = input.maxDiffLines ?? 200
+    if (diffLines > limit) throw new Error(`edit budget exceeded: ${diffLines} changed lines > ${limit}`)
     const artifact: ArtifactRevision = {
       kind: input.kind,
       id: input.id,
@@ -430,6 +617,7 @@ export function proposeRevision(input: { kind: ArtifactKind; id: string; value: 
       value: input.value,
       source: input.source,
       at: now(),
+      diffLines,
     }
     versions.artifacts.push(artifact)
     saveVersions(versions)
@@ -437,13 +625,41 @@ export function proposeRevision(input: { kind: ArtifactKind; id: string; value: 
   })
 }
 
-/** Gate: higher-is-better metrics may not regress, lower-is-better may not grow
- *  by more than 10%, and at least one metric must improve. */
-export function canActivate(baseline: Record<string, number>, candidate: Record<string, number>): { pass: boolean; reasons: string[] } {
+/** Cheap deterministic edit distance (set difference); the budget cares about
+ *  how much an operator has to review, not character-level fidelity. */
+function changedLineCount(before: string, after: string): number {
+  const oldLines = before.split('\n').map((line) => line.trimEnd())
+  const newLines = after.split('\n').map((line) => line.trimEnd())
+  const oldSet = new Set(oldLines)
+  const newSet = new Set(newLines)
+  return newLines.filter((line) => !oldSet.has(line)).length + oldLines.filter((line) => !newSet.has(line)).length
+}
+
+export interface GateOptions {
+  /** Scores within this band are treated as noise, not regression. */
+  noise?: number
+  /** Minimum improvement required on at least one metric. */
+  minImprovement?: number
+  holdout?: { baseline: Record<string, number>; candidate: Record<string, number> }
+  diffLines?: number
+  maxDiffLines?: number
+}
+
+/** Gate: higher-is-better metrics may not regress beyond the noise band,
+ *  lower-is-better may not grow by more than 10%, at least one metric must
+ *  improve by minImprovement, a holdout set must also pass, and edits must fit
+ *  the review budget. */
+export function canActivate(
+  baseline: Record<string, number>,
+  candidate: Record<string, number>,
+  options: GateOptions = {},
+): { pass: boolean; reasons: string[] } {
   const reasons: string[] = []
+  const noise = Math.max(0, options.noise ?? 0.1)
+  const minImprovement = Math.max(0, options.minImprovement ?? 0)
   for (const key of HIGHER_IS_BETTER) {
     if (candidate[key] === undefined) { reasons.push(`missing metric ${key}`); continue }
-    if (candidate[key]! < (baseline[key] ?? 0)) reasons.push(`${key} regressed`)
+    if (candidate[key]! < (baseline[key] ?? 0) - noise) reasons.push(`${key} regressed`)
   }
   for (const key of LOWER_IS_BETTER) {
     if (candidate[key] === undefined) continue
@@ -453,11 +669,25 @@ export function canActivate(baseline: Record<string, number>, candidate: Record<
   const improved = [...HIGHER_IS_BETTER, ...LOWER_IS_BETTER].some((key) => {
     if (candidate[key] === undefined || baseline[key] === undefined) return false
     return LOWER_IS_BETTER.includes(key as (typeof LOWER_IS_BETTER)[number])
-      ? candidate[key]! < baseline[key]!
-      : candidate[key]! > baseline[key]!
+      ? candidate[key]! < baseline[key]! - minImprovement
+      : candidate[key]! > baseline[key]! + minImprovement
   })
-  if (!improved) reasons.push('no metric improved')
+  if (!improved) reasons.push(minImprovement > 0 ? `no metric improved by >${minImprovement}` : 'no metric improved')
+  if (options.diffLines !== undefined && options.maxDiffLines !== undefined && options.diffLines > options.maxDiffLines) {
+    reasons.push(`edit budget exceeded: ${options.diffLines} > ${options.maxDiffLines} lines`)
+  }
+  if (options.holdout !== undefined) {
+    const holdout = canActivate(options.holdout.baseline, options.holdout.candidate, { noise, minImprovement })
+    if (!holdout.pass) reasons.push(`holdout failed: ${holdout.reasons.join('; ')}`)
+  }
   return { pass: reasons.length === 0, reasons }
+}
+
+/** Parent selection from dgm: score × 1/(1+children) keeps one lineage from
+ *  monopolising the archive while still preferring stronger candidates. */
+export function selectParent<T extends { score: number; children: number }>(candidates: T[]): T | undefined {
+  return [...candidates].sort((a, b) =>
+    (b.score / (1 + b.children)) - (a.score / (1 + a.children)))[0]
 }
 
 export function evaluateRevision(input: {
@@ -466,13 +696,32 @@ export function evaluateRevision(input: {
   revision: number
   baseline: Record<string, number>
   candidate: Record<string, number>
+  holdout?: { baseline: Record<string, number>; candidate: Record<string, number> }
+  maxDiffLines?: number
 }): ArtifactRevision {
   return withStoreLock(() => {
     const versions = loadVersions()
     const artifact = versions.artifacts.find((item) => item.kind === input.kind && item.id === input.id && item.revision === input.revision)
     if (artifact === undefined) throw new Error(`unknown revision ${input.kind}:${input.id}@${input.revision}`)
-    const gate = canActivate(input.baseline, input.candidate)
-    artifact.eval = { baseline: input.baseline, candidate: input.candidate, pass: gate.pass, reasons: gate.reasons, at: now() }
+    const gate = canActivate(input.baseline, input.candidate, {
+      ...(input.holdout !== undefined ? { holdout: input.holdout } : {}),
+      ...(artifact.diffLines !== undefined ? { diffLines: artifact.diffLines } : {}),
+      ...(input.maxDiffLines !== undefined ? { maxDiffLines: input.maxDiffLines } : {}),
+    })
+    const holdout = input.holdout === undefined
+      ? undefined
+      : (() => {
+        const result = canActivate(input.holdout.baseline, input.holdout.candidate, { noise: 0.1, minImprovement: 0 })
+        return { ...input.holdout, ...result }
+      })()
+    artifact.eval = {
+      baseline: input.baseline,
+      candidate: input.candidate,
+      pass: gate.pass,
+      reasons: gate.reasons,
+      ...(holdout !== undefined ? { holdout } : {}),
+      at: now(),
+    }
     saveVersions(versions)
     return artifact
   })

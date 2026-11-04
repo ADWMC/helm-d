@@ -10,7 +10,7 @@
 //   - nothing is executed after install.
 
 import { createHash } from 'node:crypto'
-import { copyFileSync, createReadStream, existsSync, lstatSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { copyFileSync, createReadStream, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { requestBuffer, requestText } from '../star-gate.js'
@@ -190,6 +190,75 @@ export async function installCatalogTool(id: string, assetName?: string): Promis
       version: release.tag,
       path: dest,
       assetName: asset.name,
+      sha256: actual,
+      installedAt: new Date().toISOString(),
+    }
+    upsertInstalled(tool)
+    return tool
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+}
+
+/** Update one installed catalog tool to its latest release. The old registry
+ *  row is restored if the download/extract fails; the old directory is removed
+ *  only after the new install is in place. */
+export async function updateCatalogTool(id: string, assetName?: string): Promise<InstalledTool> {
+  const existing = installedTool(id)
+  if (existing === undefined) return installCatalogTool(id, assetName)
+  const entry = catalogEntry(id)
+  if (entry === undefined) throw new Error(`unknown catalog tool: ${id}`)
+  if (entry.kind !== 'release') throw new Error(`${entry.name} is a ${entry.kind} tool; use: ${entry.installHint ?? entry.usage}`)
+  removeInstalled(id)
+  try {
+    const installed = await installCatalogTool(id, assetName)
+    if (installed.path !== existing.path) rmSync(existing.path, { recursive: true, force: true })
+    return installed
+  } catch (error) {
+    upsertInstalled(existing)
+    throw error
+  }
+}
+
+/** Install a local archive (offline mirror). The digest is mandatory and is
+ *  supplied by the operator; this never downloads anything. */
+export async function installCatalogMirror(id: string, archivePath: string, sha256: string): Promise<InstalledTool> {
+  const entry = catalogEntry(id)
+  if (entry === undefined) throw new Error(`unknown catalog tool: ${id}`)
+  if (entry.kind !== 'release') throw new Error(`${entry.name} is a ${entry.kind} tool; use: ${entry.installHint ?? entry.usage}`)
+  const expected = sha256.trim().toLowerCase().replace(/^sha256:/, '')
+  if (!/^[a-f0-9]{64}$/.test(expected)) throw new Error('sha256 must be 64 hex characters')
+  const source = join(archivePath)
+  if (!existsSync(source)) throw new Error(`mirror archive not found: ${source}`)
+  const bytes = readFileSync(source)
+  if (bytes.length > MAX_ASSET_BYTES) throw new Error(`mirror archive is larger than ${MAX_ASSET_BYTES} bytes`)
+  const actual = createHash('sha256').update(bytes).digest('hex')
+  if (actual !== expected) throw new Error(`sha256 mismatch for mirror: expected ${expected}, got ${actual}`)
+  const root = toolboxRoot()
+  mkdirSync(root, { recursive: true })
+  const tempDir = join(root, '.tmp', `${id}-mirror-${Date.now()}`)
+  mkdirSync(tempDir, { recursive: true })
+  try {
+    const local = join(tempDir, basename(archivePath))
+    writeFileSync(local, bytes)
+    const extractDir = join(tempDir, 'x')
+    mkdirSync(extractDir, { recursive: true })
+    if (/\.(zip|tar\.gz|tgz|tar|tar\.xz)$/i.test(local)) extract(local, extractDir)
+    else copyFileSync(local, join(extractDir, basename(archivePath)))
+    assertNoEscapingLinks(extractDir)
+    const version = `mirror-${actual.slice(0, 8)}`
+    const dest = toolDir(id, version)
+    assertWithinRoot(dest, root)
+    if (existsSync(dest)) throw new Error(`install directory already exists: ${dest}`)
+    mkdirSync(join(dest, '..'), { recursive: true })
+    renameSync(extractDir, dest)
+    const tool: InstalledTool = {
+      id,
+      name: entry.name,
+      repo: entry.repo,
+      version,
+      path: dest,
+      assetName: basename(archivePath),
       sha256: actual,
       installedAt: new Date().toISOString(),
     }

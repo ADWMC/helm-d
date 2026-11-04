@@ -1,10 +1,34 @@
 # 参考项目吸收任务书（Reference Absorption Taskbook）
 
-> **状态**：待评审（2026-11-04 起草，未开工）
+> **状态**：全量 MVP 已落地（2026-11-04）；残留项见 §1.1，均为可增量补齐的边界能力。
 > **来源**：`C:\Users\Administrator\Documents\GitHub\About-my-name\refs`（34 个登记项目，37 个目录）的**源码级**二次调研；每条机制带 `文件:行号`。
 > **与既有文档的关系**：[REFERENCE-PROJECTS-SURVEY.md](REFERENCE-PROJECTS-SURVEY.md) 是分簇动机与 12 条机制；[REFERENCE-SCORING-AND-EXPANSION.md](REFERENCE-SCORING-AND-EXPANSION.md) 是评分与五条最高价值；本文是**可执行任务书**（任务/落点/验收/许可），不重复评分过程。
 > **许可纪律**：AGPL / GPL 项目代码零复制，只吸设计与判据；无 LICENSE 项目禁用（见 §7）。
 > **前置状态**：Team v2 Phase 1 已落地（宿主原生 agent-team、roleDeps、反假装门禁、27 checks），本任务书在其上继续。
+
+## 1.1 落地状态（2026-11-04）
+
+| 任务 | 状态 | 落点 / 残留 |
+|---|---|---|
+| T-01 实时纠偏 | ✅ MVP | `team_steer` + `steerPrompt` + Team UI 输入框 |
+| T-02 证据审计 | ✅ MVP | detail hash/E-id 逐字校验、negative control、证据链 |
+| T-03 任务 DAG | ✅ MVP | `claimTask`/`completeTask` 租约、依赖解锁、team_status |
+| T-04 NO_PATH | ✅ MVP | case_status 相邻快照对比 + packet 顶部硬提示 |
+| T-05 预算/finish gate | ✅ MVP | per-ticket budget、aborted/max-token → blocked、空 ready 拒绝 |
+| T-06 证据版本绑定 | ✅ MVP | `meta.json` sha256/prevHash、finding `evidenceHash`、stale 标记 |
+| T-07 进化 gate | ✅ MVP | 噪声宽限、最小改善、holdout、diff budget、父代选择 |
+| T-08 上下文纪律 | ✅ MVP | >256KB 完整落证据 + head/tail stub |
+| T-09 审批 fail-safe | ◐ 部分 | role policy + dynamic 高风险 ask/deny；宿主审批超时由 DSH 管理 |
+| T-10 UI 工程化 | ◐ 部分 | token 检查；滚动/IME 待补 |
+| T-11 确定性报告 | ✅ MVP | `renderCaseReport` 固定字段/NOT RUN |
+| T-12 Toolbox 2.0 | ✅ MVP | 评分、MCP 只读发现、probe TTL、角色策略、来源标注 |
+| T-13.1 finding UI | ◐ 部分 | 状态按钮/过滤/头部/Case 计数；Team 报告 severity 待补 |
+| T-13.2 SARIF/报告 | ✅ MVP | SARIF 2.1.0 + 确定性 markdown |
+| T-13.3 CVSS/趋势 | ✅ MVP | CVSS 3.1 向量算分 + 日趋势 |
+| T-14 recon | ✅ MVP | scope/限速/资产账本/被动/端口/HTTP/crawl/import/覆盖 |
+| T-15 PoC 闭环 | ✅ MVP | recipe + 正负对照 + evidence 链接；OOB listener 待补 |
+| T-16 mining | ✅ MVP | HAR/OpenAPI/JS 候选 + 去重/优先级/覆盖行；APK/二进制待补 |
+| T-17.5 更新/镜像 | ✅ MVP | update 原子回退、本地镜像 sha256 |
 
 ---
 
@@ -151,7 +175,7 @@
 - `tool_recommend` 纯 `q.includes(key)` 子串匹配，无词边界/排序/去重语义；英文常见词 `web/android/fuzz/python` 命中 0 条，`ida` 误命中 5 条（`toolbox.ts:100-115`）。
 - `registerToolEntry` 无条件在账本目录创建同名**空目录**，不校验路径是否存在（`ledger.ts:84-86`）；`noteTool` 的 implicit registration 就是 `(待补职责)/(未登记)` 的来源（`ledger.ts:112-120`）。
 - `note` 的 `evidence` 是自由字符串，不校验是否是真实 case/E-id（与 `record_finding` 的门禁不同）。
-- 无 denylist/deprecate/merge；无 MCP/DSH 原生工具发现；38 个插件工具完全不在货架。
+- 无 denylist/deprecate/merge；无 MCP/DSH 原生工具发现；46 个插件工具与 54 项目录直到本轮才进入工具页。
 
 | 子项 | 机制来源 | 要求 | 验收 |
 |---|---|---|---|

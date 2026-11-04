@@ -14,6 +14,8 @@ export interface CaseInfo {
   goal: string
   mode: string
   route: string
+  /** Explicit recon scope (hostnames/CIDRs); empty means recon tools refuse. */
+  scope?: string[]
 }
 
 const bindings = new Map<string, CaseInfo>()
@@ -45,6 +47,7 @@ export function getCase(sessionId?: string): CaseInfo | undefined {
           goal: typeof parsed.goal === 'string' ? parsed.goal : 'unspecified',
           mode: typeof parsed.mode === 'string' ? parsed.mode : 'full',
           route: typeof parsed.route === 'string' ? parsed.route : 'pending (route_task)',
+          ...(Array.isArray(parsed.scope) ? { scope: parsed.scope.map(String) } : {}),
         }
         bindings.set(key, info)
         return info
@@ -121,6 +124,7 @@ export async function createCaseDir(opts: {
   mode: string
   route: string
   root?: string
+  scope?: string[]
 }): Promise<CaseInfo> {
   const base = casesRoot(opts.root)
   const hint = slugify(opts.goal || basename(opts.samples[0] ?? ''))
@@ -151,6 +155,7 @@ export async function createCaseDir(opts: {
     `status: open`,
     `mode: ${opts.mode}`,
     `route: ${opts.route}`,
+    ...(opts.scope !== undefined && opts.scope.length > 0 ? [`scope: ${opts.scope.join(', ')}`] : []),
     `goal: ${opts.goal}`,
     ...(lines.length ? ['samples:', ...lines] : []),
     '',
@@ -169,13 +174,13 @@ export async function createCaseDir(opts: {
   await writeFile(join(dir, 'CASE.md'), caseMd, 'utf8')
   await writeFile(join(dir, 'findings.md'), `# FINDINGS ${name}\n`, 'utf8')
 
-  return { dir, name, goal: opts.goal, mode: opts.mode, route: opts.route }
+  return { dir, name, goal: opts.goal, mode: opts.mode, route: opts.route, ...(opts.scope !== undefined ? { scope: [...opts.scope] } : {}) }
 }
 
 /** Evidence files present for a case (E-xxx entries), counted from disk. */
 export async function countEvidence(caseDir: string): Promise<number> {
   const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
-  return files.filter((f) => /^E-\d{3}/.test(f)).length
+  return files.filter((f) => /^E-\d{3}/.test(f) && !f.endsWith('.meta.json')).length
 }
 
 export interface EvidenceEntry {
@@ -187,6 +192,7 @@ export interface EvidenceEntry {
 export async function listEvidence(caseDir: string): Promise<EvidenceEntry[]> {
   const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
   return files
+    .filter((file) => !file.endsWith('.meta.json'))
     .map((file) => {
       const match = /^(E-\d+)/.exec(file)
       return match ? { id: match[1], file } : null
@@ -217,6 +223,7 @@ export async function nextEvidenceId(caseDir: string): Promise<string> {
   const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
   let max = 0
   for (const f of files) {
+    if (f.endsWith('.meta.json')) continue
     const m = /^E-(\d{3})-/.exec(f)
     if (m) max = Math.max(max, parseInt(m[1], 10))
   }
@@ -234,12 +241,17 @@ export async function saveEvidence(
   toolLabel: string,
   content: string,
   summary: string,
+  options: { maxBytes?: number } = {},
 ): Promise<{ id: string; path: string; sha256: string; dedup?: string }> {
-  const sha = createHash('sha256').update(content, 'utf8').digest('hex')
+  const maxBytes = options.maxBytes ?? 256 * 1024
+  const capped = maxBytes > 0 && content.length > maxBytes
+    ? content.slice(0, maxBytes) + `\n[truncated at ${Math.round(maxBytes / 1024)}KB; full length ${content.length}]\n`
+    : content
+  const sha = createHash('sha256').update(capped, 'utf8').digest('hex')
   // Dedup: if an evidence file with the same content hash exists, return it.
   const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
   for (const f of files) {
-    if (!/^E-\d{3,}-/.test(f)) continue
+    if (!/^E-\d{3,}-/.test(f) || f.endsWith('.meta.json')) continue
     const existing = await readFile(join(caseDir, 'evidence', f), 'utf8').catch(() => '')
     const existingSha = createHash('sha256').update(existing, 'utf8').digest('hex')
     if (existingSha === sha) {
@@ -249,13 +261,93 @@ export async function saveEvidence(
   }
   const id = await nextEvidenceId(caseDir)
   const safeTool = toolLabel.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 40) || 'output'
-  const capped = content.length > 256 * 1024
-    ? content.slice(0, 256 * 1024) + `\n[truncated at 256KB; full length ${content.length}]\n`
-    : content
   const path = join(caseDir, 'evidence', `${id}-${safeTool}.txt`)
   await writeFile(path, capped, 'utf8')
+  // Content-addressed chain (T-06): each meta points at the previous evidence
+  // hash. The chain is audit metadata, not a security signature.
+  const metas = await listEvidenceMeta(caseDir)
+  const prevHash = metas.length > 0 ? metas[metas.length - 1].sha256 : 'genesis'
+  const meta: EvidenceMeta = {
+    id,
+    file: basename(path),
+    sha256: sha,
+    prevHash,
+    tool: safeTool,
+    ts: new Date().toISOString(),
+  }
+  await writeFile(join(caseDir, 'evidence', `${id}-${safeTool}.meta.json`), JSON.stringify(meta, null, 2), 'utf8')
   await appendTimeline(caseDir, `${toolLabel} → ${id} — ${summary.slice(0, 80)}`)
   return { id, path, sha256: sha }
+}
+
+/** T-02 claim audit: hash-like tokens in a finding detail must appear verbatim
+ *  in at least one cited evidence file; E-id references must be cited. */
+export async function uncitedClaims(caseDir: string, detail: string, evidenceIds: string[]): Promise<string[]> {
+  const citations = new Set(evidenceIds)
+  const brokenCitations = [...new Set((detail.match(/\bE-\d{3,}\b/gi) ?? []))]
+    .filter((id) => !citations.has(id.toUpperCase()))
+  const hashes = [...new Set((detail.match(/\b[a-f0-9]{32,64}\b/gi) ?? []).map((value) => value.toLowerCase()))]
+  if (hashes.length === 0) return brokenCitations
+  const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
+  let haystack = ''
+  for (const file of files) {
+    if (!/^E-\d{3,}-/.test(file) || file.endsWith('.meta.json')) continue
+    const id = /^(E-\d{3,})-/.exec(file)?.[1]
+    if (id === undefined || !citations.has(id)) continue
+    haystack += (await readFile(join(caseDir, 'evidence', file), 'utf8').catch(() => '')) + '\n'
+  }
+  const lower = haystack.toLowerCase()
+  return [...brokenCitations, ...hashes.filter((hash) => !lower.includes(hash))]
+}
+
+export interface EvidenceMeta {
+  id: string
+  file: string
+  sha256: string
+  prevHash: string
+  tool: string
+  ts: string
+}
+
+/** Evidence meta rows in E-number order; malformed files are ignored. */
+export async function listEvidenceMeta(caseDir: string): Promise<EvidenceMeta[]> {
+  const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
+  const metas: EvidenceMeta[] = []
+  for (const file of files.filter((name) => name.endsWith('.meta.json'))) {
+    try {
+      const parsed = JSON.parse(await readFile(join(caseDir, 'evidence', file), 'utf8')) as Partial<EvidenceMeta>
+      if (typeof parsed.id === 'string' && typeof parsed.sha256 === 'string') {
+        metas.push({
+          id: parsed.id,
+          file: typeof parsed.file === 'string' ? parsed.file : '',
+          sha256: parsed.sha256,
+          prevHash: typeof parsed.prevHash === 'string' ? parsed.prevHash : 'genesis',
+          tool: typeof parsed.tool === 'string' ? parsed.tool : 'unknown',
+          ts: typeof parsed.ts === 'string' ? parsed.ts : '',
+        })
+      }
+    } catch { /* ignore a half-written meta */ }
+  }
+  return metas.sort((a, b) => a.id.localeCompare(b.id))
+}
+
+/** Chain head for a set of evidence ids (latest cited sha256). */
+export async function evidenceChainHead(caseDir: string, ids?: string[]): Promise<string | undefined> {
+  const metas = await listEvidenceMeta(caseDir)
+  const wanted = ids === undefined ? metas : metas.filter((meta) => ids.includes(meta.id))
+  return wanted.length > 0 ? wanted[wanted.length - 1].sha256 : undefined
+}
+
+/** Re-hash evidence and report ids whose content no longer matches its meta. */
+export async function staleEvidenceIds(caseDir: string): Promise<string[]> {
+  const metas = await listEvidenceMeta(caseDir)
+  const stale: string[] = []
+  for (const meta of metas) {
+    const content = await readFile(join(caseDir, 'evidence', meta.file), 'utf8').catch(() => '')
+    const sha = createHash('sha256').update(content, 'utf8').digest('hex')
+    if (sha !== meta.sha256) stale.push(meta.id)
+  }
+  return stale
 }
 
 export async function appendTimeline(caseDir: string, line: string): Promise<void> {
@@ -272,6 +364,7 @@ export async function validateEvidenceIds(
 ): Promise<{ ok: boolean; missing: string[]; known: string[] }> {
   const files = await readdir(join(caseDir, 'evidence')).catch(() => [] as string[])
   const known = files
+    .filter((f) => !f.endsWith('.meta.json'))
     .map((f) => /^(E-\d{3})-/.exec(f)?.[1])
     .filter((x): x is string => Boolean(x))
   const missing = ids.filter((id) => !known.includes(id))
@@ -334,10 +427,20 @@ export interface Finding {
   vulnClass: string
   target?: string
   cvss?: number
+  cvssVector?: string
   /** Severity the model asserted before CVSS / evidence-strength rules ran. */
   assertedSeverity?: FindingSeverity
   evidence: string
   evidenceIds: string[]
+  /** Evidence chain head at record time (T-06). */
+  evidenceHash?: string
+  /** Independent negative-control evidence ids (T-02). */
+  negativeEvidenceIds?: string[]
+  negativeControl?: string
+  /** PoC recipe/run id linking the finding to T-15 evidence. */
+  pocId?: string
+  /** Re-hash mismatch against the evidence meta chain (computed on load). */
+  stale?: boolean
   repro?: string
   seenCount: number
   createdAt: string
@@ -353,8 +456,12 @@ export interface FindingInput {
   target?: string
   confidence?: FindingConfidence
   cvss?: number
+  cvssVector?: string
   status?: FindingStatus
   repro?: string
+  negativeEvidenceIds?: string[]
+  negativeControl?: string
+  pocId?: string
 }
 
 export interface RecordedFinding {
@@ -388,9 +495,17 @@ function normalizeFinding(raw: Partial<Finding> & { title?: string }, index: num
     vulnClass: typeof raw.vulnClass === 'string' && raw.vulnClass.trim() !== '' ? raw.vulnClass : 'unspecified',
     ...(typeof raw.target === 'string' && raw.target.trim() !== '' ? { target: raw.target } : {}),
     ...(typeof raw.cvss === 'number' && Number.isFinite(raw.cvss) ? { cvss: raw.cvss } : {}),
+    ...(typeof raw.cvssVector === 'string' && raw.cvssVector.trim() !== '' ? { cvssVector: raw.cvssVector.trim() } : {}),
     ...(isSeverity(raw.assertedSeverity) ? { assertedSeverity: raw.assertedSeverity } : {}),
     evidence: typeof raw.evidence === 'string' ? raw.evidence : (raw.evidenceIds ?? []).join(', '),
     evidenceIds: Array.isArray(raw.evidenceIds) ? raw.evidenceIds.map(String) : [],
+    ...(typeof raw.evidenceHash === 'string' && raw.evidenceHash !== '' ? { evidenceHash: raw.evidenceHash } : {}),
+    ...(Array.isArray(raw.negativeEvidenceIds) && raw.negativeEvidenceIds.length > 0
+      ? { negativeEvidenceIds: raw.negativeEvidenceIds.map(String) }
+      : {}),
+    ...(typeof raw.negativeControl === 'string' && raw.negativeControl.trim() !== '' ? { negativeControl: raw.negativeControl } : {}),
+    ...(typeof raw.pocId === 'string' && raw.pocId.trim() !== '' ? { pocId: raw.pocId } : {}),
+    ...(raw.stale === true ? { stale: true } : {}),
     ...(typeof raw.repro === 'string' && raw.repro.trim() !== '' ? { repro: raw.repro } : {}),
     seenCount: typeof raw.seenCount === 'number' && raw.seenCount > 0 ? raw.seenCount : 1,
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
@@ -425,15 +540,26 @@ function parseFindingsMarkdown(raw: string): Finding[] {
   }).filter((finding) => finding.title !== '')
 }
 
+async function markStaleFindings(caseDir: string, findings: Finding[]): Promise<Finding[]> {
+  const stale = new Set(await staleEvidenceIds(caseDir))
+  if (stale.size === 0) return findings
+  for (const finding of findings) {
+    if (finding.evidenceIds.some((id) => stale.has(id))) finding.stale = true
+  }
+  return findings
+}
+
 /** Findings: findings.json is authoritative; markdown is the legacy fallback. */
 export async function loadFindings(caseDir: string): Promise<Finding[]> {
   try {
     const parsed: unknown = JSON.parse(await readFile(findingsPath(caseDir), 'utf8'))
-    if (Array.isArray(parsed)) return parsed.map((entry, index) => normalizeFinding(entry as Partial<Finding>, index))
+    if (Array.isArray(parsed)) {
+      return await markStaleFindings(caseDir, parsed.map((entry, index) => normalizeFinding(entry as Partial<Finding>, index)))
+    }
   } catch { /* no registry yet: fall through to markdown */ }
   try {
     const raw = await readFile(join(caseDir, 'findings.md'), 'utf8')
-    return parseFindingsMarkdown(raw)
+    return await markStaleFindings(caseDir, parseFindingsMarkdown(raw))
   } catch {
     return []
   }
@@ -456,6 +582,14 @@ export async function recordFinding(caseDir: string, input: FindingInput): Promi
   if (detail === '') throw new Error('finding detail is required')
   const evidenceIds = [...new Set(input.evidenceIds.map((id) => id.trim()).filter(Boolean))]
   if (evidenceIds.length === 0) throw new Error('at least one evidence id is required')
+  const negativeEvidenceIds = [...new Set((input.negativeEvidenceIds ?? []).map((id) => id.trim()).filter(Boolean))]
+  const overlap = negativeEvidenceIds.filter((id) => evidenceIds.includes(id))
+  if (overlap.length > 0) throw new Error(`negative control must use independent evidence; overlap: ${overlap.join(', ')}`)
+  if (negativeEvidenceIds.length > 0) {
+    const known = await validateEvidenceIds(caseDir, negativeEvidenceIds)
+    if (!known.ok) throw new Error(`unknown negative-control evidence ids: ${known.missing.join(', ')}`)
+  }
+  const evidenceHash = await evidenceChainHead(caseDir, [...evidenceIds, ...negativeEvidenceIds])
 
   const notes: string[] = []
   let severity: FindingSeverity = isSeverity(input.severity) ? input.severity : 'info'
@@ -463,12 +597,19 @@ export async function recordFinding(caseDir: string, input: FindingInput): Promi
   const assertedSeverity = severity
   let asserted: FindingSeverity | undefined
 
-  if (typeof input.cvss === 'number' && Number.isFinite(input.cvss)) {
-    const fromCvss = cvssToSeverity(Math.max(0, Math.min(10, input.cvss)))
+  const parsedVector = input.cvssVector !== undefined && input.cvssVector.trim() !== ''
+    ? parseCvssVector(input.cvssVector)
+    : undefined
+  if (input.cvssVector !== undefined && input.cvssVector.trim() !== '' && parsedVector === undefined) {
+    throw new Error(`invalid CVSS vector: ${input.cvssVector}`)
+  }
+  const cvssScore = parsedVector?.score ?? (typeof input.cvss === 'number' && Number.isFinite(input.cvss) ? input.cvss : undefined)
+  if (cvssScore !== undefined) {
+    const fromCvss = parsedVector?.severity ?? cvssToSeverity(Math.max(0, Math.min(10, cvssScore)))
     if (fromCvss !== severity) {
       asserted = severity
       severity = fromCvss
-      notes.push(`severity overridden by CVSS ${input.cvss} → ${fromCvss} (asserted ${assertedSeverity})`)
+      notes.push(`severity overridden by CVSS ${cvssScore}${parsedVector !== undefined ? ' (vector)' : ''} → ${fromCvss} (asserted ${assertedSeverity})`)
     }
   }
   const confidence = isConfidence(input.confidence) ? input.confidence : 'probable'
@@ -491,6 +632,14 @@ export async function recordFinding(caseDir: string, input: FindingInput): Promi
   if (existing !== undefined) {
     existing.evidenceIds = [...new Set([...existing.evidenceIds, ...evidenceIds])]
     existing.evidence = existing.evidenceIds.join(', ')
+    if (negativeEvidenceIds.length > 0) {
+      existing.negativeEvidenceIds = [...new Set([...(existing.negativeEvidenceIds ?? []), ...negativeEvidenceIds])]
+    }
+    if (input.negativeControl !== undefined && input.negativeControl.trim() !== '') existing.negativeControl = input.negativeControl.trim()
+    if (input.pocId !== undefined && input.pocId.trim() !== '') existing.pocId = input.pocId.trim()
+    if (evidenceHash !== undefined) existing.evidenceHash = evidenceHash
+    if (cvssScore !== undefined) existing.cvss = cvssScore
+    if (input.cvssVector !== undefined && input.cvssVector.trim() !== '') existing.cvssVector = input.cvssVector.trim()
     existing.seenCount += 1
     existing.updatedAt = nowIso
     if (SEVERITY_RANK[severity] > SEVERITY_RANK[existing.severity]) existing.severity = severity
@@ -513,10 +662,17 @@ export async function recordFinding(caseDir: string, input: FindingInput): Promi
     confidence,
     vulnClass: (input.vulnClass ?? 'unspecified').trim() || 'unspecified',
     ...(input.target !== undefined && input.target.trim() !== '' ? { target: input.target.trim() } : {}),
-    ...(typeof input.cvss === 'number' ? { cvss: input.cvss } : {}),
+    ...(cvssScore !== undefined ? { cvss: cvssScore } : {}),
+    ...(input.cvssVector !== undefined && input.cvssVector.trim() !== '' ? { cvssVector: input.cvssVector.trim() } : {}),
     ...(asserted !== undefined ? { assertedSeverity: asserted } : {}),
     evidence: evidenceIds.join(', '),
     evidenceIds,
+    ...(evidenceHash !== undefined ? { evidenceHash } : {}),
+    ...(negativeEvidenceIds.length > 0 ? { negativeEvidenceIds } : {}),
+    ...(input.negativeControl !== undefined && input.negativeControl.trim() !== ''
+      ? { negativeControl: input.negativeControl.trim() }
+      : {}),
+    ...(input.pocId !== undefined && input.pocId.trim() !== '' ? { pocId: input.pocId.trim() } : {}),
     ...(input.repro !== undefined && input.repro.trim() !== '' ? { repro: input.repro.trim() } : {}),
     seenCount: 1,
     createdAt: nowIso,
@@ -591,6 +747,9 @@ export interface CaseSummary {
   mode: string
   route: string
   evidenceCount: number
+  /** Finding counts for the Case list (T-13.1); omitted when unreadable. */
+  findingsBySeverity?: Record<FindingSeverity, number>
+  staleFindings?: number
   looseFiles: string[]
 }
 
@@ -614,6 +773,7 @@ export async function listCasesOnDisk(root?: string): Promise<CaseSummary[]> {
           const routeMatch = /^route:\s*(.*)$/m.exec(md)
           const evidenceCount = await countEvidence(dirPath)
           const looseFiles = await listLooseFilesInCase(dirPath)
+          const findings = await loadFindings(dirPath)
           results.push({
             name: entry.name,
             dir: dirPath,
@@ -622,6 +782,8 @@ export async function listCasesOnDisk(root?: string): Promise<CaseSummary[]> {
             mode: modeMatch?.[1]?.trim() ?? 'full',
             route: routeMatch?.[1]?.trim() ?? 'pending (route_task)',
             evidenceCount,
+            findingsBySeverity: severityCounts(findings),
+            staleFindings: findings.filter((finding) => finding.stale).length,
             looseFiles,
           })
         } catch {}
@@ -683,12 +845,14 @@ export async function loadCaseInfoFromDisk(caseDirOrName: string, root?: string)
     const goalMatch = /^goal:\s*(.*)$/m.exec(md)
     const modeMatch = /^mode:\s*(.*)$/m.exec(md)
     const routeMatch = /^route:\s*(.*)$/m.exec(md)
+    const scopeMatch = /^scope:\s*(.*)$/m.exec(md)
     return {
       dir: dirPath,
       name: basename(dirPath),
       goal: goalMatch?.[1]?.trim() ?? 'unspecified',
       mode: modeMatch?.[1]?.trim() ?? 'full',
       route: routeMatch?.[1]?.trim() ?? 'pending (route_task)',
+      ...(scopeMatch?.[1]?.trim() ? { scope: scopeMatch[1].split(',').map((item) => item.trim()).filter(Boolean) } : {}),
     }
   } catch {
     return undefined
@@ -733,6 +897,8 @@ export interface Hypothesis {
   statement: string
   expected: string
   testCmd: string
+  negativeCmd?: string
+  observed?: string
   status: 'open' | 'confirmed' | 'refuted' | 'blocked'
   observation?: string
   evidenceIds: string[]
@@ -752,6 +918,7 @@ export async function recordHypothesis(
   expected: string,
   testCmd: string,
   evidenceIds: string[] = [],
+  negativeCmd?: string,
 ): Promise<Hypothesis> {
   let count = hypothesisCounters.get(caseDir)
   if (count === undefined) {
@@ -767,6 +934,7 @@ export async function recordHypothesis(
     statement,
     expected,
     testCmd,
+    ...(negativeCmd !== undefined && negativeCmd.trim() !== '' ? { negativeCmd: negativeCmd.trim() } : {}),
     status: 'open',
     evidenceIds,
     createdAt: now,
@@ -791,6 +959,7 @@ export async function updateHypothesis(
   if (!h) return undefined
   h.status = status
   h.observation = observation
+  h.observed = observation
   if (evidenceIds.length > 0) h.evidenceIds = [...new Set([...h.evidenceIds, ...evidenceIds])]
   h.updatedAt = new Date().toISOString()
   await writeFile(hypothesesPath(caseDir), JSON.stringify(all, null, 2), 'utf8')
@@ -807,4 +976,148 @@ export async function loadHypotheses(caseDir: string): Promise<Hypothesis[]> {
 export async function getOpenHypothesisCount(caseDir: string): Promise<number> {
   const all = await loadHypotheses(caseDir)
   return all.filter((h) => h.status === 'open').length
+}
+
+/** Parse a CVSS v3.0/3.1 base vector. Returns undefined on malformed input;
+ *  the score is authoritative over a caller-supplied number (T-13.3). */
+export function parseCvssVector(vector: string): { score: number; severity: FindingSeverity } | undefined {
+  const raw = vector.trim().replace(/^CVSS:3\.[01]\//i, '')
+  const parts = new Map<string, string>()
+  for (const pair of raw.split('/')) {
+    const [key, value] = pair.split(':')
+    if (key === undefined || value === undefined) return undefined
+    parts.set(key.toUpperCase(), value.toUpperCase())
+  }
+  const av = { N: 0.85, A: 0.62, L: 0.55, P: 0.2 }[parts.get('AV') ?? '']
+  const ac = { L: 0.77, H: 0.44 }[parts.get('AC') ?? '']
+  const ui = { N: 0.85, R: 0.62 }[parts.get('UI') ?? '']
+  const scope = parts.get('S')
+  const prTable = scope === 'C'
+    ? { N: 0.85, L: 0.68, H: 0.5 }
+    : { N: 0.85, L: 0.62, H: 0.27 }
+  const pr = prTable[parts.get('PR') as 'N' | 'L' | 'H']
+  const cia = { H: 0.56, L: 0.22, N: 0 }
+  const c = cia[parts.get('C') as 'H' | 'L' | 'N']
+  const i = cia[parts.get('I') as 'H' | 'L' | 'N']
+  const a = cia[parts.get('A') as 'H' | 'L' | 'N']
+  if (av === undefined || ac === undefined || ui === undefined || pr === undefined || scope === undefined
+    || (scope !== 'U' && scope !== 'C') || c === undefined || i === undefined || a === undefined) return undefined
+  const iss = 1 - (1 - c) * (1 - i) * (1 - a)
+  const impact = scope === 'U' ? 6.42 * iss : 7.52 * (iss - 0.029) - 3.25 * Math.pow(iss - 0.02, 15)
+  const exploitability = 8.22 * av * ac * pr * ui
+  if (impact <= 0) return { score: 0, severity: 'info' }
+  const base = scope === 'U'
+    ? Math.min(impact + exploitability, 10)
+    : Math.min(1.08 * (impact + exploitability), 10)
+  const score = Math.ceil(base * 10) / 10
+  return { score, severity: cvssToSeverity(score) }
+}
+
+/** Deterministic SARIF 2.1.0 projection (T-13.2). Rejected findings are not
+ *  promoted into the report; ordering is severity then F-id. */
+export function renderSarif(caseName: string, findings: Finding[]): string {
+  const rank = (finding: Finding): number => SEVERITY_RANK[finding.severity] ?? 0
+  const visible = findings
+    .filter((finding) => finding.status !== 'rejected')
+    .slice()
+    .sort((a, b) => rank(b) - rank(a) || a.id.localeCompare(b.id))
+  const ruleIds = [...new Set(visible.map((finding) => finding.vulnClass))]
+  const level = (severity: FindingSeverity): 'error' | 'warning' | 'note' =>
+    severity === 'critical' || severity === 'high' ? 'error' : severity === 'medium' ? 'warning' : 'note'
+  const sarif = {
+    version: '2.1.0',
+    $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
+    runs: [{
+      tool: {
+        driver: {
+          name: 'helm-d',
+          informationUri: 'https://github.com/ADWMC/helm-d',
+          rules: ruleIds.map((id) => ({ id, name: id })),
+        },
+      },
+      results: visible.map((finding) => ({
+        ruleId: finding.vulnClass,
+        level: level(finding.severity),
+        message: { text: finding.detail || finding.title },
+        locations: [{
+          physicalLocation: {
+            artifactLocation: { uri: finding.target ?? caseName },
+          },
+        }],
+        fingerprints: { 'helm-d/finding': finding.id },
+        properties: {
+          id: finding.id,
+          severity: finding.severity,
+          status: finding.status,
+          confidence: finding.confidence,
+          evidenceIds: finding.evidenceIds,
+          ...(finding.repro !== undefined ? { repro: finding.repro } : {}),
+          ...(finding.evidenceHash !== undefined ? { evidenceHash: finding.evidenceHash } : {}),
+        },
+      })),
+    }],
+  }
+  return JSON.stringify(sarif, null, 2) + '\n'
+}
+
+/** Finding counts by creation day and severity, plus status transitions in the
+ *  timeline. Deterministic order; used by the workbench trend line. */
+export function findingTrend(findings: Finding[]): Array<{
+  date: string
+  total: number
+  critical: number
+  high: number
+  medium: number
+  low: number
+  info: number
+}> {
+  const byDate = new Map<string, { total: number; critical: number; high: number; medium: number; low: number; info: number }>()
+  for (const finding of findings) {
+    const date = finding.createdAt.slice(0, 10)
+    const row = byDate.get(date) ?? { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 }
+    row.total += 1
+    row[finding.severity] += 1
+    byDate.set(date, row)
+  }
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, counts]) => ({ date, ...counts }))
+}
+
+/** Deterministic report projection (T-11/T-13.2): fixed field order, stable
+ *  severity/id sort, and explicit NOT RUN for missing repro/evidence. Rejected
+ *  findings are listed separately and never mixed into the verified body. */
+export function renderCaseReport(caseName: string, findings: Finding[]): string {
+  const rank = (finding: Finding): number => SEVERITY_RANK[finding.severity] ?? 0
+  const sortFindings = (items: Finding[]): Finding[] => items
+    .slice()
+    .sort((a, b) => rank(b) - rank(a) || a.id.localeCompare(b.id))
+  const visible = sortFindings(findings.filter((finding) => finding.status !== 'rejected'))
+  const rejected = sortFindings(findings.filter((finding) => finding.status === 'rejected'))
+  const section = (title: string, items: Finding[]): string[] => {
+    const lines = [`## ${title}`, '']
+    if (items.length === 0) return [...lines, 'NOT RUN', '']
+    for (const finding of items) {
+      lines.push(
+        `### ${finding.id} — ${finding.title}`,
+        `- severity: ${finding.severity}`,
+        `- status: ${finding.status}`,
+        `- confidence: ${finding.confidence}`,
+        `- vuln_class: ${finding.vulnClass}`,
+        `- target: ${finding.target ?? 'unspecified'}`,
+        `- cvss: ${finding.cvss ?? 'NOT RUN'}`,
+        `- evidence: ${finding.evidenceIds.length > 0 ? finding.evidenceIds.join(', ') : 'NOT RUN'}`,
+        `- repro: ${finding.repro?.trim() ? finding.repro : 'NOT RUN'}`,
+        `- detail: ${finding.detail}`,
+        '',
+      )
+    }
+    return lines
+  }
+  return [
+    `# ${caseName} — findings report`,
+    '',
+    ...section('Findings', visible),
+    ...section('Rejected', rejected),
+  ].join('\n').replace(/\n+$/, '\n')
 }

@@ -4,11 +4,11 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { resolve, join } from 'node:path'
 import {
   bindCase, getCase, unbindCase, createCaseDir, loadCaseMd, closeCase,
   validateEvidenceIds, recordFinding, updateFinding, saveEvidence, countEvidence,
-  severityCounts, findingStatusCounts,
+  severityCounts, findingStatusCounts, uncitedClaims, listEvidenceMeta,
   casesRoot, findOpenCaseOnDisk, loadCaseInfoFromDisk, auditCasesRoot,
   listLooseFilesInCase,
   recordHypothesis, updateHypothesis, loadHypotheses, getOpenHypothesisCount,
@@ -19,13 +19,17 @@ import {
 import { getLevel } from '../mode.js'
 import { renderAdvisoryStats } from '../advisory.js'
 import { getStreamInterceptionStats } from '../llm-stream-hook.js'
-import { renderAutonomyPacket } from '../autonomy.js'
+import { renderAutonomyPacket, detectNoPath } from '../autonomy.js'
 import { loadSettings } from '../settings.js'
+import { loadAssets, coverageLine } from '../recon.js'
+import { miningLine } from '../mining.js'
 import { createTicket } from '../team.js'
 import { sessionEvents, toolCalls } from '../session-log.js'
 
-interface ExecLike {
-  agent?: {
+/** Per-session evidence snapshot for the NO_PATH guard. */
+const lastEvidenceCount = new Map<string, number>()
+
+interface ExecLike {  agent?: {
     id?: string
     cwd?: string
     workspace?: string
@@ -61,9 +65,10 @@ export function registerCaseflowTools(ctx: Context): void {
       samples: { type: 'array', items: { type: 'string' }, description: 'Absolute paths of sample files to ingest.' },
       root: { type: 'string', description: 'Workspace root; defaults to session cwd, HELMD_CASES_DIR, or process cwd.' },
       force: { type: 'boolean', description: 'Force open a new case even if an uncompleted open case exists on disk.' },
+      scope: { type: 'array', items: { type: 'string' }, description: 'Recon scope (hostnames/CIDRs). Recon tools refuse targets outside it; private/loopback still needs lab=true.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: { goal: string; samples?: string[]; root?: string; force?: boolean }, exec?: ExecLike) {
+    async execute(args: { goal: string; samples?: string[]; root?: string; force?: boolean; scope?: string[] }, exec?: ExecLike) {
       const effectiveRoot = resolveWorkspaceRoot(args.root, exec)
       const existing = getCase(exec?.agent?.id)
       if (existing) {
@@ -90,6 +95,7 @@ export function registerCaseflowTools(ctx: Context): void {
         mode,
         route: 'pending (route_task)',
         root: effectiveRoot,
+        ...(args.scope !== undefined && args.scope.length > 0 ? { scope: args.scope } : {}),
       })
       bindCase(exec?.agent?.id, info)
       // Optional team hook: settings.team.autoTicket opens a ticket per case so
@@ -186,18 +192,25 @@ export function registerCaseflowTools(ctx: Context): void {
       const hypotheses = await loadHypotheses(active.dir)
       const findings = await loadFindings(active.dir)
       const evidence = await listEvidence(active.dir)
+      const reconAssets = await loadAssets(active.dir)
       const bySeverity = severityCounts(findings)
       const byStatus = findingStatusCounts(findings)
       const findingStats = findings.length === 0
         ? 'findings: none'
-        : `findings: ${findings.length} — critical ${bySeverity.critical} · high ${bySeverity.high} · medium ${bySeverity.medium} · low ${bySeverity.low} · info ${bySeverity.info} | verified ${byStatus.verified} · candidate ${byStatus.candidate} · rejected ${byStatus.rejected} · duplicate ${byStatus.duplicate} · wontfix ${byStatus.wontfix}`
+        : `findings: ${findings.length} — critical ${bySeverity.critical} · high ${bySeverity.high} · medium ${bySeverity.medium} · low ${bySeverity.low} · info ${bySeverity.info} | verified ${byStatus.verified} · candidate ${byStatus.candidate} · rejected ${byStatus.rejected} · duplicate ${byStatus.duplicate} · wontfix ${byStatus.wontfix}${findings.some((finding) => finding.stale) ? ` | STALE ${findings.filter((finding) => finding.stale).map((finding) => finding.id).join(',')}` : ''}`
+      const sessionKey = exec?.agent?.id ?? '__global__'
+      const previousEvidence = lastEvidenceCount.get(sessionKey)
+      lastEvidenceCount.set(sessionKey, evidence.length)
+      const noPath = previousEvidence === undefined
+        ? undefined
+        : detectNoPath(toolCalls(sessionEvents(exec?.agent as unknown as Parameters<typeof sessionEvents>[0], 'caseflow')), evidence.length > previousEvidence)
       const packet = loadSettings().advisory.autonomyPacket
-        ? renderAutonomyPacket({
-          mode: getLevel(exec?.agent?.id),
+        ? renderAutonomyPacket({          mode: getLevel(exec?.agent?.id),
           goal: active.goal,
           hypotheses,
           findings,
           evidence,
+          ...(noPath !== undefined ? { noPath } : {}),
         })
         : ''
 
@@ -214,6 +227,8 @@ export function registerCaseflowTools(ctx: Context): void {
         ...(packet !== '' ? ['', packet] : []),
         '',
         findingStats,
+        coverageLine(reconAssets),
+        miningLine(active.dir, reconAssets.length),
         '',
         RULES,
         ...(renderAdvisoryStats() ? ['', renderAdvisoryStats()] : []),
@@ -245,7 +260,11 @@ export function registerCaseflowTools(ctx: Context): void {
       target: { type: 'string', description: 'Affected target/endpoint/file; used for dedup.' },
       confidence: { type: 'string', description: `One of: ${FINDING_CONFIDENCES.join(' | ')} (default probable). unverified caps severity at medium.` },
       cvss: { type: 'number', description: 'CVSS v3 score 0-10; when supplied it overrides severity by the standard bands.' },
+      cvss_vector: { type: 'string', description: 'CVSS v3.1 base vector, e.g. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H. Overrides cvss.' },
       status: { type: 'string', description: `Initial triage state: ${FINDING_STATUSES.join(' | ')} (default verified after the gates).` },
+      negative_evidence_ids: { type: 'array', items: { type: 'string' }, description: 'Independent negative-control evidence ids; must not overlap evidence_ids.' },
+      negative_control: { type: 'string', description: 'What the negative control was and why it must not reproduce the finding.' },
+      poc_id: { type: 'string', description: 'PoC recipe/run id from run_poc (e.g. "sqli-boolean"); links the finding to the positive/negative evidence.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(
@@ -259,7 +278,11 @@ export function registerCaseflowTools(ctx: Context): void {
         target?: string
         confidence?: string
         cvss?: number
+        cvss_vector?: string
         status?: string
+        negative_evidence_ids?: string[]
+        negative_control?: string
+        poc_id?: string
       },
       exec?: ExecLike,
     ) {
@@ -275,6 +298,27 @@ export function registerCaseflowTools(ctx: Context): void {
       }
       if ((args.repro_cmd ?? '').trim() === '') {
         return 'REJECTED — repro_cmd is required: a finding without a reproducible command is not a conclusion.'
+      }
+      const negativeIds = args.negative_evidence_ids ?? []
+      const overlap = negativeIds.filter((id) => (args.evidence_ids ?? []).includes(id))
+      if (overlap.length > 0) {
+        return `REJECTED — negative control must use independent evidence; overlap: ${overlap.join(', ')}`
+      }
+      if (negativeIds.length > 0) {
+        const negativeCheck = await validateEvidenceIds(active.dir, negativeIds)
+        if (!negativeCheck.ok) {
+          return `REJECTED — unknown negative-control evidence ids: ${negativeCheck.missing.join(', ')}`
+        }
+        if ((args.negative_control ?? '').trim() === '') {
+          return 'REJECTED — negative_control is required when negative_evidence_ids are supplied.'
+        }
+      }
+      const uncited = await uncitedClaims(active.dir, args.detail, args.evidence_ids ?? [])
+      if (uncited.length > 0) {
+        return [
+          `REJECTED — detail contains claims not found verbatim in the cited evidence: ${uncited.slice(0, 8).join(', ')}`,
+          'Copy the hash/E-id from the evidence file, or cite the evidence that contains it. Do not paraphrase or invent it.',
+        ].join('\n')
       }
       // Anti-pretence gates. The model can CLAIM it read references or ran a
       // tool; these checks read the actual evidence filenames (produced by the
@@ -315,8 +359,12 @@ export function registerCaseflowTools(ctx: Context): void {
           target: args.target,
           confidence: args.confidence as FindingConfidence | undefined,
           cvss: typeof args.cvss === 'number' ? args.cvss : undefined,
+          ...(args.cvss_vector !== undefined ? { cvssVector: args.cvss_vector } : {}),
           status: args.status as FindingStatus | undefined,
           repro: args.repro_cmd,
+          negativeEvidenceIds: negativeIds,
+          ...(args.negative_control !== undefined ? { negativeControl: args.negative_control } : {}),
+          ...(args.poc_id !== undefined ? { pocId: args.poc_id } : {}),
         })
         const f = recorded.finding
         return [
@@ -369,10 +417,11 @@ export function registerCaseflowTools(ctx: Context): void {
       statement: { type: 'string', required: true, description: 'What you think is true.' },
       expected: { type: 'string', required: true, description: 'What you expect to observe if true.' },
       test_cmd: { type: 'string', required: true, description: 'Shell command or tool call to verify.' },
+      negative_cmd: { type: 'string', description: 'Independent negative-control command (must not reproduce the expected observation).' },
       evidence_ids: { type: 'array', items: { type: 'string' }, description: 'Supporting evidence already collected.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: { statement: string; expected: string; test_cmd: string; evidence_ids?: string[] }, exec?: ExecLike) {
+    async execute(args: { statement: string; expected: string; test_cmd: string; negative_cmd?: string; evidence_ids?: string[] }, exec?: ExecLike) {
       const active = getCase(exec?.agent?.id)
       if (!active) return 'No active case. begin_case() first — hypotheses need a case.'
       const all = await loadHypotheses(active.dir)
@@ -383,7 +432,7 @@ export function registerCaseflowTools(ctx: Context): void {
           'Resolve it first with update_hypothesis before creating a new one.',
         ].join('\n')
       }
-      const h = await recordHypothesis(active.dir, args.statement, args.expected, args.test_cmd, args.evidence_ids ?? [])
+      const h = await recordHypothesis(active.dir, args.statement, args.expected, args.test_cmd, args.evidence_ids ?? [], args.negative_cmd)
       return [
         `hypothesis ${h.id} recorded (open):`,
         `  statement: ${h.statement}`,
@@ -476,6 +525,23 @@ export function registerCaseflowTools(ctx: Context): void {
         ].join('\n')
       }
       await closeCase(active.dir, args.summary)
+      // Optional evidence-package manifest (T-09): a stable, machine-readable
+      // index of the closed case. It is generated, never hand-edited.
+      try {
+        const metas = await listEvidenceMeta(active.dir)
+        const findings = await loadFindings(active.dir)
+        await (await import('node:fs/promises')).writeFile(join(active.dir, 'evidence', 'manifest.json'), JSON.stringify({
+          case: active.name,
+          goal: active.goal,
+          summary: args.summary ?? '',
+          chainHead: metas.length > 0 ? metas[metas.length - 1].sha256 : null,
+          evidence: metas,
+          findings: findings.map((finding) => ({
+            id: finding.id, severity: finding.severity, status: finding.status,
+            evidenceIds: finding.evidenceIds, repro: finding.repro ?? null,
+          })),
+        }, null, 2), 'utf8')
+      } catch { /* manifest is optional; case close already succeeded */ }
       unbindCase(exec?.agent?.id)
       const stats = renderAdvisoryStats()
       return [`case closed: ${active.name}${args.summary ? ` — ${args.summary}` : ''}`, ...(stats ? ['', stats] : [])].join('\n')

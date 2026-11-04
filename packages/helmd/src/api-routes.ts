@@ -17,16 +17,16 @@ import fs from 'node:fs'
 import { gateStatus, retryFlow, skipThisLaunch, switchProfile } from './gate.js'
 import { profileStatus } from './profile.js'
 import { checkForUpdate } from './update-check.js'
-import { listCasesOnDisk, loadHypotheses, countEvidence, loadFindings, listEvidence, getCase } from './case.js'
+import { listCasesOnDisk, loadHypotheses, countEvidence, loadFindings, listEvidence, getCase, updateFinding, renderSarif, findingTrend, renderCaseReport, severityCounts } from './case.js'
 import {
-  createTicket, assignRole, recordReport, recordHandoff, closeTicket, teamStatus,
+  createTicket, assignRole, recordReport, recordHandoff, closeTicket, teamStatus, getTicket, recordSteer,
   proposeRevision, evaluateRevision, activateRevision, rollbackRevision, listRevisions,
   type ArtifactKind, type ReportState, type TeamRole,
 } from './team.js'
 import { startTeamWorker } from './team-worker.js'
 import { loadSettings, saveSettings } from './settings.js'
 import { TOOL_CATALOG, catalogEntry } from './toolbox/catalog.js'
-import { installCatalogTool, latestRelease, toolHealth, uninstallCatalogTool } from './toolbox/installer.js'
+import { installCatalogTool, installCatalogMirror, latestRelease, toolHealth, uninstallCatalogTool, updateCatalogTool } from './toolbox/installer.js'
 
 const ROUTE_BASE = '/api/helmd'
 
@@ -195,6 +195,34 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
     }
   })
 
+  route(`${ROUTE_BASE}/tools/update`, async (req) => {
+    if (String(req?.method ?? 'GET').toUpperCase() !== 'POST') throw new HttpError(405, 'POST required')
+    requireJson(req)
+    const body = await readJsonBody(req) as { id?: unknown; assetName?: unknown } | undefined
+    const id = typeof body?.id === 'string' ? body.id.trim() : ''
+    if (id === '') throw new HttpError(400, 'body must be JSON: {"id":"<catalog-id>","assetName":"..."}')
+    try {
+      return await updateCatalogTool(id, typeof body?.assetName === 'string' ? body.assetName : undefined)
+    } catch (error) {
+      throw new HttpError(400, error instanceof Error ? error.message : String(error))
+    }
+  })
+
+  route(`${ROUTE_BASE}/tools/mirror`, async (req) => {
+    if (String(req?.method ?? 'GET').toUpperCase() !== 'POST') throw new HttpError(405, 'POST required')
+    requireJson(req)
+    const body = await readJsonBody(req) as { id?: unknown; path?: unknown; sha256?: unknown } | undefined
+    const id = typeof body?.id === 'string' ? body.id.trim() : ''
+    const path = typeof body?.path === 'string' ? body.path.trim() : ''
+    const sha256 = typeof body?.sha256 === 'string' ? body.sha256.trim() : ''
+    if (id === '' || path === '' || sha256 === '') throw new HttpError(400, 'body must be JSON: {"id","path","sha256"}')
+    try {
+      return await installCatalogMirror(id, path, sha256)
+    } catch (error) {
+      throw new HttpError(400, error instanceof Error ? error.message : String(error))
+    }
+  })
+
   route(`${ROUTE_BASE}/tools/uninstall`, async (req) => {
     if (String(req?.method ?? 'GET').toUpperCase() !== 'POST') throw new HttpError(405, 'POST required')
     requireJson(req)
@@ -271,6 +299,8 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
       sessionId: sessionId ?? null,
       cases: cases.slice(0, 5).map((c) => ({
         name: c.name, status: c.status, goal: c.goal, evidenceCount: c.evidenceCount,
+        ...(c.findingsBySeverity !== undefined ? { findingsBySeverity: c.findingsBySeverity } : {}),
+        ...(c.staleFindings !== undefined ? { staleFindings: c.staleFindings } : {}),
       })),
     }
   })
@@ -278,7 +308,14 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
   // Team collaboration: local tickets/assignments/reports/handoffs.
   route(`${ROUTE_BASE}/team`, async (req) => {
     const method = String(req?.method ?? 'GET').toUpperCase()
-    if (method !== 'POST') return teamStatus()
+    if (method !== 'POST') {
+      const status = teamStatus()
+      const tickets = await Promise.all(status.tickets.map(async (ticket) => {
+        const findings = await loadFindings(ticket.caseDir).catch(() => [])
+        return { ...ticket, findingsBySeverity: severityCounts(findings) }
+      }))
+      return { ...status, tickets }
+    }
     requireJson(req)
     const body = await readJsonBody(req) as Record<string, unknown> | undefined
     const action = String(body?.action ?? '')
@@ -300,6 +337,14 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
             ? body.roleDeps as Partial<Record<TeamRole, TeamRole[]>>
             : undefined,
           revision: typeof body?.revision === 'number' ? body.revision : undefined,
+          ...(typeof body?.budgetMinutes === 'number' || typeof body?.maxToolCalls === 'number'
+            ? {
+              budget: {
+                ...(typeof body?.budgetMinutes === 'number' ? { wallTimeMs: Math.max(1, Math.min(60, Math.round(body.budgetMinutes))) * 60_000 } : {}),
+                ...(typeof body?.maxToolCalls === 'number' ? { maxToolCalls: Math.max(1, Math.round(body.maxToolCalls)) } : {}),
+              },
+            }
+            : {}),
         })
       }
       if (action === 'assign') {
@@ -314,6 +359,23 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
           parentSessionId: String(body?.parentSessionId ?? ''),
         })
         return { ticketId: started.ticketId, role: started.role, sessionId: started.sessionId }
+      }
+      if (action === 'steer') {
+        const ticket = getTicket(String(body?.ticketId ?? ''))
+        if (ticket === undefined) throw new Error('unknown ticket')
+        const role = String(body?.role ?? '') as TeamRole
+        const assignment = ticket.roles.find((item) => item.role === role)
+        if (assignment === undefined) throw new Error(`role ${role} is not part of the ticket`)
+        if (assignment.state !== 'running' || assignment.sessionId === undefined) throw new Error(`role ${role} is not running`)
+        const subagents = (ctx as unknown as { get?: (name: string) => any }).get?.('subagents')
+        const agents = (ctx as unknown as { get?: (name: string) => any }).get?.('agents')
+        const parent = agents?.get?.(String(body?.parentSessionId ?? ''))
+        if (subagents?.steerPrompt === undefined || parent === undefined) throw new Error('steer runtime unavailable')
+        const message = String(body?.message ?? '').trim()
+        if (message === '') throw new Error('message is required')
+        const controller = new AbortController()
+        await subagents.steerPrompt(parent, assignment.sessionId, [{ type: 'text', text: `[helm-d steer ${ticket.id}/${role}] ${message}` }], { kind: 'user' }, controller.signal)
+        return recordSteer(ticket.id, role, message)
       }
       if (action === 'report') {
         return recordReport({
@@ -399,11 +461,58 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
     return active ? loadHypotheses(active.dir) : []
   })
 
-  // Findings for the session-bound case.
-  get(`${ROUTE_BASE}/case/findings`, async (req) => {
+  // Findings for the session-bound case; POST updates one finding's triage.
+  route(`${ROUTE_BASE}/case/findings`, async (req) => {
+    const method = String(req?.method ?? 'GET').toUpperCase()
+    if (method === 'POST') {
+      requireJson(req)
+      const body = await readJsonBody(req) as Record<string, unknown> | undefined
+      const sessionId = typeof body?.sessionId === 'string' ? body.sessionId : ''
+      const active = sessionId ? getCase(sessionId) : undefined
+      if (!active) throw new HttpError(400, 'no active case for this session')
+      const id = typeof body?.id === 'string' ? body.id.trim() : ''
+      if (!/^F-\d+$/.test(id)) throw new HttpError(400, 'id must be an F-xxx finding id')
+      const patch: { status?: any; severity?: any; note?: string } = {}
+      if (typeof body?.status === 'string') patch.status = body.status
+      if (typeof body?.severity === 'string') patch.severity = body.severity
+      if (typeof body?.note === 'string') patch.note = body.note
+      if (patch.status === undefined && patch.severity === undefined) throw new HttpError(400, 'status or severity is required')
+      try {
+        const updated = await updateFinding(active.dir, id, patch)
+        if (updated === undefined) throw new HttpError(404, `unknown finding ${id}`)
+        return updated
+      } catch (error) {
+        if (error instanceof HttpError) throw error
+        throw new HttpError(400, error instanceof Error ? error.message : String(error))
+      }
+    }
     const sessionId = queryParam(req, 'sessionId')
     const active = sessionId ? getCase(sessionId) : undefined
     return active ? loadFindings(active.dir) : []
+  })
+
+  // Deterministic SARIF 2.1.0 export for the session-bound case.
+  get(`${ROUTE_BASE}/case/sarif`, async (req) => {
+    const sessionId = queryParam(req, 'sessionId')
+    const active = sessionId ? getCase(sessionId) : undefined
+    if (!active) throw new HttpError(400, 'no active case for this session')
+    const findings = await loadFindings(active.dir)
+    return JSON.parse(renderSarif(active.name, findings))
+  })
+
+  // Deterministic markdown report for the session-bound case.
+  get(`${ROUTE_BASE}/case/report`, async (req) => {
+    const sessionId = queryParam(req, 'sessionId')
+    const active = sessionId ? getCase(sessionId) : undefined
+    if (!active) throw new HttpError(400, 'no active case for this session')
+    return { markdown: renderCaseReport(active.name, await loadFindings(active.dir)) }
+  })
+
+  // Severity trend by creation day, used by the Case tab.
+  get(`${ROUTE_BASE}/case/trend`, async (req) => {
+    const sessionId = queryParam(req, 'sessionId')
+    const active = sessionId ? getCase(sessionId) : undefined
+    return active ? findingTrend(await loadFindings(active.dir)) : []
   })
 
   // Evidence list for the session-bound case.

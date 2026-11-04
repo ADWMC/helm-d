@@ -3,7 +3,8 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { join, resolve } from 'node:path'
 import { packageRoot, readTextSeam  } from '../seam.js'
 import { TOOL_CATALOG, catalogEntry } from '../toolbox/catalog.js'
-import { installCatalogTool, toolHealth } from '../toolbox/installer.js'
+import { installCatalogTool, installCatalogMirror, toolHealth, updateCatalogTool } from '../toolbox/installer.js'
+import { probeCommand } from '../toolbox/health.js'
 import { loadSettings } from '../settings.js'
 
 const refRoot = join(packageRoot(), 'references', 'toolbox')
@@ -120,6 +121,21 @@ const rules: Record<string, string> = {
 }
 
 export function registerToolboxTools(ctx: Context): void {
+  const tokenize = (text: string): string[] => [...new Set(
+    text.toLowerCase().split(/[^a-z0-9\u4e00-\u9fff]+/).filter((token) => token.length >= 2),
+  )]
+  const catalogMatches = (query: string) => {
+    const tokens = tokenize(query)
+    return TOOL_CATALOG.map((entry) => {
+      const haystack = `${entry.id} ${entry.name} ${entry.category} ${entry.purpose} ${entry.usage}`.toLowerCase()
+      const reasons = tokens.filter((token) => haystack.includes(token))
+      const health = toolHealth(entry.id)
+      const score = reasons.length * 10 + (health.installed ? 3 : 0) + (entry.license !== undefined ? 1 : 0)
+      return { entry, score, reasons, health }
+    }).filter((row) => row.reasons.length > 0)
+      .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id))
+      .slice(0, 8)
+  }
   ctx.tools.register(defineTool({
     name: 'tool_recommend',
     description: 'Recommend tools and evidence format from a task or signal description.',
@@ -137,8 +153,13 @@ export function registerToolboxTools(ctx: Context): void {
         if (q.includes(key)) hits.push(value)
       }
       const unique = [...new Set(hits)]
-      return unique.length
-        ? unique.join('\n')
+      const matches = catalogMatches(q)
+      const catalogLines = matches.map(({ entry, health, reasons }) =>
+        `- ${entry.id} (${entry.category}) — ${entry.purpose} | ${health.installed ? `installed ${health.version ?? ''}` : 'not installed'} | trust=${entry.license !== undefined ? 'verified' : 'unverified'} | match=${reasons.join(',')}`)
+      const tail = catalogLines.length > 0 ? ['catalog matches (scored; installed first):', ...catalogLines] : []
+      if (unique.length > 0) return [...unique, ...tail].join('\n')
+      return tail.length > 0
+        ? tail.join('\n')
         : 'triage-and-route: begin_case + detect_packer + scan_strings + hash_artifact'
     },
   }))
@@ -146,16 +167,41 @@ export function registerToolboxTools(ctx: Context): void {
     name: 'toolbox',
     description:
       'External-tool catalog and install status. action=catalog lists curated tools with GitHub repo, purpose, usage, and whether installed; ' +
-      'action=status shows installed rows; action=install installs one catalog release asset (model install is disabled unless the operator enables it). ' +
+      'action=status shows installed rows; action=mcp lists read-only MCP tool names exposed by the host; ' +
+      'action=probe checks whether a local command resolves (where/which, cached 5min; never executes it); ' +
+      'action=install installs one catalog release asset; action=update re-downloads the latest release; ' +
+      'action=mirror installs a local archive with an operator-supplied sha256 (offline); ' +
+      'model install/update/mirror are disabled unless the operator enables them. ' +
       'Only bundled catalog entries with a verified GitHub repository exist — arbitrary URLs are not accepted.',
     parameters: {
-      action: { type: 'string', required: true, description: 'catalog | status | install' },
-      id: { type: 'string', description: 'Catalog id for install (e.g. jadx).' },
+      action: { type: 'string', required: true, description: 'catalog | status | mcp | probe | install | update | mirror' },
+      id: { type: 'string', description: 'Catalog id for install/update/mirror (e.g. jadx).' },
       asset_name: { type: 'string', description: 'Release asset name when the release has multiple candidates.' },
+      path: { type: 'string', description: 'Local archive path for action=mirror.' },
+      sha256: { type: 'string', description: 'Required sha256 for action=mirror.' },
       query: { type: 'string', description: 'catalog: filter by id/name/category/purpose.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: { action: string; id?: string; asset_name?: string; query?: string }) {
+    async execute(args: { action: string; id?: string; asset_name?: string; path?: string; sha256?: string; query?: string }) {
+      if (args.action === 'probe') {
+        const command = (args.query ?? args.id ?? '').trim()
+        if (command === '') return 'REJECTED — probe needs query (a command name)'
+        try {
+          return JSON.stringify(probeCommand(command))
+        } catch (error) {
+          return 'REJECTED — ' + (error instanceof Error ? error.message : String(error))
+        }
+      }
+      if (args.action === 'mcp') {
+        let names: string[] = []
+        try {
+          const schemas = (ctx.tools as unknown as { schemas?: () => Array<{ name?: unknown }> }).schemas
+          names = typeof schemas === 'function' ? schemas().map((schema) => String(schema.name ?? '')).filter((name) => name.startsWith('mcp__')) : []
+        } catch { /* host without public schema enumeration */ }
+        return names.length > 0
+          ? ['MCP tools (read-only discovery; no external server is started):', ...names.sort().map((name) => '- ' + name)].join('\n')
+          : 'no MCP tools are registered in this host'
+      }
       if (args.action === 'catalog' || args.action === 'status') {
         const q = (args.query ?? '').toLowerCase()
         const rows = TOOL_CATALOG
@@ -175,7 +221,7 @@ export function registerToolboxTools(ctx: Context): void {
           })
         return rows.length > 0 ? rows.join('\n') : 'no catalog entries match'
       }
-      if (args.action === 'install') {
+      if (args.action === 'install' || args.action === 'update' || args.action === 'mirror') {
         const entry = catalogEntry(args.id ?? '')
         if (entry === undefined) return 'REJECTED — unknown catalog id: ' + (args.id ?? '(empty)')
         if (entry.kind !== 'release') {
@@ -185,7 +231,11 @@ export function registerToolboxTools(ctx: Context): void {
           return 'REJECTED — model install is disabled. Use the WebUI 工具 tab (operator action), or enable toolbox.modelInstall in settings.'
         }
         try {
-          const installed = await installCatalogTool(entry.id, args.asset_name)
+          const installed = args.action === 'install'
+            ? await installCatalogTool(entry.id, args.asset_name)
+            : args.action === 'update'
+              ? await updateCatalogTool(entry.id, args.asset_name)
+              : await installCatalogMirror(entry.id, args.path ?? '', args.sha256 ?? '')
           return 'installed ' + installed.name + ' ' + installed.version + '\n'
             + 'path: ' + installed.path + '\n'
             + 'sha256: ' + installed.sha256 + '\n'
@@ -194,7 +244,7 @@ export function registerToolboxTools(ctx: Context): void {
           return 'REJECTED — ' + (error instanceof Error ? error.message : String(error))
         }
       }
-      return 'REJECTED — action must be catalog | status | install.'
+      return 'REJECTED — action must be catalog | status | mcp | probe | install | update | mirror.'
     },
   }))
 

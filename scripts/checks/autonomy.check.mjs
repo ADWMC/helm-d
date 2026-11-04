@@ -10,7 +10,7 @@ import { createReporter, skip } from './reporter.mjs'
 
 const entry = join(distDir, 'autonomy.js')
 if (!existsSync(entry)) skip('autonomy', 'need packages/helmd/dist (run pnpm build)')
-const { playbookFor, deriveNextAction, warningsFor, renderAutonomyPacket } = await import(pathToFileURL(entry).href)
+const { playbookFor, deriveNextAction, warningsFor, renderAutonomyPacket, detectNoPath } = await import(pathToFileURL(entry).href)
 const report = createReporter('autonomy')
 
 const base = { mode: 'full', goal: 'APK unpack and license check', hypotheses: [], findings: [], evidence: [] }
@@ -89,6 +89,19 @@ await report.check('the packet carries ledger state, playbook, warnings and next
   assert.match(text, /repro: yes/)
   assert.match(text, /warnings:/)
   assert.match(text, /next: Resolve H-001/)
+})
+
+await report.check('NO_PATH fires only after three identical calls without evidence growth', () => {
+  const calls = [
+    { name: 'bash', args: '{"command":"strings a"}' },
+    { name: 'bash', args: '{"command":"strings a"}' },
+    { name: 'bash', args: '{"command":"strings a"}' },
+  ]
+  assert.match(detectNoPath(calls, false) ?? '', /repeated 3x/)
+  assert.equal(detectNoPath(calls, true), undefined, 'new evidence proves the path is not dead')
+  assert.equal(detectNoPath(calls.slice(1), false), undefined, 'two calls are not enough')
+  const packet = renderAutonomyPacket({ ...base, noPath: 'switch path' })
+  assert.match(packet, /^\[NO_PATH\] switch path/)
 })
 
 report.finish()

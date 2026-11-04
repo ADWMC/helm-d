@@ -23,6 +23,10 @@ export interface HelmdSettings {
     maxParallelWorkers: number
     /** 无 budget-policy artifact 时的默认 worker 超时（分钟）。 */
     defaultWallTimeMin: number
+    /** dynamic worker 的高风险命令审批：ask | deny | allow（默认 ask）。 */
+    riskApproval: 'ask' | 'deny' | 'allow'
+    /** 每角色工具 allow/deny（deny 优先；allow 非空时只放行列出的工具）。 */
+    roleToolPolicy: Record<string, { allow?: string[]; deny?: string[] }>
   }
   intercept: {
     /** 流式拒绝拦截总开关（等价 HELMD_STREAM_MODE=off）。 */
@@ -54,6 +58,8 @@ export const DEFAULT_SETTINGS: HelmdSettings = {
     defaultRoles: ['triage', 'static', 'critic', 'reporter'],
     maxParallelWorkers: 4,
     defaultWallTimeMin: 15,
+    riskApproval: 'ask',
+    roleToolPolicy: {},
   },
   intercept: { enabled: true },
   advisory: { autonomyPacket: true, nextActionNudge: true, requireDocRead: true, requireToolEvidence: true },
@@ -82,6 +88,22 @@ function normalizeSettings(raw: unknown): HelmdSettings {
   const roles = Array.isArray(team.defaultRoles)
     ? [...new Set(team.defaultRoles.map(String))].filter((role): role is TeamRole => (TEAM_ROLES as readonly string[]).includes(role))
     : []
+  const roleToolPolicy: Record<string, { allow?: string[]; deny?: string[] }> = {}
+  if (team.roleToolPolicy !== null && typeof team.roleToolPolicy === 'object') {
+    for (const [role, raw] of Object.entries(team.roleToolPolicy as Record<string, unknown>)) {
+      if (!(TEAM_ROLES as readonly string[]).includes(role) || raw === null || typeof raw !== 'object') continue
+      const policy = raw as { allow?: unknown; deny?: unknown }
+      const allow = Array.isArray(policy.allow) ? policy.allow.map(String).filter(Boolean) : undefined
+      const deny = Array.isArray(policy.deny) ? policy.deny.map(String).filter(Boolean) : undefined
+      if ((allow?.length ?? 0) > 0 || (deny?.length ?? 0) > 0) {
+        roleToolPolicy[role] = {
+          ...(allow !== undefined && allow.length > 0 ? { allow } : {}),
+          ...(deny !== undefined && deny.length > 0 ? { deny } : {}),
+        }
+      }
+    }
+  }
+  const riskApproval = team.riskApproval === 'deny' || team.riskApproval === 'allow' ? team.riskApproval : 'ask'
   const d = DEFAULT_SETTINGS
   return {
     team: {
@@ -89,6 +111,8 @@ function normalizeSettings(raw: unknown): HelmdSettings {
       defaultRoles: roles.length > 0 ? roles : [...d.team.defaultRoles],
       maxParallelWorkers: clampNumber(team.maxParallelWorkers, 1, 8, d.team.maxParallelWorkers),
       defaultWallTimeMin: clampNumber(team.defaultWallTimeMin, 1, 60, d.team.defaultWallTimeMin),
+      riskApproval,
+      roleToolPolicy,
     },
     intercept: { enabled: clampBool(intercept.enabled, d.intercept.enabled) },
     advisory: {

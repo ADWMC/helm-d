@@ -82,5 +82,70 @@ await report.check('both gates can be switched off in settings', async () => {
   }
 })
 
+await report.check('evidence metas form a chain and tampering marks the finding stale', async () => {
+  const dir = join(home, 'helmd-cases', 'chain-case')
+  mkdirSync(join(dir, 'evidence'), { recursive: true })
+  writeFileSync(join(dir, 'CASE.md'), 'status: open\ngoal: chain\nmode: full\nroute: reverse\n')
+  caseApi.bindCase('sess-chain', { dir, name: 'chain-case', goal: 'chain', mode: 'full', route: 'reverse' })
+  const hash = 'a'.repeat(64)
+  const first = await caseApi.saveEvidence(dir, 'scan_strings', `sha256 ${hash}`, 'hash capture')
+  const second = await caseApi.saveEvidence(dir, 'strings', 'independent negative control', 'control')
+  const metas = await caseApi.listEvidenceMeta(dir)
+  assert.equal(metas.length, 2)
+  assert.equal(metas[1].prevHash, first.sha256)
+  const recorded = await finding.execute(
+    { title: 'chain finding', detail: `hash ${hash}`, evidence_ids: [first.id], repro_cmd: 'cmd', severity: 'medium' },
+    { agent: { id: 'sess-chain', session: { snapshotEvents: () => [{ type: 'tool/call', data: { name: 'read_reference' } }] } } },
+  )
+  assert.match(recorded, /finding recorded/)
+  const stored = (await caseApi.loadFindings(dir)).find((entry) => entry.title === 'chain finding')
+  assert.equal(stored.evidenceHash, first.sha256)
+  writeFileSync(join(dir, 'evidence', `${first.id}-scan_strings.txt`), 'tampered')
+  assert.equal((await caseApi.loadFindings(dir)).find((entry) => entry.title === 'chain finding').stale, true)
+  assert.deepEqual(await caseApi.staleEvidenceIds(dir), [first.id])
+  assert.ok(second.id.startsWith('E-'))
+})
+
+await report.check('finding detail must cite hashes verbatim from cited evidence', async () => {
+  const dir = join(home, 'helmd-cases', 'cite-case')
+  mkdirSync(join(dir, 'evidence'), { recursive: true })
+  writeFileSync(join(dir, 'CASE.md'), 'status: open\ngoal: cite\nmode: full\nroute: reverse\n')
+  caseApi.bindCase('sess-cite', { dir, name: 'cite-case', goal: 'cite', mode: 'full', route: 'reverse' })
+  const evidence = await caseApi.saveEvidence(dir, 'strings', 'observed ' + 'b'.repeat(64), 'strings')
+  const agent = { id: 'sess-cite', session: { snapshotEvents: () => [{ type: 'tool/call', data: { name: 'read_reference' } }] } }
+  const bad = await finding.execute(
+    { title: 'invented hash', detail: 'hash ' + 'c'.repeat(64), evidence_ids: [evidence.id], repro_cmd: 'cmd', severity: 'medium' },
+    { agent },
+  )
+  assert.match(bad, /claims not found verbatim/)
+  const good = await finding.execute(
+    { title: 'real hash', detail: 'hash ' + 'b'.repeat(64), evidence_ids: [evidence.id], repro_cmd: 'cmd', severity: 'medium' },
+    { agent },
+  )
+  assert.match(good, /finding recorded/)
+})
+
+await report.check('negative control must be independent evidence', async () => {
+  const dir = join(home, 'helmd-cases', 'negative-case')
+  mkdirSync(join(dir, 'evidence'), { recursive: true })
+  writeFileSync(join(dir, 'CASE.md'), 'status: open\ngoal: negative\nmode: full\nroute: reverse\n')
+  caseApi.bindCase('sess-negative', { dir, name: 'negative-case', goal: 'negative', mode: 'full', route: 'reverse' })
+  const positive = await caseApi.saveEvidence(dir, 'http', 'vulnerable response', 'positive')
+  const negative = await caseApi.saveEvidence(dir, 'http', 'benign response', 'negative')
+  const agent = { id: 'sess-negative', session: { snapshotEvents: () => [{ type: 'tool/call', data: { name: 'read_reference' } }] } }
+  const overlap = await finding.execute(
+    { title: 'overlap', detail: 'observed', evidence_ids: [positive.id], repro_cmd: 'cmd', severity: 'medium', negative_evidence_ids: [positive.id], negative_control: 'same' },
+    { agent },
+  )
+  assert.match(overlap, /negative control must use independent evidence/)
+  const accepted = await finding.execute(
+    { title: 'independent', detail: 'observed', evidence_ids: [positive.id], repro_cmd: 'cmd', severity: 'medium', negative_evidence_ids: [negative.id], negative_control: 'benign path does not reproduce' },
+    { agent },
+  )
+  assert.match(accepted, /finding recorded/)
+  const stored = (await caseApi.loadFindings(dir)).find((entry) => entry.title === 'independent')
+  assert.deepEqual(stored.negativeEvidenceIds, [negative.id])
+})
+
 rmSync(home, { recursive: true, force: true })
 report.finish()

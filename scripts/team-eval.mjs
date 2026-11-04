@@ -23,6 +23,7 @@ const { activateRevision } = await import(pathToFileURL(teamEntry).href)
 
 function usage() {
   console.error('usage: node scripts/team-eval.mjs --baseline <json> --candidate <json>')
+  console.error('       [--holdout-baseline <json> --holdout-candidate <json>]')
   console.error('       [--kind <artifact-kind> --id <artifact-id> --revision <n> [--activate]]')
 }
 
@@ -70,7 +71,17 @@ function readRecords(path) {
 if (!flags.baseline || !flags.candidate) fail('--baseline and --candidate are required')
 const baseline = readRecords(flags.baseline)
 const candidate = readRecords(flags.candidate)
-const comparison = compareRuns(baseline, candidate)
+let holdout
+if (flags['holdout-baseline'] !== undefined || flags['holdout-candidate'] !== undefined) {
+  if (flags['holdout-baseline'] === undefined || flags['holdout-candidate'] === undefined) {
+    fail('--holdout-baseline and --holdout-candidate must be supplied together')
+  }
+  holdout = {
+    baseline: readRecords(flags['holdout-baseline']),
+    candidate: readRecords(flags['holdout-candidate']),
+  }
+}
+const comparison = compareRuns(baseline, candidate, holdout)
 console.log(JSON.stringify(comparison, null, 2))
 
 const wantsVersion = flags.kind !== undefined || flags.id !== undefined || flags.revision !== undefined
@@ -88,6 +99,7 @@ if (wantsVersion) {
     revision,
     baseline,
     candidate,
+    ...(holdout !== undefined ? { holdout } : {}),
   })
   console.log(`evaluated ${artifact.kind}:${artifact.id}@${artifact.revision} pass=${artifact.eval?.pass}`)
   if (flags.activate) {

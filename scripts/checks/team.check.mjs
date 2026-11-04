@@ -18,6 +18,8 @@ const worker = await import(pathToFileURL(join(distDir, 'team-worker.js')).href)
 const evalTeam = await import(pathToFileURL(join(distDir, 'team-eval.js')).href)
 const caseApi = await import(pathToFileURL(join(distDir, 'case.js')).href)
 const teamTools = await import(pathToFileURL(join(distDir, 'tools', 'team.js')).href)
+const policyApi = await import(pathToFileURL(join(distDir, 'team-policy.js')).href)
+const settingsApi = await import(pathToFileURL(join(distDir, 'settings.js')).href)
 const report = createReporter('team')
 
 await report.check('ticket -> role assignment -> report -> handoff -> close', () => {
@@ -173,7 +175,7 @@ await report.check('team_dispatch is the model-facing entry to the same worker a
       getProvider: () => ({ name: 'spawn' }),
       startActivation: async () => ({
         childId: 'child-reporter-1',
-        result: Promise.resolve({ stopReason: 'completed', output: [{ type: 'text', text: '{"state":"ready","summary":"tool report"}' }] }),
+        result: Promise.resolve({ stopReason: 'completed', output: [{ type: 'text', text: '{"state":"ready","summary":"tool report parsed headers and imports","evidenceIds":["E-001"]}' }] }),
         dispose: async () => {},
       }),
     } : undefined,
@@ -186,7 +188,7 @@ await report.check('team_dispatch is the model-facing entry to the same worker a
   )
   assert.match(text, /worker started: reporter/)
   await new Promise((resolve) => setTimeout(resolve, 20))
-  assert.equal(team.getTicket(ticket.id).reports.at(-1).summary, 'tool report')
+  assert.equal(team.getTicket(ticket.id).reports.at(-1).summary, 'tool report parsed headers and imports')
 })
 
 await report.check('local eval harness computes the six gate metrics and compares runs', () => {
@@ -213,6 +215,82 @@ await report.check('standalone tickets get a case scaffold so worker evidence to
   assert.match(readFileSync(join(dir, 'CASE.md'), 'utf8'), /goal: scaffold/)
 })
 
+await report.check('task DAG claims one owner and unblocks dependents', () => {
+  const ticket = team.createTicket({
+    goal: 'dag tasks', caseDir: join(home, 'dag-tasks'), roles: ['static', 'critic'],
+    roleDeps: { critic: ['static'] },
+  })
+  const first = team.claimTask(ticket.id, 'static')
+  assert.equal(first.state, 'claimed')
+  const again = team.claimTask(ticket.id, 'static')
+  assert.equal(again.id, first.id, 'same role claim is idempotent while the lease is live')
+  assert.throws(() => team.claimTask(ticket.id, 'critic'), /not ready/)
+  team.completeTask(ticket.id, 'static', 'done')
+  const second = team.claimTask(ticket.id, 'critic')
+  assert.equal(second.state, 'claimed')
+  const done = team.completeTask(ticket.id, 'critic', 'done')
+  assert.equal(done.state, 'done')
+  assert.equal(team.getTicket(ticket.id).tasks.find((task) => task.id === second.id).state, 'done')
+})
+
+await report.check('team_steer delivers to a running worker and rejects non-orchestrators', async () => {
+  let definition
+  const delivered = []
+  const ctx = {
+    tools: { register: (def) => { if (def.name === 'team_steer') definition = def } },
+    get: (name) => name === 'subagents' ? {
+      getProvider: () => ({ name: 'spawn' }),
+      startActivation: async () => { throw new Error('unused') },
+      steerPrompt: async (parent, childId, content, source) => {
+        delivered.push({ parent, childId, text: content[0].text, source })
+        return 'msg-1'
+      },
+    } : undefined,
+  }
+  teamTools.registerTeamTools(ctx)
+  assert.ok(definition, 'team_steer must be registered')
+  const ticket = team.createTicket({ goal: 'steer', caseDir: join(home, 'steer-case'), roles: ['triage', 'static'] })
+  team.assignRole(ticket.id, 'static', 'child-static-steer')
+  const signal = new AbortController().signal
+  const text = await definition.execute(
+    { ticketId: ticket.id, role: 'static', message: '只做静态分析，然后 blocked 汇报' },
+    { agent: { id: 'parent-steer' }, signal },
+  )
+  assert.match(text, /steer accepted/)
+  assert.equal(delivered[0].childId, 'child-static-steer')
+  assert.match(delivered[0].text, /只做静态分析/)
+  assert.equal(team.getTicket(ticket.id).steers.at(-1).role, 'static')
+
+  const workerTicket = team.createTicket({ goal: 'steer negative', caseDir: join(home, 'steer-negative'), roles: ['static'] })
+  team.assignRole(workerTicket.id, 'static', 'child-worker-self')
+  await assert.rejects(
+    () => definition.execute({ ticketId: workerTicket.id, role: 'static', message: 'nope' }, { agent: { id: 'child-worker-self' }, signal }),
+    /cannot steer workers/,
+  )
+})
+
+await report.check('finish gate turns budget/no-result ready into blocked', () => {
+  const gate = worker.applyFinishGate(
+    { state: 'ready', summary: 'ok', evidenceIds: [] },
+    1000,
+    60_000,
+  )
+  assert.equal(gate.state, 'blocked')
+  const budget = worker.applyFinishGate(
+    { state: 'ready', summary: 'partial', evidenceIds: ['E-001'], stopReason: 'max_tokens' },
+    59_000,
+    60_000,
+  )
+  assert.equal(budget.state, 'blocked')
+  assert.match(budget.summary, /budget/)
+  const good = worker.applyFinishGate(
+    { state: 'ready', summary: 'parsed headers and recovered the license check', evidenceIds: ['E-001'] },
+    1000,
+    60_000,
+  )
+  assert.equal(good.state, 'ready')
+})
+
 await report.check('exact duplicate reports are dropped, distinct ones kept', () => {
   const ticket = team.createTicket({ goal: 'dedupe', caseDir: join(home, 'dedupe-case'), roles: ['triage'] })
   team.recordReport({ ticketId: ticket.id, role: 'triage', state: 'ready', summary: 'same content', evidenceIds: ['E-001'] })
@@ -220,6 +298,37 @@ await report.check('exact duplicate reports are dropped, distinct ones kept', ()
   const updated = team.recordReport({ ticketId: ticket.id, role: 'triage', state: 'ready', summary: 'different content' })
   const triageReports = updated.reports.filter((r) => r.role === 'triage')
   assert.equal(triageReports.length, 2, 'exact duplicate dropped, distinct kept')
+})
+
+await report.check('team policy denies risky dynamic commands and honors role allow/deny', async () => {
+  let listener
+  policyApi.registerTeamPolicy({ on: (event, fn) => { if (event === 'tools/pre-execute') listener = fn } })
+  assert.ok(listener, 'pre-execute listener must be registered')
+  const ticket = team.createTicket({ goal: 'policy', caseDir: join(home, 'policy-case'), roles: ['dynamic', 'static'] })
+  team.assignRole(ticket.id, 'dynamic', 'policy-dynamic')
+  settingsApi.saveSettings({ team: { riskApproval: 'deny', roleToolPolicy: { static: { deny: ['bash'] } } } })
+  try {
+    const risky = await listener(
+      { agent: { id: 'policy-dynamic' }, name: 'bash', args: { command: 'rm -rf /tmp/x' } },
+      async () => ({ kind: 'pass' }),
+    )
+    assert.equal(risky.kind, 'deny')
+    assert.match(risky.reason, /high-risk/)
+    const safe = await listener(
+      { agent: { id: 'policy-dynamic' }, name: 'bash', args: { command: 'ls' } },
+      async () => ({ kind: 'pass' }),
+    )
+    assert.equal(safe.kind, 'pass')
+    team.assignRole(ticket.id, 'static', 'policy-static')
+    const denied = await listener(
+      { agent: { id: 'policy-static' }, name: 'bash', args: { command: 'ls' } },
+      async () => ({ kind: 'pass' }),
+    )
+    assert.equal(denied.kind, 'deny')
+    assert.match(denied.reason, /policy denies bash/)
+  } finally {
+    settingsApi.saveSettings({ team: { riskApproval: 'ask', roleToolPolicy: {} } })
+  }
 })
 
 rmSync(home, { recursive: true, force: true })

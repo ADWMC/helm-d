@@ -16,6 +16,9 @@ import { registerAiSecurityTools } from './tools/ai-security.js'
 import { registerEvidenceTools } from './tools/evidence.js'
 import { registerToolboxTools } from './tools/toolbox.js'
 import { registerTeamTools } from './tools/team.js'
+import { registerReconTools } from './tools/recon.js'
+import { registerPocTools } from './tools/poc.js'
+import { registerMiningTools } from './tools/mining.js'
 import { registerTeamPolicy } from './team-policy.js'
 import { registerTeamContext } from './team-context.js'
 import { registerIcaContext } from './ica-context.js'
@@ -77,6 +80,9 @@ export function apply(ctx: Context): void {
     registerAiSecurityTools(ctx)
     registerEvidenceTools(ctx)
     registerToolboxTools(ctx)
+    registerReconTools(ctx)
+    registerPocTools(ctx)
+    registerMiningTools(ctx)
   } finally {
     unwrap()
     unwash()

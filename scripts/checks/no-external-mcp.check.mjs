@@ -1,5 +1,7 @@
-// Asserts that helm-d does NOT depend on or register any external MCP tools.
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+// Asserts that helm-d does NOT depend on or register any external MCP server.
+// Read-only enumeration of host MCP tool names (T-12.3) is a separate, allowed
+// discovery path and deliberately does not start a client/server.
+import { readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { repoRoot } from './artifacts.mjs'
 import { createReporter } from './reporter.mjs'
@@ -23,13 +25,6 @@ try {
   report.check('no MCP client dependency in package.json', () => {
     if (deps.includes('mcp-client') || deps.includes('mcp-sdk') || deps.includes('modelcontextprotocol')) {
       throw new Error('MCP dependency found in package.json')
-    }
-  })
-
-  report.check('no mcp__ tool prefix in source', () => {
-    for (const f of walk(srcDir)) {
-      const text = readFileSync(f, 'utf8')
-      if (text.includes('mcp__')) throw new Error(`mcp__ found in ${f}`)
     }
   })
 

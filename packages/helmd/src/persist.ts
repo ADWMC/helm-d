@@ -21,6 +21,10 @@ const NO_PERSIST = new Set([
   // case lifecycle / ledger bookkeeping itself
   'begin_case', 'case_status', 'record_finding', 'end_case', 'save_evidence',
   'record_hypothesis', 'update_hypothesis',
+  // recon tools persist raw output and the asset/evidence link themselves
+  'recon_passive', 'recon_ports', 'recon_http', 'recon_crawl', 'recon_import',
+  'run_poc',
+  'mine_candidates',
 ])
 
 export function isNoPersist(toolName: string): boolean {
@@ -78,11 +82,22 @@ async function persistHook(
     return result + '\n[no active case — output NOT persisted. begin_case(goal, samples) keeps evidence.]'
   }
   const firstLine = result.split('\n').find((l) => l.trim()) ?? ''
-  const { id } = await saveEvidence(active.dir, toolName, result, firstLine)
+  const large = result.length > 256 * 1024
+  const { id, path } = await saveEvidence(active.dir, toolName, result, firstLine, large ? { maxBytes: 0 } : {})
   try {
     await nudgeCaseState(sessionId, agent, active)
   } catch {
     // The nudge is best-effort; a case/ledger read failure must not break the tool result.
+  }
+  if (large) {
+    return [
+      `[evidence: ${id} saved to ${active.name} — full output is ${result.length} bytes at ${path}]`,
+      '[model view: head/tail stub only; read the evidence file for the middle]',
+      '--- head ---',
+      result.slice(0, 4096),
+      '--- tail ---',
+      result.slice(-4096),
+    ].join('\n')
   }
   return result + `\n[evidence: ${id} saved to ${active.name}]`
 }

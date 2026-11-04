@@ -22,7 +22,7 @@ process.env.HELMD_CASES_DIR = mkdtempSync(join(tmpdir(), 'helmd-api-cases-'))
 const report = createReporter('api-routes')
 
 const ROUTE_BASE = '/api/helmd'
-const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry', 'settings', 'tools/catalog']
+const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry', 'settings', 'tools/catalog', 'tools/update', 'tools/mirror', 'case/sarif', 'case/report']
 
 /** Registry contents, reachable only through register/schemas — no layer internals. */
 const registered = []
@@ -270,6 +270,31 @@ await report.check('GET/POST /settings round-trips and clamps through the store'
   assert.equal(saved.payload.data.intercept.enabled, true, 'untouched group survives the patch')
   const onDisk = JSON.parse(readFileSync(join(process.env.DSH_HOME, 'storages', 'helmd', 'settings.json'), 'utf8'))
   assert.equal(onDisk.star.popupDelaySec, 9)
+})
+
+await report.check('POST /case/findings updates triage and rejects invalid status', async () => {
+  writeFileSync(join(caseDir, 'findings.json'), JSON.stringify([{
+    id: 'F-001', title: 'api finding', detail: 'd', severity: 'medium', status: 'candidate',
+    confidence: 'probable', vulnClass: 'api', evidence: 'E-001', evidenceIds: ['E-001'],
+    repro: 'cmd', seenCount: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  }], null, 2))
+  const accepted = await post(`${ROUTE_BASE}/case/findings`, { sessionId: 'sess-api', id: 'F-001', status: 'rejected', note: 'api triage' })
+  assert.equal(accepted.status, 200, accepted.payload?.error ?? '')
+  assert.equal(accepted.payload.data.status, 'rejected')
+  const rejected = await post(`${ROUTE_BASE}/case/findings`, { sessionId: 'sess-api', id: 'F-001', status: 'ghost' })
+  assert.equal(rejected.status, 400)
+  assert.match(rejected.payload.error, /unknown finding status/)
+  const missing = await post(`${ROUTE_BASE}/case/findings`, { sessionId: 'sess-api', id: 'F-999', status: 'verified' })
+  assert.equal(missing.status, 404)
+})
+
+await report.check('GET /case/sarif and /case/report are deterministic projections', async () => {
+  const sarif = await call(`${ROUTE_BASE}/case/sarif`, { url: `${ROUTE_BASE}/case/sarif?sessionId=sess-api` })
+  assert.equal(sarif.status, 200)
+  assert.equal(sarif.payload.data.version, '2.1.0')
+  const report = await call(`${ROUTE_BASE}/case/report`, { url: `${ROUTE_BASE}/case/report?sessionId=sess-api` })
+  assert.equal(report.status, 200)
+  assert.match(report.payload.data.markdown, /findings report/)
 })
 
 await report.check('GET /tools/catalog serves the GitHub-only catalog and POST /tools/install rejects unknown ids', async () => {

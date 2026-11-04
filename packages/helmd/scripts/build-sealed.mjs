@@ -75,7 +75,9 @@ const manifest = { hash: '', files: {} }
 const realMove = []
 for (const rel of distFiles) {
   const base = rel.split('/').pop()
-  if (KEEP_PLAIN.has(base)) continue
+  // Only the two root entry declarations stay plaintext; nested .d.ts files
+  // belong to sealed modules (e.g. toolbox/health.d.ts).
+  if (!rel.includes('/') && KEEP_PLAIN.has(base)) continue
   const src = join(sourceDir, rel)
   const target = `.real/${rel}`
   manifest.files[target] = readFileSync(src, 'utf8')

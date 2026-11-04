@@ -86,11 +86,21 @@ export interface EvalComparison {
   reasons: string[]
 }
 
-/** Compare two run sets with the same gate used for activation. */
-export function compareRuns(baseline: readonly EvalRecord[], candidate: readonly EvalRecord[]): EvalComparison {
+/** Compare two run sets with the same gate used for activation. An optional
+ *  holdout pair is evaluated independently and must pass too (T-07). */
+export function compareRuns(
+  baseline: readonly EvalRecord[],
+  candidate: readonly EvalRecord[],
+  holdout?: { baseline: readonly EvalRecord[]; candidate: readonly EvalRecord[] },
+): EvalComparison {
   const before = computeMetrics(baseline)
   const after = computeMetrics(candidate)
-  const gate = canActivate({ ...before }, { ...after })
+  const holdoutMetrics = holdout === undefined
+    ? undefined
+    : { baseline: computeMetrics(holdout.baseline), candidate: computeMetrics(holdout.candidate) }
+  const gate = canActivate({ ...before }, { ...after }, holdoutMetrics === undefined ? {} : {
+    holdout: { baseline: { ...holdoutMetrics.baseline }, candidate: { ...holdoutMetrics.candidate } },
+  })
   return { baseline: before, candidate: after, pass: gate.pass, reasons: gate.reasons }
 }
 
@@ -102,14 +112,21 @@ export function evaluateRevisionFromRuns(input: {
   revision: number
   baseline: readonly EvalRecord[]
   candidate: readonly EvalRecord[]
+  holdout?: { baseline: readonly EvalRecord[]; candidate: readonly EvalRecord[] }
+  maxDiffLines?: number
 }): ArtifactRevision {
   const before = computeMetrics(input.baseline)
   const after = computeMetrics(input.candidate)
+  const holdout = input.holdout === undefined
+    ? undefined
+    : { baseline: { ...computeMetrics(input.holdout.baseline) }, candidate: { ...computeMetrics(input.holdout.candidate) } }
   return evaluateRevision({
     kind: input.kind,
     id: input.id,
     revision: input.revision,
     baseline: { ...before },
     candidate: { ...after },
+    ...(holdout !== undefined ? { holdout } : {}),
+    ...(input.maxDiffLines !== undefined ? { maxDiffLines: input.maxDiffLines } : {}),
   })
 }

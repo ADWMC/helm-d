@@ -22,6 +22,11 @@ export interface EvidenceView {
   file: string
 }
 
+export interface PathCall {
+  name: string
+  args: string
+}
+
 export interface AutonomyInput {
   mode: string
   goal?: string
@@ -29,6 +34,19 @@ export interface AutonomyInput {
   findings: FindingView[]
   evidence: EvidenceView[]
   deadEnds?: string
+  noPath?: string
+}
+
+/** T-04: three consecutive identical tool+args calls with no evidence growth
+ *  are a dead path. The caller supplies whether evidence grew since the last
+ *  snapshot; absence of that snapshot never triggers. */
+export function detectNoPath(calls: PathCall[], evidenceGrew: boolean): string | undefined {
+  if (evidenceGrew || calls.length < 3) return undefined
+  const tail = calls.slice(-3).map((call) => `${call.name}\u0000${call.args}`)
+  if (tail.every((key) => key === tail[0])) {
+    return `same tool+args repeated 3x (${calls[calls.length - 1].name}) with no new evidence; switch path or report blocked`
+  }
+  return undefined
 }
 
 const WEB_RE = /(?:^|[^a-z])(web|http|https|sqli|xss|ssrf|ssti|xxe|rce|lfi|idor|jwt|oauth|csrf|pentest|渗透|内网|横向|域控|kerberos|活动目录)(?:[^a-z]|$)/i
@@ -84,12 +102,16 @@ export function warningsFor(input: AutonomyInput): string[] {
 
 /** Compact packet appended to case_status. The model reads this instead of disk. */
 export function renderAutonomyPacket(input: AutonomyInput): string {
-  const lines: string[] = [
+  const lines: string[] = []
+  if (input.noPath !== undefined && input.noPath.trim() !== '') {
+    lines.push(`[NO_PATH] ${input.noPath.trim()}`)
+  }
+  lines.push(
     '[autonomy]',
     `mode: ${input.mode}`,
     `playbook: ${playbookFor(input.goal ?? '')}`,
     'triggers: references/playbooks/triggers.yaml',
-  ]
+  )
   const open = input.hypotheses.find((h) => h.status === 'open')
   if (open !== undefined) {
     lines.push(
