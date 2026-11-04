@@ -54,11 +54,14 @@ Telegram / 推特 / 苹果 / 谷歌 / GPT 账号与会员，支持查单与售�
 
 ## 它是什么
 
-helm-d 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的插件，不修改宿主二进制，通过 cordis 钩子给模型加四样东西：
+helm-d 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的插件，不修改宿主二进制，通过 cordis 钩子给模型加这些能力：
 
 - **38 个工具**：Android / Web / Native / Protocol / Malware / AI-Security，加上 Case 生命周期、路由与本地 Team 调度。
 - **证据链**：工具输出自动落 `evidence/`，结论必须引用 E 编号和可复现的 `repro_cmd`。
+- **漏洞登记**：`findings.json` 结构化记录 severity / status / confidence / CVSS；critical/high 不足两条独立证据自动降级，重复发现按 `vuln_class+target` 合并。
 - **按需知识**：353 篇参考正文 + 9 个索引由 `read_reference` 读取，不塞进 system prompt。
+- **外部工具**：54 项只收录已核实 GitHub 仓库的工具，release 资产必须带 sha256；WebUI 可装，模型安装默认关闭。
+- **Team v2**：接入宿主原生 agent-team（命名 teammate / durable 信箱 / 任务板）+ case 绑定的 ticket 派工与角色依赖 DAG。
 - **四档破甲**：ds4.1f / stealth / redteam-max / gpt-6x，工作台一键热切换，下一次模型调用生效。
 
 它 **不是** 引擎补丁：不落盘改审批/沙箱，也不起独立进程。和补丁类工具可以同装，分工不同。
