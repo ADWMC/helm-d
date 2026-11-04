@@ -256,6 +256,22 @@
 | 团队接入 | static worker 产 candidate，critic 复核，dynamic 执行 PoC（T-15） | `team-worker` prompt + `team.ts` | 真机：static→critic→dynamic 链 |
 | 非目标 | 不做全量 SAST/符号执行；不做网络 fuzz；不引入外部扫描器二进制 | — | — |
 
+### T-17 工具下载器 + 工具注册表（P1，待批准）
+
+**定位**：**catalog-driven installer（目录驱动安装器）**，不是"模型随便下工具"。用确定性的只读注册表替代已删除的 `tool_memory` 写账本。
+
+| 子项 | 要求 | 落点 | 验收 |
+|---|---|---|---|
+| T-17.1 目录与注册表（只读先行） | 内置 `toolbox/catalog.json`：id/name/version/url/sha256/size/license/kind/binPath/usage/healthCmd/capabilities；安装态 `$DSH_HOME/helmd-tools/registry.json`：id/version/path/sha256/verifiedAt/health/license | 新 `src/toolbox/`（catalog/store/health） | 单元：目录校验、registry 幂等、健康探测状态 |
+| T-17.2 下载与解压 | 仅 catalog 内 URL；HTTPS；proxy-aware；sha256 必填且校验；zip/tar 抗 zip-slip；按 `<id>/<version>/` 隔离；不覆盖已有；失败原子回滚；**不自动执行** | `src/toolbox/installer.ts` | 单元：hash 失败拒绝、zip-slip 拒绝、版本隔离、回滚 |
+| T-17.3 WebUI | 新「工具」tab（或设置子页）：catalog/已装/版本/路径/健康；安装/更新/卸载；进度与日志；来源/哈希/大小确认 | `client.js` + `/api/helmd/tools/*` | 真机：UI 安装→健康→卸载 |
+| T-17.4 模型只读/受控安装 | `tool_catalog(query)` 只读（是否安装/路径/调用模板/健康）；`tool_install(id)` 仅 catalog 条目，走 approval（ask/auto/deny，默认 ask）；`tool_health(id)` 只读；模型不得传任意 URL、不得写 catalog、不得执行下载物 | `tools/toolbox.ts` + settings | 负向：任意 URL/未批准/坏 hash 全拒；真机：模型读路径并调用 |
+| T-17.5 更新/卸载/离线镜像 | 版本升级、卸载（保留证据日志）、本地镜像路径（离线导入） | 同上 | 单元/真机各一轮 |
+
+**安全红线**：模型不能提供任意 URL；catalog 只能随包/操作者维护；sha256 缺失即拒绝；安装后不自动运行；license 必须记录；Windows Defender/SmartScreen 与代理失败要显式报错。
+**验收（整体）**：单元（catalog/hash/zip-slip/registry/approval）+ 真机（UI 装一个工具 → 模型 `tool_catalog` 读到路径与用法 → `tool_install` 幂等 → 卸载）。
+**许可**：只下载上游二进制，不随包分发；catalog 记录上游 license 与来源。
+
 ## 3. 顺序与依赖
 
 ```text
@@ -266,19 +282,22 @@ Sprint 2:
   T-05 预算/finish gate  →  T-06 证据版本绑定  →  T-07 进化 gate 强化
 Sprint 3:
   T-13.1 finding UI（状态编辑/过滤/头部/Case 列表/Team 报告）
+  →  T-17.1 工具目录 + 只读注册表
   →  T-14 recon（资产账本 + scope/限速 + 被动/导入先行，主动扫描后置）
   →  T-08 上下文纪律  →  T-09 审批 fail-safe
 Sprint 4:
   T-15 PoC 闭环（candidate → recipe → run → 正负对照 → finding 联动）
+  →  T-17.2/3 下载解压 + WebUI 工具页
   →  T-13.2 SARIF/报告导出
 Sprint 5:
   T-16 候选挖掘（HAR/OpenAPI/JS/APK/字符串提取 + 覆盖驱动）
+  →  T-17.4/5 模型受控安装 + 更新/卸载/镜像
   →  T-13.3 CVSS 向量/趋势
 Sprint 6:
   T-10 UI 工程化  →  T-12 工具评分/缓存  →  T-11（先补证）
 ```
 
-依赖：T-07 依赖 T-02 的审计字段；T-06 依赖 T-02 的证据元数据；T-05 依赖 T-03 的 task 预算归属；T-13.1/.2/.3 依赖 T-13.0（已落地）；T-15 依赖 T-14 的 scope/资产账本；T-16 依赖 T-14 的资产账本与 T-15 的执行器。
+依赖：T-17.2/.3 依赖 T-17.1；T-17.4 依赖 T-17.2 与 T-09 的审批策略；T-07 依赖 T-02 的审计字段；T-06 依赖 T-02 的证据元数据；T-05 依赖 T-03 的 task 预算归属；T-13.1/.2/.3 依赖 T-13.0（已落地）；T-15 依赖 T-14 的 scope/资产账本；T-16 依赖 T-14 的资产账本与 T-15 的执行器。
 
 每项必须带**设置开关**（settings + DSH Config），默认保守，可一键回退。
 
