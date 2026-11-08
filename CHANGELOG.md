@@ -4,6 +4,13 @@
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
 
+## [Unreleased]
+
+### 修复
+
+- 放宽 `@deepseek-ai/dsh-settings` / `@deepseek-ai/dsh-tools` 的 peer 依赖上界至 `<0.2.3-0`，兼容 DSH `0.2.2-rc.1`。
+
+
 ## [0.5.3] — 2026-11-04（Team/证据/recon/PoC/mining 全量落地）
 
 ### 参考项目吸收（T-01…T-17）
