@@ -9,7 +9,7 @@
 ### 修复
 
 - 放宽 `@deepseek-ai/dsh-settings` / `@deepseek-ai/dsh-tools` 的 peer 依赖上界至 `<0.2.3-0`，兼容 DSH `0.2.2-rc.1`。
-
+- **工作台入口 hooks 顺序**：`HelmdPresetCapsuleButton` 原先在 `preset` 异步解析前 `return null`，随后才声明 `useState` / `useRef` / `useEffect`；当 preset 从 `undefined` 变为 `helmd` 时触发 React error #300，崩溃 `conversation.session.header.actions` 槽位并导致工作台入口消失。现将全部 hooks 移到条件返回之前，并新增 `client-hooks` 检查防止回归。
 
 ## [0.5.3] — 2026-11-04（Team/证据/recon/PoC/mining 全量落地）
 
