@@ -53,7 +53,8 @@ pnpm check:refs  # 只校验是否漂移（test:checks 也会跑）
   - `MAINTENANCE.md` 的“当前计数基准：N 个工具”；
   - `README.md` / `README.en.md` 的工具数与工具表；
   - `scripts/checks/tool-catalog.check.mjs` 的必需工具名。
-- GitHub Release 的正文从 `CHANGELOG.md` 当前版本段复制；About 页“更新日志”优先显示 Release body 的 bullet（`/api/helmd/update` 返回 `releaseNotes`），拉不到时回退到内置摘要。
+- GitHub Release 的正文从 `CHANGELOG.md` 当前版本段复制，格式遵循 `docs/release-notes-template.md`（title 统一 `helm-d vX.Y.Z — 主题`、正文单 H1、资产 3 tgz 照实标 sha256）；About 页“更新日志”优先显示 Release body 的 bullet（`/api/helmd/update` 返回 `releaseNotes`），拉不到时回退到内置摘要。
+- **发布后不得替换已上传 asset**：GitHub 允许同名单币覆盖且页面 `published_at` 不变，用户无法察觉（v0.5.1 / v0.5.2 / v0.4.0 / v0.4.2 均有静默重传史）。确需修正就发新版本，或在正文顶部保留「覆盖重打」注记。
 - 发布顺序：改 CHANGELOG → 改版本 → `pnpm build` / `typecheck` / `test:checks` → `repack.ps1` → `verify-pack --require-sealed` → tag + Release。
 
 ## 打包
@@ -73,8 +74,9 @@ tarball 12 文件（封印形态）；`payload.dat` 内含 `.real/` 模块与 `s
 3. `repack.ps1`
 4. `verify-pack --require-sealed`
 5. 隔离 profile 安装 + 冷启动
-6. `git tag v<version>`；版本合法 SemVer
-7. Release 上传 3 tgz
+6. `git tag v<version>`；版本合法 SemVer（禁止 `fix` 后缀；prerelease 用 `-alpha.N` 并标 `--prerelease`）
+7. Release 上传 3 tgz；title = `helm-d v<version> — 主题`，正文照 `docs/release-notes-template.md`
+8. 发布后核验：`releases/tags/v<version>` 的 `assets[].updated_at` 贴近 `published_at`（未发生覆盖重传），版本化 URL HEAD 200
 
 ## 常见故障
 

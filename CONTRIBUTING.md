@@ -79,10 +79,12 @@ node scripts/verify-pack.mjs --require-sealed
 
 ## 8. 发布（维护者）
 
-发布 checklist 在 [MAINTENANCE.md](MAINTENANCE.md) §2 与 [docs/development.md](docs/development.md) §5。要点：
+发布 checklist 在 [MAINTENANCE.md](MAINTENANCE.md) §2 与 [docs/development.md](docs/development.md) §5；标题 / 正文格式与模板在 [docs/release-notes-template.md](docs/release-notes-template.md)。要点：
 
-- 版本必须是合法 SemVer，tag 必须等于 `v${package.json.version}`。
-- 先 `pnpm build && pnpm typecheck && pnpm test:checks`，再 `repack`，再 `verify-pack --require-sealed`。
-- 发布资产当前是 3 个 tgz（版本化 tgz + `helm-d.tgz` + `helmd.tgz`）；不要照旧文档上传不存在的 installer。
+- 版本必须是合法 SemVer，tag 必须等于 `v${package.json.version}`；禁止 `v0.5.1fix` 式自造后缀，prerelease 用 `-alpha.N` / `-rc.N` 并标 `--prerelease`。
+- release title 统一 `helm-d vX.Y.Z — 主题`，正文从 CHANGELOG 对应段复制（可精简，不得引入 CHANGELOG 没有的结论）。
+- 发布资产当前是 3 个 tgz（版本化 tgz + `helm-d.tgz` + `helmd.tgz`，内容一致）；不要照旧文档上传不存在的 installer。
+- **发布后不得替换已上传 asset**：GitHub 同名单币覆盖后页面 `published_at` 不变，用户无法察觉（v0.5.1 / v0.5.2 / v0.4.0 / v0.4.2 均有静默重传史）。确需修正就发新版本，或在正文顶部保留「覆盖重打」注记。
+- 正文安装命令一律版本化 URL；`releases/latest/download/*` 禁止出现（Issue #5）。
 - `@adwmc/helm-d` 的 `prepublishOnly` 会再次跑 `verify-pack --require-sealed`；未封印的 dev `dist/` 不能直接 publish。
 - 发布后在隔离 profile 冷启动一次，确认 preset 行与一个核心工具可用。
