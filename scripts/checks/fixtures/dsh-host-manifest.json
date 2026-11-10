@@ -1,0 +1,396 @@
+{
+  "$note": "Supported dsh host interval: every published version in [0.2.0-rc.1, 0.2.2-rc.1]. Generated 2026-11-10 from npm registry metadata + published packages. dsh-web-app / dsh-settings / dsh-tools / dsh-web-frontend / dsh-client-ui-theme are lockstep with the host version. cordis/schemastery `resolved` = max-satisfying published version at generation time; `floor` = lowest version the pin admits (what historical installs may run). Adding a new 0.2.x release: append a host entry (and its standard/token fixtures) — no check edits needed.",
+  "interval": ">=0.2.0-rc.1 <=0.2.2-rc.1",
+  "hosts": [
+    {
+      "version": "0.2.0-rc.1",
+      "webApp": "0.2.0-rc.1",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.0-rc.1",
+        "@deepseek-ai/dsh-tools": "0.2.0-rc.1"
+      },
+      "cordis": {
+        "pin": "~4.0.4",
+        "floor": "4.0.4",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.4",
+        "floor": "3.18.4",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "6cd2f197737fc94a45e487d0bb57869461dd6f392d45f6429b576e75d973eda8",
+        "fixture": "host-standard-6cd2f197737f.patch.yml"
+      },
+      "tokens": {
+        "sha256": "8a0ae9c7a9bc15f09a2fd6b6bfe7a98c56fff0149c5b5bafebd52939ccd07b0e",
+        "fixture": "host-tokens-8926a081e46e.css"
+      }
+    },
+    {
+      "version": "0.2.0-rc.2",
+      "webApp": "0.2.0-rc.2",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.0-rc.2",
+        "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+      },
+      "cordis": {
+        "pin": "~4.0.4",
+        "floor": "4.0.4",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.4",
+        "floor": "3.18.4",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "6cd2f197737fc94a45e487d0bb57869461dd6f392d45f6429b576e75d973eda8",
+        "fixture": "host-standard-6cd2f197737f.patch.yml"
+      },
+      "tokens": {
+        "sha256": "38c259983f7e8844f129e544cff29e3111f3cf529e251de57db7072db95cad80",
+        "fixture": "host-tokens-5849e641dea6.css"
+      }
+    },
+    {
+      "version": "0.2.1-alpha.1",
+      "webApp": "0.2.1-alpha.1",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-alpha.1",
+        "@deepseek-ai/dsh-tools": "0.2.1-alpha.1"
+      },
+      "cordis": {
+        "pin": "~4.0.5-alpha.1",
+        "floor": "4.0.5-alpha.1",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5-alpha.1",
+        "floor": "3.18.5-alpha.1",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "961d18e0c2481e926374ca5a14a7be63c023f9c44e6cd300889991738f579390",
+        "fixture": "host-standard-961d18e0c248.patch.yml"
+      },
+      "tokens": {
+        "sha256": "6196e1ee6c09569f7d33bc8409ed72f32e325b4db8496cb82a88264cee2eb6a9",
+        "fixture": "host-tokens-5849e641dea6.css"
+      }
+    },
+    {
+      "version": "0.2.1-alpha.2",
+      "webApp": "0.2.1-alpha.2",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-alpha.2",
+        "@deepseek-ai/dsh-tools": "0.2.1-alpha.2"
+      },
+      "cordis": {
+        "pin": "~4.0.5-alpha.1",
+        "floor": "4.0.5-alpha.1",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5-alpha.1",
+        "floor": "3.18.5-alpha.1",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "d01a66aa66f001dcb559143157c81cf6c4554bcd8f3e1240e8287a27c85b1eab",
+        "fixture": "host-standard-d01a66aa66f0.patch.yml"
+      },
+      "tokens": {
+        "sha256": "1f69f5a5bdff700c1481c505330e50b25ebffb37a0fd5d46ab628f06b437dbbe",
+        "fixture": "host-tokens-1664e3e249e5.css"
+      }
+    },
+    {
+      "version": "0.2.1-alpha.3",
+      "webApp": "0.2.1-alpha.3",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-alpha.3",
+        "@deepseek-ai/dsh-tools": "0.2.1-alpha.3"
+      },
+      "cordis": {
+        "pin": "~4.0.5-alpha.2",
+        "floor": "4.0.5-alpha.2",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5-alpha.2",
+        "floor": "3.18.5-alpha.2",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "8614461a6fdba9ec91bb924d3a55d66266f36cef2a77424726f04906c6d9bee9",
+        "fixture": "host-standard-8614461a6fdb.patch.yml"
+      },
+      "tokens": {
+        "sha256": "b4d89cfd4e70aa923bacd16f601391c17cd4d7a6cbbeb1a52d3b335e159f6a37",
+        "fixture": "host-tokens-1664e3e249e5.css"
+      }
+    },
+    {
+      "version": "0.2.1-alpha.4",
+      "webApp": "0.2.1-alpha.4",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-alpha.4",
+        "@deepseek-ai/dsh-tools": "0.2.1-alpha.4"
+      },
+      "cordis": {
+        "pin": "~4.0.5-alpha.2",
+        "floor": "4.0.5-alpha.2",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5-alpha.2",
+        "floor": "3.18.5-alpha.2",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "0d398d2a6872a73a106cb3bd19303ecccf1637e1fcad4d0bf9d8a72d2c2c68f5",
+        "fixture": "host-standard-0d398d2a6872.patch.yml"
+      },
+      "tokens": {
+        "sha256": "b4d89cfd4e70aa923bacd16f601391c17cd4d7a6cbbeb1a52d3b335e159f6a37",
+        "fixture": "host-tokens-1664e3e249e5.css"
+      }
+    },
+    {
+      "version": "0.2.1-alpha.5",
+      "webApp": "0.2.1-alpha.5",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-alpha.5",
+        "@deepseek-ai/dsh-tools": "0.2.1-alpha.5"
+      },
+      "cordis": {
+        "pin": "~4.0.5-alpha.2",
+        "floor": "4.0.5-alpha.2",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5-alpha.2",
+        "floor": "3.18.5-alpha.2",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "0d398d2a6872a73a106cb3bd19303ecccf1637e1fcad4d0bf9d8a72d2c2c68f5",
+        "fixture": "host-standard-0d398d2a6872.patch.yml"
+      },
+      "tokens": {
+        "sha256": "b4d89cfd4e70aa923bacd16f601391c17cd4d7a6cbbeb1a52d3b335e159f6a37",
+        "fixture": "host-tokens-1664e3e249e5.css"
+      }
+    },
+    {
+      "version": "0.2.1-rc.1",
+      "webApp": "0.2.1-rc.1",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-rc.1",
+        "@deepseek-ai/dsh-tools": "0.2.1-rc.1"
+      },
+      "cordis": {
+        "pin": "~4.0.5",
+        "floor": "4.0.5",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5",
+        "floor": "3.18.5",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "0d398d2a6872a73a106cb3bd19303ecccf1637e1fcad4d0bf9d8a72d2c2c68f5",
+        "fixture": "host-standard-0d398d2a6872.patch.yml"
+      },
+      "tokens": {
+        "sha256": "b4d89cfd4e70aa923bacd16f601391c17cd4d7a6cbbeb1a52d3b335e159f6a37",
+        "fixture": "host-tokens-1664e3e249e5.css"
+      }
+    },
+    {
+      "version": "0.2.1-rc.2",
+      "webApp": "0.2.1-rc.2",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-rc.2",
+        "@deepseek-ai/dsh-tools": "0.2.1-rc.2"
+      },
+      "cordis": {
+        "pin": "~4.0.5",
+        "floor": "4.0.5",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5",
+        "floor": "3.18.5",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "0d398d2a6872a73a106cb3bd19303ecccf1637e1fcad4d0bf9d8a72d2c2c68f5",
+        "fixture": "host-standard-0d398d2a6872.patch.yml"
+      },
+      "tokens": {
+        "sha256": "b4d89cfd4e70aa923bacd16f601391c17cd4d7a6cbbeb1a52d3b335e159f6a37",
+        "fixture": "host-tokens-1664e3e249e5.css"
+      }
+    },
+    {
+      "version": "0.2.1-rc.3",
+      "webApp": "0.2.1-rc.3",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-rc.3",
+        "@deepseek-ai/dsh-tools": "0.2.1-rc.3"
+      },
+      "cordis": {
+        "pin": "~4.0.5",
+        "floor": "4.0.5",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5",
+        "floor": "3.18.5",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "0d398d2a6872a73a106cb3bd19303ecccf1637e1fcad4d0bf9d8a72d2c2c68f5",
+        "fixture": "host-standard-0d398d2a6872.patch.yml"
+      },
+      "tokens": {
+        "sha256": "bde1dfb47f2c6893b90ffd5572f8fce5142708ef82e76e5d0643e225ca2d1022",
+        "fixture": "host-tokens-1664e3e249e5.css"
+      }
+    },
+    {
+      "version": "0.2.1-rc.4",
+      "webApp": "0.2.1-rc.4",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-rc.4",
+        "@deepseek-ai/dsh-tools": "0.2.1-rc.4"
+      },
+      "cordis": {
+        "pin": "~4.0.5",
+        "floor": "4.0.5",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5",
+        "floor": "3.18.5",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "0d398d2a6872a73a106cb3bd19303ecccf1637e1fcad4d0bf9d8a72d2c2c68f5",
+        "fixture": "host-standard-0d398d2a6872.patch.yml"
+      },
+      "tokens": {
+        "sha256": "bde1dfb47f2c6893b90ffd5572f8fce5142708ef82e76e5d0643e225ca2d1022",
+        "fixture": "host-tokens-1664e3e249e5.css"
+      }
+    },
+    {
+      "version": "0.2.1-rc.5",
+      "webApp": "0.2.1-rc.5",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.1-rc.5",
+        "@deepseek-ai/dsh-tools": "0.2.1-rc.5"
+      },
+      "cordis": {
+        "pin": "~4.0.5",
+        "floor": "4.0.5",
+        "resolved": "4.0.5"
+      },
+      "schemastery": {
+        "pin": "~3.18.5",
+        "floor": "3.18.5",
+        "resolved": "3.18.5"
+      },
+      "standard": {
+        "sha256": "0d398d2a6872a73a106cb3bd19303ecccf1637e1fcad4d0bf9d8a72d2c2c68f5",
+        "fixture": "host-standard-0d398d2a6872.patch.yml"
+      },
+      "tokens": {
+        "sha256": "bde1dfb47f2c6893b90ffd5572f8fce5142708ef82e76e5d0643e225ca2d1022",
+        "fixture": "host-tokens-1664e3e249e5.css"
+      }
+    },
+    {
+      "version": "0.2.2-alpha.2",
+      "webApp": "0.2.2-alpha.2",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.2-alpha.2",
+        "@deepseek-ai/dsh-tools": "0.2.2-alpha.2"
+      },
+      "cordis": {
+        "pin": "~4.0.6-alpha.1",
+        "floor": "4.0.6-alpha.1",
+        "resolved": "4.0.6-alpha.2"
+      },
+      "schemastery": {
+        "pin": "~3.18.6-alpha.1",
+        "floor": "3.18.6-alpha.1",
+        "resolved": "3.18.6-alpha.2"
+      },
+      "standard": {
+        "sha256": "9afcefef0055d56b0e75f37c21784bc4246739bb2f07744aecf9bc4097209eb7",
+        "fixture": "host-standard-9afcefef0055.patch.yml"
+      },
+      "tokens": {
+        "sha256": "f59fea63617f720cb2fdbe018dcf295bced7c511bca016a204b672de3382a7f4",
+        "fixture": "host-tokens-7c4172562622.css"
+      }
+    },
+    {
+      "version": "0.2.2-alpha.3",
+      "webApp": "0.2.2-alpha.3",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.2-alpha.3",
+        "@deepseek-ai/dsh-tools": "0.2.2-alpha.3"
+      },
+      "cordis": {
+        "pin": "~4.0.6-alpha.2",
+        "floor": "4.0.6-alpha.2",
+        "resolved": "4.0.6-alpha.2"
+      },
+      "schemastery": {
+        "pin": "~3.18.6-alpha.2",
+        "floor": "3.18.6-alpha.2",
+        "resolved": "3.18.6-alpha.2"
+      },
+      "standard": {
+        "sha256": "3006cc3780cddaa7fb0089e5854e6bbef4409cf1d425930fd835226b95660afd",
+        "fixture": "host-standard-3006cc3780cd.patch.yml"
+      },
+      "tokens": {
+        "sha256": "7672fac6fc23846b1a7b7528c959cb18f73fea7f53215642bda708941bf4b9b7",
+        "fixture": "host-tokens-688d3bd029a5.css"
+      }
+    },
+    {
+      "version": "0.2.2-rc.1",
+      "webApp": "0.2.2-rc.1",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.2-rc.1",
+        "@deepseek-ai/dsh-tools": "0.2.2-rc.1"
+      },
+      "cordis": {
+        "pin": "~4.1.0",
+        "floor": "4.1.0",
+        "resolved": "4.1.0"
+      },
+      "schemastery": {
+        "pin": "~3.19.0",
+        "floor": "3.19.0",
+        "resolved": "3.19.0"
+      },
+      "standard": {
+        "sha256": "3006cc3780cddaa7fb0089e5854e6bbef4409cf1d425930fd835226b95660afd",
+        "fixture": "host-standard-3006cc3780cd.patch.yml"
+      },
+      "tokens": {
+        "sha256": "7672fac6fc23846b1a7b7528c959cb18f73fea7f53215642bda708941bf4b9b7",
+        "fixture": "host-tokens-688d3bd029a5.css"
+      }
+    }
+  ]
+}

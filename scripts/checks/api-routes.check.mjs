@@ -19,6 +19,15 @@ if (!existsSync(entry)) skip('api-routes', 'need packages/helmd/dist (run pnpm b
 // ~/.dsh state: every write goes to this throwaway home.
 process.env.DSH_HOME = mkdtempSync(join(tmpdir(), 'helmd-api-home-'))
 process.env.HELMD_CASES_DIR = mkdtempSync(join(tmpdir(), 'helmd-api-cases-'))
+// The bundle row evaluates — and by default REPAIRS — the package's preset
+// patch once per process start (health.ts boot contract). Redirect it to a
+// throwaway copy, or importing apply() rewrites the tracked artifact whenever
+// the installed host differs from its fingerprint (the committed snapshot
+// targets the newest in-interval host, not this machine's host).
+const presetProbeHome = mkdtempSync(join(tmpdir(), 'helmd-api-preset-'))
+const presetProbe = join(presetProbeHome, 'preset.generated.patch.yml')
+writeFileSync(presetProbe, readFileSync(join(distDir, '..', 'preset.generated.patch.yml'), 'utf8'), 'utf8')
+process.env.HELMD_PRESET_PATCH = presetProbe
 const report = createReporter('api-routes')
 
 const ROUTE_BASE = '/api/helmd'

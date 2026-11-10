@@ -3,13 +3,34 @@
 所有显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；
 完整发布注记与资产见 [GitHub Releases](https://github.com/ADWMC/helm-d/releases)。
 
+> **版本编号说明**（2026-11-06 补记）：
+> - 版本号唯一事实源是 `packages/helmd/package.json`，tag 必须等于 `v<合法 SemVer>`。
+> - `v0.5.1fix`（2026-10-24）是历史遗留的**非 SemVer tag**（`0.5.1fix` 不合法，应为 `v0.5.2`）；该号已随 v0.5.2 正式发布而废止，不再沿用此后任何"fix 后缀"写法。
+> - `v0.1.4` 从未创建（tag / release / 本日志均无），版本线从 0.1.3 直接到 0.1.5。
+> - 2026-11-02 仓库公开历史被压平为单个"初始提交（历史归档）"提交，0.5.2 及更早的 tag 均指向该提交；这些版本的条目日期取自原私有历史，**不可再经 git 核验**，以 GitHub Releases 页面的 `published_at` 为准。
 
 ## [Unreleased]
+
+### 发布流程整改（2026-11-06，纯文档，无代码与 preset 变更）
+
+- **release 格式定规**：新增 `docs/release-notes-template.md`（硬性规则 + 模板 + 发布后核验命令）；title 统一 `helm-d vX.Y.Z — 主题`，正文用单个 H1 并从 CHANGELOG 对应段复制，资产恰好 3 个 tgz 且照实标注 sha256
+- **废止非 SemVer tag**：`v0.5.1fix` 式自造后缀不再使用；prerelease 用 `-alpha.N` / `-rc.N` 并标 `--prerelease`，不靠"撤回"下架（0.5.3-rc 即按新规则处理）
+- **禁止静默换资产**：发布后不得替换已上传 asset（v0.5.1 / v0.5.2 / v0.4.0 / v0.4.2 曾静默重传，页面 `published_at` 不变）；确需修正就发新版本，或在正文顶部保留「覆盖重打」注记；发布后核验新增 `assets[].updated_at` 贴近 `published_at` 一条
+- **CHANGELOG 清理**：合并重复的 `[0.5.1]` 段（2026-10-20 草稿段内容并入 2026-10-21 正式段）、`[0.5.2]` 日期对齐 release 实际发布日 2026-10-27、头部补版本编号与历史归档说明
 
 ### 修复
 
 - 放宽 `@deepseek-ai/dsh-settings` / `@deepseek-ai/dsh-tools` 的 peer 依赖上界至 `<0.2.3-0`，兼容 DSH `0.2.2-rc.1`。
 - **工作台入口 hooks 顺序**：`HelmdPresetCapsuleButton` 原先在 `preset` 异步解析前 `return null`，随后才声明 `useState` / `useRef` / `useEffect`；当 preset 从 `undefined` 变为 `helmd` 时触发 React error #300，崩溃 `conversation.session.header.actions` 槽位并导致工作台入口消失。现将全部 hooks 移到条件返回之前，并新增 `client-hooks` 检查防止回归。
+
+### 宿主区间全版本适配（2026-11-10）
+
+- **受支持区间**：DSH `0.2.0-rc.1` – `0.2.2-rc.1` 区间内全部 15 个已发布版本（含 alpha/rc 全线）。事实源为 `scripts/checks/fixtures/dsh-host-manifest.json`：逐版本记录兄弟包钉版、cordis/schemastery 的 pin 与 floor/resolved、`standard` 内容哈希与 fixture、前端 token 契约。
+- **peer 范围按元组分段**：dsh-settings / dsh-tools 改为 `>=0.1.5-rc.1 <0.2.0-0 || >=0.2.0-rc.1 <0.2.1-0 || >=0.2.1-alpha.1 <0.2.2-0 || >=0.2.2-alpha.2 <0.2.3-0`，cordis / schemastery 同样补预发布分支——plain node-semver 只有比较子与版本同元组且带预发布时才准入预发布，旧宽范围在 plain 语义下漏掉整个 0.2.1 / 0.2.2 预发布线（新 `peer-range` 检查以两种语义逐版判定，旧范围在其上变红：26 + 18 个准入缺口）。
+- **双宿主 preset 回归**：新增 `preset-cross-host` 检查，对区间 7 份唯一 `standard`（按内容哈希去重）逐一生成并过运行时结构断言，且跨宿主自愈（异代 artifact → `HOST_UPGRADED` → 重生成锚定目标指纹）全覆盖；`ui-tokens` 扩展为同时核对 5 份区间 token 契约。
+- **桌面版 app.asar 支持**：桌面宿主树打包在 `resources/app.asar/dsh/node_modules/…`，npm/PATH 探测不可见。`locateHostStandard()`（根与 bundle 两份生成器、`health.ts` 三处镜像同步）新增桌面安装根探测 + 零依赖 asar 读取器（真实归档实测：含 374MB 带 integrity 的归档五层深路径），`DSH_DESKTOP_APP_ASAR` 可显式钉档；新增 `host-asar` 检查（官方 `@electron/asar` 4.3.1 生成的 fixture + 端到端 locate/repair）。
+- **快照重新生成**：`preset.generated.patch.yml` 按区间最新 `0.2.2-rc.1` 重新生成（修复 PR #9 改生成器后的内容 drift；装机时 setup 脚本仍按目标机重新生成，快照只是兜底）。
+- **未验证**：运行时冷启动未在 15 个宿主上一一执行；区间外版本（`0.2.3+`）显式排除；编译期 cohort 保持 `0.2.1-rc.2`（API 面跨代稳定，与运行时解耦）。
 
 ## [0.5.3] — 2026-11-04（Team/证据/recon/PoC/mining 全量落地）
 
@@ -89,7 +110,7 @@
 - **本地 eval harness**：`team-eval.ts` + `scripts/team-eval.mjs` 消费真实运行记录，计算六项 gate 指标；只有 pass 的 revision 才能 activate；新增 `team-eval` 检查，检查集 24 项
 - **工具数 34**：新增 `team_dispatch`；README / README.en / MAINTENANCE / 工具目录同步
 
-## [0.5.2] — 2026-10-28（重发：Case 会话隔离 + 原生工作台 + Hd 图标）
+## [0.5.2] — 2026-10-27（重发：Case 会话隔离 + 原生工作台 + Hd 图标）
 
 本版把工作台收回 DSH 官方槽位（破甲 / Case / 拦截 / 关于），补齐模型侧 L3 自主状态包与 L4-lite 调度建议，收紧结论 `repro_cmd` 门禁，并加固 Star 流程；重发补上 Case 按会话绑定与提示词注入、工作台 Hd 图标与 README 重写。移除 `find_tool` 与模型评测后工具数为 33，检查集 20 项。分发形态不变：payload / references / profiles 全封印。
 
@@ -143,14 +164,6 @@
 - **封包链路修复**：`build-sealed.mjs` 过去在 `.real/` 已存在时从它封包，会打进上一次的旧模块（本次即因此首次打出的包仍含旧 gate）；现在先清 `.real/`，始终封新鲜 `dist/`，并在入口是 stub 时直接报错
 - **死代码清理**：`PERSONA_START_MARKER`/`PERSONA_END_MARKER`、`pluginCtx`、`profileName`、`WaterfallListener` 及 11 处未用导入；`--noUnusedLocals --noUnusedParameters` 归零
 - **检查跟进 v2 契约**：preset-heal 的 artifact 断言接受 `persona via sealed profiles`，退役已随封印人设作废的 activation-line 断言（`pnpm test:checks` 14 PASS）
-
-## [0.5.1] — 2026-10-20（全加密分发包）
-
-- **npm 供应链扫描拒绝 0.5.0**（明文 references/362 篇 playbook + 插件机括源码触发自动审查，版本号被烧）——分发包全加密重构：
-- **payload.dat**：dist 真实模块 + scripts/** 封印（AES-256-GCM）；两个入口 stub（health.js/index.js）首导入自解压至 `.real/` 并按名 re-export
-- **references.dat**：362 篇参考封印；`read_reference` 运行时按需内存解密（repo 开发态自动回落明文目录）
-- **npm 包零明文**：persona/profiles/references/scripts 全封印；README 不入 npm 包（storefront 留在 GitHub）
-- **0.5.0 版本号作废**（staged-rejected 无法复用），跳号 0.5.1
 
 ## [0.5.1] — 2026-10-21（全加密分发 + 弹窗配色钉死 + 徽标动态化）
 

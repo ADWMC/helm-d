@@ -95,6 +95,106 @@ const TAILS = [
   ['@deepseek-ai', 'dsh', 'config', 'agent-presets', 'standard', 'agent.cordis.yml'],
 ]
 
+// ── desktop (Electron) host support ─────────────────────────────────────────
+// The desktop product bundles the whole dsh tree INSIDE its archive at
+// resources/app.asar/dsh/… (electron-builder `files: [{ from: dsh, to: 'dsh' }]`;
+// asarUnpack only lifts native modules out), so none of the node_modules probes
+// below can see it. productName is 'DeepSeek Harness'.
+const DESKTOP_ASAR_ENTRIES = [
+  'dsh/node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml',
+  'dsh/node_modules/@deepseek-ai/dsh-agent-presets/presets/standard/agent.cordis.yml',
+]
+
+/**
+ * Read one file out of an Electron `app.asar` without dependencies. Layout:
+ * a 4-byte LE length, a small pickled frame, the JSON filesystem map, then the
+ * file bytes at a 4-byte-aligned base; each entry's `offset` (string past 2 GiB
+ * archives) is relative to that base. Map keys carry the packing platform's
+ * separator, so lookups split on both. Returns null for anything unreadable.
+ */
+export function readAsarEntry(archive, entry) {
+  let buf
+  try { buf = readFileSync(archive) } catch { return null }
+  const jsonStart = buf.indexOf('{"files"')
+  if (jsonStart < 0) return null
+  // Brace-match the map: it is one JSON object and may contain braces in strings.
+  let depth = 0, end = -1, inStr = false, esc = false
+  for (let i = jsonStart; i < buf.length; i++) {
+    const c = buf[i]
+    if (inStr) {
+      if (esc) esc = false
+      else if (c === 0x5c) esc = true
+      else if (c === 0x22) inStr = false
+      continue
+    }
+    if (c === 0x22) inStr = true
+    else if (c === 0x7b) depth++
+    else if (c === 0x7d && --depth === 0) { end = i + 1; break }
+  }
+  if (end < 0) return null
+  let header
+  try { header = JSON.parse(buf.slice(jsonStart, end).toString('utf8')) } catch { return null }
+  // The map nests as directory → { files: { children } } per level; a file entry
+  // carries size/offset directly.
+  let map = header.files
+  let node = null
+  for (const part of entry.split(/[/\\]/)) {
+    if (map === null || typeof map !== 'object') return null
+    node = map[part]
+    if (node === undefined || node === null || typeof node !== 'object') return null
+    map = node.files
+  }
+  if (node === null || typeof node !== 'object' || typeof node.size !== 'number') return null
+  if (node.unpacked === true) {
+    // asarUnpack entries live as real files beside the archive.
+    try { return readFileSync(join(archive + '.unpacked', ...entry.split(/[/\\]/)), 'utf8') } catch { return null }
+  }
+  const base = (end + 3) & ~3
+  const start = base + Number(node.offset)
+  if (start + node.size > buf.length) return null
+  return buf.slice(start, start + node.size).toString('utf8')
+}
+
+/**
+ * Candidate desktop archives: the standard install roots for productName
+ * 'DeepSeek Harness', plus <PATH entry>/../../../resources/app.asar because the
+ * installed bundled CLI lives at <app>/resources/runtime/cli/bin.
+ * DSH_DESKTOP_APP_ASAR pins one archive explicitly.
+ */
+function desktopAsarCandidates() {
+  const out = []
+  const pinned = process.env.DSH_DESKTOP_APP_ASAR?.trim()
+  if (pinned) out.push(resolve(pinned))
+  const push = (p) => { if (p) out.push(p) }
+  const app = process.platform === 'win32' ? 'DeepSeek Harness' : 'DeepSeek Harness'
+  if (process.env.LOCALAPPDATA) push(join(process.env.LOCALAPPDATA, 'Programs', app, 'resources', 'app.asar'))
+  if (process.env.PROGRAMFILES) push(join(process.env.PROGRAMFILES, app, 'resources', 'app.asar'))
+  if (process.env['PROGRAMFILES(X86)']) push(join(process.env['PROGRAMFILES(X86)'], app, 'resources', 'app.asar'))
+  push('/Applications/DeepSeek Harness.app/Contents/Resources/app.asar')
+  if (process.env.HOME) push(join(process.env.HOME, 'Applications', 'DeepSeek Harness.app', 'Contents', 'Resources', 'app.asar'))
+  push('/opt/DeepSeek Harness/resources/app.asar')
+  const sep = process.platform === 'win32' ? ';' : ':'
+  for (const raw of (process.env.PATH ?? '').split(sep)) {
+    const dir = raw.replace(/[\\/]+$/, '')
+    if (dir !== '') push(join(dir, '..', '..', '..', 'resources', 'app.asar'))
+  }
+  return [...new Set(out)]
+}
+
+/**
+ * Read the host standard text. A located desktop archive is returned as
+ * `<archive>!<entry>` (the `!` form is what locateHostStandard hands back).
+ */
+export function readHostStandardText(located) {
+  const bang = located.indexOf('!')
+  if (bang <= 0) return readFileSync(located, 'utf8')
+  const archive = located.slice(0, bang)
+  const entry = located.slice(bang + 1)
+  const text = readAsarEntry(archive, entry)
+  if (text === null) throw new Error(`cannot read ${entry} out of the desktop archive ${archive}`)
+  return text
+}
+
 /** Candidate global node_modules roots: npm-reported, platform defaults, PATH prefixes. */
 function nodeModulesBases() {
   const bases = []
@@ -130,6 +230,13 @@ function locateHostStandard() {
     if (!exists(p)) throw new Error(`DSH_HOST_STANDARD_YML points to missing file: ${p}`)
     return p
   }
+  // Desktop installs first: the bundled host inside app.asar is the one that
+  // actually loads the plugin, and an npm-global dsh beside it is unrelated.
+  for (const archive of desktopAsarCandidates()) {
+    for (const entry of DESKTOP_ASAR_ENTRIES) {
+      if (readAsarEntry(archive, entry) !== null) return `${archive}!${entry}`
+    }
+  }
   const bases = [...new Set(nodeModulesBases().map((b) => resolve(b)))]
   const probed = []
   for (const b of bases) {
@@ -141,7 +248,8 @@ function locateHostStandard() {
   }
   throw new Error(
     'host standard preset not found; probed:\n  ' + probed.join('\n  ')
-    + '\nset DSH_HOST_STANDARD_YML to the host\'s dsh-web-app/presets/standard.patch.yml (dsh >= 0.1.7)',
+    + '\nset DSH_HOST_STANDARD_YML to the host\'s dsh-web-app/presets/standard.patch.yml (dsh >= 0.1.7),'
+    + ' or DSH_DESKTOP_APP_ASAR to a desktop installation\'s resources/app.asar',
   )
 }
 function exists(p) {
@@ -350,7 +458,7 @@ function assertShape(hostText, out, personaText, base) {
 
 // ── main ────────────────────────────────────────────────────────────────────
 const hostYml = locateHostStandard()
-const hostText = readFileSync(hostYml, 'utf8')
+const hostText = readHostStandardText(hostYml)
 const hostHash = createHash('sha256').update(hostText, 'utf8').digest('hex')
 const personaText = personaPath === null
   ? 'helmd ' + 'online' + '\n'

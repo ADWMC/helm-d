@@ -6,7 +6,7 @@
 // is touched.
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -120,6 +120,11 @@ await report.check('the patch ships no plaintext persona (sealed at build)', () 
 // The artifact this package actually ships, judged against the host actually
 // installed. Reported, not failed, while the installed host predates 0.1.7: the
 // generator only speaks the new shape, so there is nothing to assert yet.
+// The evaluation runs on a THROWAWAY COPY: with the default heal policy an
+// installed host that differs from the shipped fingerprint would otherwise
+// rewrite the tracked artifact (and leave a .bak) just for running the suite —
+// the committed snapshot deliberately targets the newest in-interval host, not
+// whatever host happens to be installed here.
 const realHost = (() => {
   // hostStandardEntry() honours DSH_HOST_STANDARD_YML, which this check points at
   // the fixture, so probe the installed host with the override lifted.
@@ -138,10 +143,18 @@ if (!realIs017) {
 } else {
   await report.check('the shipped patch reads OK against the installed host', () => {
     process.env.DSH_HOST_STANDARD_YML = realHost
-    process.env.HELMD_PRESET_PATCH = join(pkgDir, 'preset.generated.patch.yml')
+    const shipped = join(pkgDir, 'preset.generated.patch.yml')
+    const probe = join(home, 'shipped-probe.patch.yml')
+    writeFileSync(probe, readFileSync(shipped, 'utf8'), 'utf8')
+    process.env.HELMD_PRESET_PATCH = probe
     const base = evaluate()
     assert.equal(base.status, 'OK', `expected OK, got ${base.status}: ${base.detail}`)
     assert.match(base.detail, /artifact check OK \(\d+ rows \(host standard \+ helmd[^)]*\)\)/)
+    // The repair (if any) must land on the probe copy, never on the tracked file.
+    const bak = `${probe}.bak`
+    const untouched = existsSync(bak) ? readFileSync(bak, 'utf8') : readFileSync(probe, 'utf8')
+    assert.equal(readFileSync(shipped, 'utf8'), untouched,
+      'the tracked artifact must survive the suite untouched (the probe copy carries the repair)')
   })
 }
 

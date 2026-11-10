@@ -15,3 +15,4 @@ packages/helmd/preset.generated.patch.yml text eol=lf
 *.jpg binary
 *.ico binary
 *.zip binary
+*.asar binary

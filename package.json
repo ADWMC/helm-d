@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "semver": "^7.8.5",
     "typescript": "^5.9.3"
   },
   "packageManager": "pnpm@11.7.0",
