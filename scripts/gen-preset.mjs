@@ -278,6 +278,7 @@ function generate(hostText, personaText) {
     // mirroring how standard.patch.yml scopes tool-subagent inside the preset).
     `${basePrefix}- id: tool-agent-team`,
     `${' '.repeat(base + 2)}name: '@deepseek-ai/dsh-experimental-tool-agent-team'`,
+    `${' '.repeat(base + 2)}disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-experimental-tool-agent-team' && !e.disabled)"`,
     `${basePrefix}- id: helmd`,
     `${' '.repeat(base + 2)}name: '@adwmc/helm-d/agent'`,
   ]
@@ -287,8 +288,9 @@ function generate(hostText, personaText) {
   // matching preset-helmd), outside any plugins block, hence invisible to
   // pluginRowIds and to the helmd-only tool scoping.
   const teamServiceRow = [
-    '    - id: agent-team',
+    '    - id: helmd-agent-team',
     "      name: '@deepseek-ai/dsh-experimental-agent-team'",
+    `      disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-experimental-agent-team' && e.options?.id !== 'helmd-agent-team' && !e.disabled)"`,
     '      config:',
     '        maxMembers: 8',
   ]
