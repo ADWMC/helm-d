@@ -68,7 +68,7 @@ It is **not** an engine patch: no on-disk changes to approvals or the sandbox, a
 **Requirements**: Node >= 22.19 and the [`dsh`](https://github.com/deepseek-ai/deepseek-harness) CLI.
 
 ```bash
-dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.5.3/helm-d.tgz
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.6.0/helm-d.tgz
 dsh web
 ```
 
@@ -220,13 +220,13 @@ See [architecture](docs/architecture.md) and [design principles](docs/principles
 ```bash
 # Update: remove first, then install the target version (never latest/download)
 dsh plugin --profile web remove @adwmc/helm-d
-dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.5.3/helm-d.tgz
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.6.0/helm-d.tgz
 
 # Uninstall
 dsh plugin --profile web remove @adwmc/helm-d
 ```
 
-Replace `v0.5.3` with the target Release tag; do not use `releases/latest/download/*` as a profile dependency.
+Replace `v0.6.0` with the target Release tag; do not use `releases/latest/download/*` as a profile dependency.
 
 ## Docs
 

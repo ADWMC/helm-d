@@ -9,7 +9,24 @@
 > - `v0.1.4` 从未创建（tag / release / 本日志均无），版本线从 0.1.3 直接到 0.1.5。
 > - 2026-11-02 仓库公开历史被压平为单个"初始提交（历史归档）"提交，0.5.2 及更早的 tag 均指向该提交；这些版本的条目日期取自原私有历史，**不可再经 git 核验**，以 GitHub Releases 页面的 `published_at` 为准。
 
-## [Unreleased]
+## [0.6.0] — 2026-11-10（DSH 0.2.0-rc.1–0.2.2-rc.1 区间全版本适配 + 桌面 app.asar 自愈）
+
+### 宿主区间全版本适配
+
+- **受支持区间**：DSH `0.2.0-rc.1` – `0.2.2-rc.1` 区间内全部 15 个已发布版本（含 alpha/rc 全线）。事实源为 `scripts/checks/fixtures/dsh-host-manifest.json`：逐版本记录兄弟包钉版（dsh-web-app / dsh-settings / dsh-tools 与宿主锁步）、cordis/schemastery 的 pin 与 floor/resolved、`standard` 内容哈希与 fixture、前端 token 契约。
+- **peer 范围按元组分段**：dsh-settings / dsh-tools 改为 `>=0.1.5-rc.1 <0.2.0-0 || >=0.2.0-rc.1 <0.2.1-0 || >=0.2.1-alpha.1 <0.2.2-0 || >=0.2.2-alpha.2 <0.2.3-0`，cordis / schemastery 同样补预发布分支——plain node-semver 只有比较子与版本同 [major,minor,patch] 元组且带预发布时才准入预发布，旧宽范围在 plain 语义下漏掉整个 0.2.1 / 0.2.2 预发布线（新 `peer-range` 检查以两种语义逐版判定，旧范围在其上变红：26 + 18 个准入缺口）。
+- **双宿主 preset 回归**：新增 `preset-cross-host` 检查，对区间 7 份唯一 `standard`（按内容哈希去重）逐一生成并过运行时结构断言，且跨宿主自愈（异代 artifact → `HOST_UPGRADED` → 重生成锚定目标指纹）全覆盖；`ui-tokens` 扩展为同时核对 5 份区间 token 契约。
+- **桌面版 app.asar 支持**：桌面宿主树打包在 `resources/app.asar/dsh/node_modules/…`，npm/PATH 探测不可见。`locateHostStandard()`（根与 bundle 两份生成器、`health.ts` 三处镜像同步改）新增桌面安装根探测 + 零依赖 asar 读取器（真实归档实测：含 374MB 带 integrity 的归档五层深路径），`DSH_DESKTOP_APP_ASAR` 可显式钉一个归档；新增 `host-asar` 检查（官方 `@electron/asar` 4.3.1 生成的 fixture + 端到端 locate/repair）。
+- **快照重新生成**：`preset.generated.patch.yml` 按区间最新 `0.2.2-rc.1` 重新生成（修复 preset standdown PR 合入后的内容 drift；装机时 setup 脚本仍按目标机重新生成，快照只是兜底）。
+- **检查集 34 → 37**：新增 `peer-range` / `preset-cross-host` / `host-asar`；工具数不变（49）。
+- **未验证**：运行时冷启动未在 15 个宿主上一一执行；区间外版本（`0.2.3+`）显式排除；编译期 cohort 保持 `0.2.1-rc.2`（区间内 API 面跨代稳定，与运行时解耦）。
+
+### 修复
+
+- 放宽 `@deepseek-ai/dsh-settings` / `@deepseek-ai/dsh-tools` 的 peer 依赖上界至 `<0.2.3-0`，兼容 DSH `0.2.2-rc.1`（本版已并入上述按元组分段范围）。
+- **工作台入口 hooks 顺序**：`HelmdPresetCapsuleButton` 原先在 `preset` 异步解析前 `return null`，随后才声明 `useState` / `useRef` / `useEffect`；当 preset 从 `undefined` 变为 `helmd` 时触发 React error #300，崩溃 `conversation.session.header.actions` 槽位并导致工作台入口消失。现将全部 hooks 移到条件返回之前，并新增 `client-hooks` 检查防止回归。
+- **preset standdown**：与官方 Agent Teams bundle 并存时，helmd 预设插入的 `tool-agent-team` / `agent-team` 两行改带 `!!js` 条件——宿主根树已运行同名插件时自动让位，顶层服务行改用独立 id `helmd-agent-team`，避免团队成员上 `already registered in this scope` 与 agent 创建/销毁循环。
+- **检查套件副作用**：`preset-heal` 与 `api-routes`（`apply()` 启动自愈）原本会把 tracked 的 `preset.generated.patch.yml` 改写成装机宿主版本；现隔离到临时副本评核，`preset-heal` 增加「tracked 产物必须原样幸存」断言。
 
 ### 发布流程整改（2026-11-06，纯文档，无代码与 preset 变更）
 
@@ -17,20 +34,6 @@
 - **废止非 SemVer tag**：`v0.5.1fix` 式自造后缀不再使用；prerelease 用 `-alpha.N` / `-rc.N` 并标 `--prerelease`，不靠"撤回"下架（0.5.3-rc 即按新规则处理）
 - **禁止静默换资产**：发布后不得替换已上传 asset（v0.5.1 / v0.5.2 / v0.4.0 / v0.4.2 曾静默重传，页面 `published_at` 不变）；确需修正就发新版本，或在正文顶部保留「覆盖重打」注记；发布后核验新增 `assets[].updated_at` 贴近 `published_at` 一条
 - **CHANGELOG 清理**：合并重复的 `[0.5.1]` 段（2026-10-20 草稿段内容并入 2026-10-21 正式段）、`[0.5.2]` 日期对齐 release 实际发布日 2026-10-27、头部补版本编号与历史归档说明
-
-### 修复
-
-- 放宽 `@deepseek-ai/dsh-settings` / `@deepseek-ai/dsh-tools` 的 peer 依赖上界至 `<0.2.3-0`，兼容 DSH `0.2.2-rc.1`。
-- **工作台入口 hooks 顺序**：`HelmdPresetCapsuleButton` 原先在 `preset` 异步解析前 `return null`，随后才声明 `useState` / `useRef` / `useEffect`；当 preset 从 `undefined` 变为 `helmd` 时触发 React error #300，崩溃 `conversation.session.header.actions` 槽位并导致工作台入口消失。现将全部 hooks 移到条件返回之前，并新增 `client-hooks` 检查防止回归。
-
-### 宿主区间全版本适配（2026-11-10）
-
-- **受支持区间**：DSH `0.2.0-rc.1` – `0.2.2-rc.1` 区间内全部 15 个已发布版本（含 alpha/rc 全线）。事实源为 `scripts/checks/fixtures/dsh-host-manifest.json`：逐版本记录兄弟包钉版、cordis/schemastery 的 pin 与 floor/resolved、`standard` 内容哈希与 fixture、前端 token 契约。
-- **peer 范围按元组分段**：dsh-settings / dsh-tools 改为 `>=0.1.5-rc.1 <0.2.0-0 || >=0.2.0-rc.1 <0.2.1-0 || >=0.2.1-alpha.1 <0.2.2-0 || >=0.2.2-alpha.2 <0.2.3-0`，cordis / schemastery 同样补预发布分支——plain node-semver 只有比较子与版本同元组且带预发布时才准入预发布，旧宽范围在 plain 语义下漏掉整个 0.2.1 / 0.2.2 预发布线（新 `peer-range` 检查以两种语义逐版判定，旧范围在其上变红：26 + 18 个准入缺口）。
-- **双宿主 preset 回归**：新增 `preset-cross-host` 检查，对区间 7 份唯一 `standard`（按内容哈希去重）逐一生成并过运行时结构断言，且跨宿主自愈（异代 artifact → `HOST_UPGRADED` → 重生成锚定目标指纹）全覆盖；`ui-tokens` 扩展为同时核对 5 份区间 token 契约。
-- **桌面版 app.asar 支持**：桌面宿主树打包在 `resources/app.asar/dsh/node_modules/…`，npm/PATH 探测不可见。`locateHostStandard()`（根与 bundle 两份生成器、`health.ts` 三处镜像同步）新增桌面安装根探测 + 零依赖 asar 读取器（真实归档实测：含 374MB 带 integrity 的归档五层深路径），`DSH_DESKTOP_APP_ASAR` 可显式钉档；新增 `host-asar` 检查（官方 `@electron/asar` 4.3.1 生成的 fixture + 端到端 locate/repair）。
-- **快照重新生成**：`preset.generated.patch.yml` 按区间最新 `0.2.2-rc.1` 重新生成（修复 PR #9 改生成器后的内容 drift；装机时 setup 脚本仍按目标机重新生成，快照只是兜底）。
-- **未验证**：运行时冷启动未在 15 个宿主上一一执行；区间外版本（`0.2.3+`）显式排除；编译期 cohort 保持 `0.2.1-rc.2`（API 面跨代稳定，与运行时解耦）。
 
 ## [0.5.3] — 2026-11-04（Team/证据/recon/PoC/mining 全量落地）
 
