@@ -1,4 +1,4 @@
-# gen-preset: host=3006cc3780cddaa7fb0089e5854e6bbef4409cf1d425930fd835226b95660afd
+# gen-preset: host=e40bb192ed3b835312c2acd2ccd64d3bc4b85f80a7bc95b132cb18fbee190b5d
 
 - insert:
     - id: preset-helmd
@@ -41,6 +41,9 @@
             name: '@deepseek-ai/dsh-tool-schedule'
           - id: skill-filesystem
             name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              customSkillDirs:
+                - !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@deepseek-ai/dsh-agent-preset/package.json')), 'skills')
           - id: tool-skill
             name: '@deepseek-ai/dsh-tool-skill'
           - id: command-goal
@@ -93,6 +96,8 @@
             config:
               - id: tool-subagent-control
                 name: '@deepseek-ai/dsh-tool-subagent-control'
+                config:
+                  interrupt: false
               - id: tool-subagent
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
@@ -124,6 +129,8 @@
               searchTimeoutMs: 60000
           - id: present
             name: '@deepseek-ai/dsh-tool-present'
+          - id: tool-office
+            name: '@deepseek-ai/dsh-tool-office'
           - id: tool-plugin-manager
             name: '@deepseek-ai/dsh-plugin-manager/tools'
             disabled: !!js "!ctx.get('profileContext')"
@@ -131,12 +138,12 @@
             name: '@deepseek-ai/dsh-plugin-market/tools'
             disabled: true
           - id: tool-agent-team
-            name: '@deepseek-ai/dsh-experimental-tool-agent-team'
-            disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-experimental-tool-agent-team' && !e.disabled)"
+            name: '@deepseek-ai/dsh-tool-agent-team'
+            disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-tool-agent-team' && !e.disabled)"
           - id: helmd
             name: '@adwmc/helm-d/agent'
     - id: helmd-agent-team
-      name: '@deepseek-ai/dsh-experimental-agent-team'
-      disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-experimental-agent-team' && e.options?.id !== 'helmd-agent-team' && !e.disabled)"
+      name: '@deepseek-ai/dsh-agent-team'
+      disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-agent-team' && e.options?.id !== 'helmd-agent-team' && !e.disabled)"
       config:
         maxMembers: 8

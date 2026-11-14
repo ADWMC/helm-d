@@ -26,7 +26,7 @@
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -167,9 +167,12 @@ export function readAsarEntry(archive: string, entry: string): string | null {
 }
 
 /**
- * Candidate desktop archives: the standard install roots for productName
- * 'DeepSeek Harness', plus <PATH entry>/../../../resources/app.asar because the
- * installed bundled CLI lives at <app>/resources/runtime/cli/bin.
+ * Candidate desktop archives: the archive of the RUNNING packaged binary (the
+ * desktop host runs inside `resources/app.asar` on the same executable, so
+ * `process.execPath` and Electron's `process.resourcesPath` pin it for any
+ * install root), the standard per-OS install roots for productName 'DeepSeek
+ * Harness', plus <PATH entry>/../../../resources/app.asar because the installed
+ * bundled CLI lives at <app>/resources/runtime/cli/bin.
  * DSH_DESKTOP_APP_ASAR pins one archive explicitly.
  */
 function desktopAsarCandidates(): string[] {
@@ -177,6 +180,13 @@ function desktopAsarCandidates(): string[] {
   const pinned = process.env.DSH_DESKTOP_APP_ASAR?.trim()
   if (pinned) out.push(resolve(pinned))
   const push = (p: string) => { if (p) out.push(p) }
+  // Self-anchor first: a custom install root (D:\DeepSeek Harness, a portable
+  // build, …) matches none of the default locations, and the host that loads
+  // this plugin IS the packaged binary beside its own resources/app.asar.
+  const exeDir = dirname(process.execPath ?? '')
+  if (exeDir !== '' && exeDir !== '.') push(join(exeDir, 'resources', 'app.asar'))
+  const resourcesPath = (process as unknown as { resourcesPath?: unknown }).resourcesPath
+  if (typeof resourcesPath === 'string' && resourcesPath !== '') push(join(resourcesPath, 'app.asar'))
   const app = 'DeepSeek Harness'
   if (process.env.LOCALAPPDATA) push(join(process.env.LOCALAPPDATA, 'Programs', app, 'resources', 'app.asar'))
   if (process.env.PROGRAMFILES) push(join(process.env.PROGRAMFILES, app, 'resources', 'app.asar'))

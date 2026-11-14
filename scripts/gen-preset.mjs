@@ -23,6 +23,14 @@
  * <bundle>/presets/persona.txt (installed bundle; resolved relative to this
  * script so the same file works in both layouts).
  * Overridable host discovery env: DSH_HOST_STANDARD_YML
+ * Overridable host version (fixture/tests with a bare standard file): DSH_HOST_VERSION
+ *
+ * The host-native Agent Teams rows are emitted with the package names of the
+ * TARGET host generation: dsh 0.2.2-rc.2 renamed
+ * `@deepseek-ai/dsh-experimental-{tool-,}agent-team` to
+ * `@deepseek-ai/dsh-{tool-,}agent-team` (the experimental names stop at
+ * 0.2.2-rc.1). The version is read from the located host tree, so a renamed
+ * host never gets a specifier it cannot resolve.
  *
  * Usage:
  *   node scripts/gen-preset.mjs              # write the package-internal patch
@@ -46,6 +54,8 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(scriptDir, '..')
 
 const CHECK = process.argv.includes('--check')
+/** Set by locateHostStandard() when DSH_HOST_STANDARD_YML supplied the path. */
+let locatedFromEnv = false
 // --out <file|dir>: writers for installed-bundle / test use. Default already IS
 // the package-internal patch, so the health heal and setup scripts pass it only
 // to redirect (tests) or to be explicit.
@@ -156,9 +166,12 @@ export function readAsarEntry(archive, entry) {
 }
 
 /**
- * Candidate desktop archives: the standard install roots for productName
- * 'DeepSeek Harness', plus <PATH entry>/../../../resources/app.asar because the
- * installed bundled CLI lives at <app>/resources/runtime/cli/bin.
+ * Candidate desktop archives: the archive of the RUNNING packaged binary (the
+ * desktop host runs inside `resources/app.asar` on the same executable, so
+ * `process.execPath` and Electron's `process.resourcesPath` pin it for any
+ * install root), the standard install roots for productName 'DeepSeek Harness',
+ * plus <PATH entry>/../../../resources/app.asar because the installed bundled
+ * CLI lives at <app>/resources/runtime/cli/bin.
  * DSH_DESKTOP_APP_ASAR pins one archive explicitly.
  */
 function desktopAsarCandidates() {
@@ -166,6 +179,13 @@ function desktopAsarCandidates() {
   const pinned = process.env.DSH_DESKTOP_APP_ASAR?.trim()
   if (pinned) out.push(resolve(pinned))
   const push = (p) => { if (p) out.push(p) }
+  // Self-anchor first: a custom install root (D:\DeepSeek Harness, a portable
+  // build, …) matches none of the default locations, and the host that loads
+  // this plugin IS the packaged binary beside its own resources/app.asar.
+  const exeDir = dirname(process.execPath ?? '')
+  if (exeDir !== '' && exeDir !== '.') push(join(exeDir, 'resources', 'app.asar'))
+  const resourcesPath = process.resourcesPath
+  if (typeof resourcesPath === 'string' && resourcesPath !== '') push(join(resourcesPath, 'app.asar'))
   const app = process.platform === 'win32' ? 'DeepSeek Harness' : 'DeepSeek Harness'
   if (process.env.LOCALAPPDATA) push(join(process.env.LOCALAPPDATA, 'Programs', app, 'resources', 'app.asar'))
   if (process.env.PROGRAMFILES) push(join(process.env.PROGRAMFILES, app, 'resources', 'app.asar'))
@@ -228,6 +248,7 @@ function locateHostStandard() {
   if (process.env.DSH_HOST_STANDARD_YML) {
     const p = resolve(process.env.DSH_HOST_STANDARD_YML)
     if (!exists(p)) throw new Error(`DSH_HOST_STANDARD_YML points to missing file: ${p}`)
+    locatedFromEnv = true
     return p
   }
   // Desktop installs first: the bundled host inside app.asar is the one that
@@ -254,6 +275,116 @@ function locateHostStandard() {
 }
 function exists(p) {
   try { readFileSync(p); return true } catch { return false }
+}
+
+// ── host-generation-dependent row names ─────────────────────────────────────
+// dsh 0.2.2-rc.2 renamed the host-native Agent Teams packages; the experimental
+// names stop at 0.2.2-rc.1. A row's `name` is a package specifier the loader
+// imports only while the row is enabled, so a stale name silently drops the team
+// tools instead of failing loud — the generator must pick by target host.
+const TEAM_PACKAGES = {
+  tool: { current: '@deepseek-ai/dsh-tool-agent-team', legacy: '@deepseek-ai/dsh-experimental-tool-agent-team' },
+  service: { current: '@deepseek-ai/dsh-agent-team', legacy: '@deepseek-ai/dsh-experimental-agent-team' },
+}
+/** First host release that ships the renamed (non-experimental) packages. */
+const TEAM_RENAME_HOST = '0.2.2-rc.2'
+
+/** Split a located standard into its archive form (`archive!entry`) and entry path. */
+function splitLocated(located) {
+  const bang = located.indexOf('!')
+  return bang > 0
+    ? { archive: located.slice(0, bang), entry: located.slice(bang + 1) }
+    : { archive: null, entry: located }
+}
+
+/**
+ * The `@deepseek-ai` package directory that owns the located standard:
+ * `<…>/node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml`.
+ */
+function hostScope(located) {
+  const { archive, entry } = splitLocated(located)
+  if (archive === null) {
+    const dir = dirname(dirname(dirname(entry)))
+    return { archive: null, dir }
+  }
+  const parts = entry.split(/[/\\]/)
+  return { archive, dir: parts.slice(0, Math.max(0, parts.length - 3)).join('/') }
+}
+
+/** Read one file from the host package tree (filesystem or inside the desktop archive). */
+function readHostTreeFile(located, name) {
+  const scope = hostScope(located)
+  try {
+    if (scope.archive === null) {
+      const p = join(scope.dir, ...name.split('/'))
+      return exists(p) ? readFileSync(p, 'utf8') : null
+    }
+    return readAsarEntry(scope.archive, `${scope.dir}/${name}`)
+  } catch {
+    return null
+  }
+}
+
+/** The target host's version: explicit override, else the host CLI manifest. */
+function hostVersion(located) {
+  const override = process.env.DSH_HOST_VERSION?.trim()
+  if (override) return override
+  const text = readHostTreeFile(located, 'dsh/package.json')
+  if (text === null) return null
+  try {
+    const parsed = JSON.parse(text)
+    return typeof parsed.version === 'string' ? parsed.version : null
+  } catch {
+    return null
+  }
+}
+
+/** Semver precedence for the numeric-core prerelease versions hosts use here. */
+function compareVersions(a, b) {
+  const parse = (value) => {
+    const [core, pre = ''] = String(value).trim().replace(/^v/, '').split('-')
+    return { core: core.split('.').map((n) => Number.parseInt(n, 10) || 0), pre: pre === '' ? [] : pre.split('.') }
+  }
+  const x = parse(a)
+  const y = parse(b)
+  for (let i = 0; i < 3; i++) {
+    if (x.core[i] !== y.core[i]) return x.core[i] < y.core[i] ? -1 : 1
+  }
+  if (x.pre.length === 0 || y.pre.length === 0) {
+    return x.pre.length === y.pre.length ? 0 : x.pre.length === 0 ? 1 : -1
+  }
+  for (let i = 0; i < Math.min(x.pre.length, y.pre.length); i++) {
+    const p = x.pre[i]
+    const q = y.pre[i]
+    const pn = /^\d+$/.test(p)
+    const qn = /^\d+$/.test(q)
+    if (pn && qn) {
+      if (Number(p) !== Number(q)) return Number(p) < Number(q) ? -1 : 1
+    } else if (pn !== qn) {
+      return pn ? -1 : 1
+    } else if (p !== q) {
+      return p < q ? -1 : 1
+    }
+  }
+  return x.pre.length === y.pre.length ? 0 : x.pre.length < y.pre.length ? -1 : 1
+}
+
+/** Agent Teams package specifiers for the target host generation. */
+function teamPackageNames(located) {
+  const version = hostVersion(located)
+  if (version === null) {
+    // A bare standard file (DSH_HOST_STANDARD_YML, fixtures) carries no tree to
+    // read the version from; DSH_HOST_VERSION is then the only signal. Keep the
+    // pre-rename names, which the whole 0.2.0–0.2.2-rc.1 range resolves.
+    if (!locatedFromEnv) console.error('note: cannot read the host version; using the pre-0.2.2-rc.2 Agent Teams package names (set DSH_HOST_VERSION to override)')
+    return { tool: TEAM_PACKAGES.tool.legacy, service: TEAM_PACKAGES.service.legacy, version: null }
+  }
+  const renamed = compareVersions(version, TEAM_RENAME_HOST) >= 0
+  return {
+    tool: renamed ? TEAM_PACKAGES.tool.current : TEAM_PACKAGES.tool.legacy,
+    service: renamed ? TEAM_PACKAGES.service.current : TEAM_PACKAGES.service.legacy,
+    version,
+  }
 }
 
 // ── shared extraction (mirrored in packages/helmd/src/health.ts) ───────────
@@ -352,7 +483,7 @@ function rewriteEntryHeader(header, meta) {
   return out
 }
 
-function generate(hostText, personaText) {
+function generate(hostText, personaText, team) {
   const lines = hostText.replace(/\r\n/g, '\n').split('\n')
   // Trailing blank line from the final newline: it would land between the last
   // host row and our appended `helmd` row.
@@ -381,12 +512,14 @@ function generate(hostText, personaText) {
   if (personaStart < 0) throw new Error('host standard has no top-level `persona` row in plugins')
   if (personaEnd < 0) personaEnd = end
   const helmdRow = [
-    // Host-native experimental team tools, scoped to helmd sessions only (the
-    // service row below is the host-plane half; this row is the per-preset half,
+    // Host-native Agent Teams tools, scoped to helmd sessions only (the service
+    // row below is the host-plane half; this row is the per-preset half,
     // mirroring how standard.patch.yml scopes tool-subagent inside the preset).
+    // The specifier follows the target host generation (rc.2 dropped the
+    // `experimental-` prefix); see teamPackageNames().
     `${basePrefix}- id: tool-agent-team`,
-    `${' '.repeat(base + 2)}name: '@deepseek-ai/dsh-experimental-tool-agent-team'`,
-    `${' '.repeat(base + 2)}disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-experimental-tool-agent-team' && !e.disabled)"`,
+    `${' '.repeat(base + 2)}name: '${team.tool}'`,
+    `${' '.repeat(base + 2)}disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '${team.tool}' && !e.disabled)"`,
     `${basePrefix}- id: helmd`,
     `${' '.repeat(base + 2)}name: '@adwmc/helm-d/agent'`,
   ]
@@ -397,8 +530,8 @@ function generate(hostText, personaText) {
   // pluginRowIds and to the helmd-only tool scoping.
   const teamServiceRow = [
     '    - id: helmd-agent-team',
-    "      name: '@deepseek-ai/dsh-experimental-agent-team'",
-    `      disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-experimental-agent-team' && e.options?.id !== 'helmd-agent-team' && !e.disabled)"`,
+    `      name: '${team.service}'`,
+    `      disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '${team.service}' && e.options?.id !== 'helmd-agent-team' && !e.disabled)"`,
     '      config:',
     '        maxMembers: 8',
   ]
@@ -416,12 +549,12 @@ function generate(hostText, personaText) {
     ...teamServiceRow,
   ]
   const out = outLines.join('\n')
-  assertShape(hostText, out, personaText, base)
+  assertShape(hostText, out, personaText, base, team)
   return out.replace(/\n*$/, '') + '\n'
 }
 
 // ── assertions: fail loud, never emit a silently-wrong preset ──────────────
-function assertShape(hostText, out, personaText, base) {
+function assertShape(hostText, out, personaText, base, team) {
   const hostIds = pluginRowIds(hostText)
   const outIds = pluginRowIds(out)
   const expect = [...hostIds, 'helmd', 'tool-agent-team'].sort()
@@ -436,6 +569,13 @@ function assertShape(hostText, out, personaText, base) {
   if ((out.match(/@adwmc\/helm-d/g) ?? []).length !== 1) throw new Error('preset must declare helmd exactly once')
   if (!out.includes('- id: preset-helmd')) throw new Error('entry row `- id: preset-helmd` missing')
   if (!out.includes("name: '@deepseek-ai/dsh-agent-preset'")) throw new Error('entry must declare @deepseek-ai/dsh-agent-preset')
+  // The two host-native team rows must name the packages of the TARGET host
+  // generation (0.2.2-rc.2 renamed them); a leftover experimental name is a
+  // specifier the newer host cannot resolve.
+  const toolRow = out.match(new RegExp(`${' '.repeat(base)}- id: tool-agent-team\\n *name: '([^']+)'`))
+  if (toolRow === null) throw new Error('team tool row missing from output')
+  if (toolRow[1] !== team.tool) throw new Error(`team tool row must name ${team.tool}, got ${toolRow[1]}`)
+  if (!out.includes(`name: '${team.service}'`)) throw new Error(`team service row must name ${team.service}`)
 
   const basePrefix = ' '.repeat(base)
   const pStart = out.indexOf(`${basePrefix}- id: persona`)
@@ -463,7 +603,9 @@ const hostHash = createHash('sha256').update(hostText, 'utf8').digest('hex')
 const personaText = personaPath === null
   ? 'helmd ' + 'online' + '\n'
   : readFileSync(personaPath, 'utf8')
-const body = generate(hostText, personaText)
+const team = teamPackageNames(hostYml)
+console.log(`host team packages: ${team.tool} + ${team.service}${team.version === null ? ' (version unknown)' : ` (host ${team.version})`}`)
+const body = generate(hostText, personaText, team)
 const generated = `# gen-preset: host=${hostHash}\n\n` + body
 
 // Generated files are written with LF, but a Windows checkout with

@@ -1,6 +1,6 @@
 {
-  "$note": "Supported dsh host interval: every published version in [0.2.0-rc.1, 0.2.2-rc.1]. Generated 2026-11-10 from npm registry metadata + published packages. dsh-web-app / dsh-settings / dsh-tools / dsh-web-frontend / dsh-client-ui-theme are lockstep with the host version. cordis/schemastery `resolved` = max-satisfying published version at generation time; `floor` = lowest version the pin admits (what historical installs may run). Adding a new 0.2.x release: append a host entry (and its standard/token fixtures) — no check edits needed.",
-  "interval": ">=0.2.0-rc.1 <=0.2.2-rc.1",
+  "$note": "Supported dsh host interval: every published version in [0.2.0-rc.1, 0.2.2-rc.3]. Generated 2026-11-15 from npm registry metadata + published packages. dsh-web-app / dsh-settings / dsh-tools / dsh-web-frontend / dsh-client-ui-theme are lockstep with the host version. cordis/schemastery `resolved` = max-satisfying published version at generation time; `floor` = lowest version the pin admits (what historical installs may run). `standard` fixture = the published dsh-web-app `presets/standard.patch.yml`, named by the sha256 of its LF text. `tokens` fixture = sorted unique `--dsw-*: value` declarations extracted from that host's dsh-web-frontend `dist/assets/*.css` plus dsh-client-ui-theme `lib/client.js`; its `sha256` records the hash of those concatenated sources. Adding a new 0.2.x release: append a host entry (and its standard/token fixtures) — no check edits needed.",
+  "interval": ">=0.2.0-rc.1 <=0.2.2-rc.3",
   "hosts": [
     {
       "version": "0.2.0-rc.1",
@@ -390,6 +390,58 @@
       "tokens": {
         "sha256": "7672fac6fc23846b1a7b7528c959cb18f73fea7f53215642bda708941bf4b9b7",
         "fixture": "host-tokens-688d3bd029a5.css"
+      }
+    },
+    {
+      "version": "0.2.2-rc.2",
+      "webApp": "0.2.2-rc.2",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.2-rc.2",
+        "@deepseek-ai/dsh-tools": "0.2.2-rc.2"
+      },
+      "cordis": {
+        "pin": "~4.1.0",
+        "floor": "4.1.0",
+        "resolved": "4.1.0"
+      },
+      "schemastery": {
+        "pin": "~3.19.0",
+        "floor": "3.19.0",
+        "resolved": "3.19.0"
+      },
+      "standard": {
+        "sha256": "e40bb192ed3b835312c2acd2ccd64d3bc4b85f80a7bc95b132cb18fbee190b5d",
+        "fixture": "host-standard-e40bb192ed3b.patch.yml"
+      },
+      "tokens": {
+        "sha256": "d160fe47562e034932c6eb615013adf0673c1da6a56de71e4de2eb525193d413",
+        "fixture": "host-tokens-0d32bc154289.css"
+      }
+    },
+    {
+      "version": "0.2.2-rc.3",
+      "webApp": "0.2.2-rc.3",
+      "siblings": {
+        "@deepseek-ai/dsh-settings": "0.2.2-rc.3",
+        "@deepseek-ai/dsh-tools": "0.2.2-rc.3"
+      },
+      "cordis": {
+        "pin": "~4.1.0",
+        "floor": "4.1.0",
+        "resolved": "4.1.0"
+      },
+      "schemastery": {
+        "pin": "~3.19.0",
+        "floor": "3.19.0",
+        "resolved": "3.19.0"
+      },
+      "standard": {
+        "sha256": "e40bb192ed3b835312c2acd2ccd64d3bc4b85f80a7bc95b132cb18fbee190b5d",
+        "fixture": "host-standard-e40bb192ed3b.patch.yml"
+      },
+      "tokens": {
+        "sha256": "d160fe47562e034932c6eb615013adf0673c1da6a56de71e4de2eb525193d413",
+        "fixture": "host-tokens-0d32bc154289.css"
       }
     }
   ]

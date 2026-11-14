@@ -1,5 +1,5 @@
 // Subject: the plugin's peer ranges must admit every published dsh host in the
-// supported interval [0.2.0-rc.1, 0.2.2-rc.1] — under BOTH semver semantics,
+// supported interval [0.2.0-rc.1, 0.2.2-rc.3] — under BOTH semver semantics,
 // because the host's compatibility verdict (dsh-app-boot's
 // evaluatePluginCompatibility) could not be read locally: node-semver's default
 // refuses a prerelease unless a comparator shares its [major,minor,patch]

@@ -33,12 +33,13 @@
 
 > ⚠️ **禁止手改 `packages/helmd/preset.generated.patch.yml`**。平台行必须从当前宿主 `standard` 生成，否则 `pwsh`、`read` 等工具会缺失或在升级后漂移。两面的归属是分开的：host 面 `cordis.patch.yml` 挂**裸包名** `helm-d`（导出解析到 `dist/health.js`，只注册设置命名空间），agent 面主插件由 preset 末行的 `@adwmc/helm-d/agent` 声明（2026-09-11 起如此。此前 host 行写深路径 `helm-d/dist/health.js`，宿主 `client-modules` 的 `exactPackageSpecifier` 只认 `@scope/name` 两段，于是包的 `dsh.client` 从未被发现、设置卡片永远不出现——浏览器半边不是没跑，是没进模块图）。生成器内建断言：输出行集合 = 宿主 standard 行 + `helmd`、无重复 id、组合行已改写为 `preset-helmd` / `id: helmd`、声明 `@deepseek-ai/dsh-agent-preset`、persona 含激活词 `helmd online`、且 `helm-d` 恰好出现一次，违者构建即红。
 
-### 1.1 受支持宿主区间（`0.2.0-rc.1` – `0.2.2-rc.1` 全部已发布版本）
+### 1.1 受支持宿主区间（`0.2.0-rc.1` – `0.2.2-rc.3` 全部已发布版本）
 
-- **事实源**：`scripts/checks/fixtures/dsh-host-manifest.json`——区间内 15 个已发布版本逐一记录兄弟包钉版（dsh-web-app / dsh-settings / dsh-tools 与宿主锁步）、cordis/schemastery 的 pin 与 floor/resolved、`standard` 内容哈希与 fixture、前端 token 契约 fixture。新增 0.2.x 版本：追加 host 条目及其 fixture，检查无需改。
-- **验证深度（如实）**：peer 准入（两种 semver 语义）、preset 生成与跨宿主自愈（7 份唯一 standard）、UI token（5 份唯一契约）、`defineTool` API 面均经区间全版本回归；运行时冷启动未在 15 个宿主上一一执行。
+- **事实源**：`scripts/checks/fixtures/dsh-host-manifest.json`——区间内 17 个已发布版本逐一记录兄弟包钉版（dsh-web-app / dsh-settings / dsh-tools 与宿主锁步）、cordis/schemastery 的 pin 与 floor/resolved、`standard` 内容哈希与 fixture、前端 token 契约 fixture。新增 0.2.x 版本：追加 host 条目及其 fixture，检查无需改。fixture 取法：`standard` = 该版 `@deepseek-ai/dsh-web-app` 的 `presets/standard.patch.yml`（按 LF 文本 sha256 命名）；token 契约 = 该版 `dsh-web-frontend` 的 `dist/assets/*.css` 与 `dsh-client-ui-theme` 的 `lib/client.js` 里提取的 `--dsw-*: value` 去重排序，`tokens.sha256` 记的是这些源文本的哈希。
+- **团队包改名（`0.2.2-rc.2`）**：`@deepseek-ai/dsh-experimental-tool-agent-team` / `@deepseek-ai/dsh-experimental-agent-team` 改名为 `@deepseek-ai/dsh-tool-agent-team` / `@deepseek-ai/dsh-agent-team`。`gen-preset.mjs` 读宿主树 `@deepseek-ai/dsh/package.json` 的版本决定这两行的包名；裸 fixture（`DSH_HOST_STANDARD_YML`）下用 `DSH_HOST_VERSION` 覆盖；两者都拿不到时退回改名前的名字（覆盖 0.2.0–0.2.2-rc.1）。**不要把包名写死成常量**——行被启用时才导入，旧名在新宿主上是静默缺工具，不是报错。
+- **验证深度（如实）**：peer 准入（两种 semver 语义）、preset 生成与跨宿主自愈（8 份唯一 standard）、UI token（6 份唯一契约）、`defineTool` API 面均经区间全版本回归；运行时冷启动未在 17 个宿主上一一执行。
 - **编译期 cohort 保持 `0.2.1-rc.2`**：区间内插件 API 面（`defineTool` / cordis `Context` / schemastery）跨代稳定，编译期与运行时解耦；cohort 只影响类型与 lockfile，不构成运行时兼容面。
-- **桌面版（Electron）**：宿主树打包在 `resources/app.asar` 的 `dsh/node_modules/…` 内（asarUnpack 只解原生模块），npm/PATH 探测看不到。`locateHostStandard()` 先探桌面安装根（`%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\app.asar` 等，productName `DeepSeek Harness`；bundled CLI 所在 PATH 条目上溯三级），命中后以 `archive!entry` 形式返回并由零依赖 asar 读取器读取；`DSH_DESKTOP_APP_ASAR` 可显式钉一个归档。失败不抛，按未定位处理。
+- **桌面版（Electron）**：宿主树打包在 `resources/app.asar` 的 `dsh/node_modules/…` 内（asarUnpack 只解原生模块），npm/PATH 探测看不到。`locateHostStandard()` 先探桌面安装根：宿主自身可执行文件旁（`<dirname(process.execPath)>/resources/app.asar`，`ELECTRON_RUN_AS_NODE` 下 `process.execPath` 仍是打包后的 exe）与 Electron 的 `process.resourcesPath/app.asar` 优先，其后才是 `%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\app.asar` 等默认根与 bundled CLI 所在 PATH 条目上溯三级；命中后以 `archive!entry` 形式返回并由零依赖 asar 读取器读取；`DSH_DESKTOP_APP_ASAR` 可显式钉一个归档。失败不抛，按未定位处理。自定义安装根（如 `D:\…`）靠自锚定即可命中，不需要手工 pin。
 - **区间外**：`0.2.3-rc.1` / `0.3.0` 起显式排除（peer 上界 `<0.2.3-0`）；纳入新区间按同一流程扩 manifest 与 peer 分段。
 
 ## 2. 发布流程（checklist 式）

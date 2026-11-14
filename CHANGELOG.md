@@ -9,6 +9,18 @@
 > - `v0.1.4` 从未创建（tag / release / 本日志均无），版本线从 0.1.3 直接到 0.1.5。
 > - 2026-11-02 仓库公开历史被压平为单个"初始提交（历史归档）"提交，0.5.2 及更早的 tag 均指向该提交；这些版本的条目日期取自原私有历史，**不可再经 git 核验**，以 GitHub Releases 页面的 `published_at` 为准。
 
+## [Unreleased]
+
+### DSH 0.2.2-rc.3 适配
+
+- **受支持区间**：扩展到 DSH `0.2.0-rc.1` – `0.2.2-rc.3`，区间内全部 17 个已发布版本（新增 `0.2.2-rc.2` / `0.2.2-rc.3`）。`scripts/checks/fixtures/dsh-host-manifest.json` 仍是唯一事实源：rc.2 / rc.3 的兄弟包钉版（dsh-web-app / dsh-settings / dsh-tools 与宿主锁步）、cordis `~4.1.0`、schemastery `~3.19.0` 均取自 registry 实际发布元数据；peer 分段范围已覆盖这两个版本，无需改范围。
+- **新 fixture**：rc.2 / rc.3 共用一份 `standard`（sha256 `e40bb192…`，较 rc.1 新增 `tool-office` 平台行、`skill-filesystem` 的 `customSkillDirs`、`tool-subagent-control` 的 `interrupt: false`）与一份前端 token 契约（`dsh-web-frontend` 的 `dist/assets/*.css` + `dsh-client-ui-theme` 的 `lib/client.js` 提取，覆盖 client.js 用到的全部 28 个 `--dsw-*` token）。`desktop-app.asar` fixture 用官方 `@electron/asar` 4.3.1 重建，除目标 `standard` 外还带 `dsh/package.json`，使自愈路径能读出目标宿主版本。
+- **Agent Teams 包改名适配（行为修复）**：DSH `0.2.2-rc.2` 把宿主原生团队包 `@deepseek-ai/dsh-experimental-tool-agent-team` / `@deepseek-ai/dsh-experimental-agent-team` 改名为 `@deepseek-ai/dsh-tool-agent-team` / `@deepseek-ai/dsh-agent-team`（`experimental-*` 停在 `0.2.2-rc.1`）。preset 里这两行的 `name` 是包说明符，行被启用时才导入，旧名在新宿主上会静默丢掉团队工具。`gen-preset.mjs` 改为按目标宿主选择包名：优先读宿主树里 `@deepseek-ai/dsh/package.json` 的版本，`DSH_HOST_VERSION` 可覆盖（裸 fixture / 测试用），读不到时退回改名前的名字并打印提示；生成期断言两行包名与所选宿主一代一致，禁止在改名宿主残留 `dsh-experimental-*`。
+- **快照重新生成**：`preset.generated.patch.yml` 按运行中的 `0.2.2-rc.3` 桌面宿主重新生成（指纹 `e40bb192…`，含新的 `tool-office` 行、`interrupt: false` 与改名后的团队行）。
+- **桌面宿主定位修复（行为修复）**：0.6.0 只用平台默认安装根与 PATH 上溯探测桌面归档；装在自定义路径（本机 `D:\DeepSeek Harness`）或不在 PATH 上时定位失败，实测运行中的插件返回 `status: UNKNOWN`，于是 preset 自愈从不发生、旧团队包名一直留在产物里。`desktopAsarCandidates()`（`health.ts` 与两份 `gen-preset.mjs` 三处镜像）新增自锚定候选：`<dirname(process.execPath)>/resources/app.asar` 与 Electron 的 `process.resourcesPath/app.asar`，排在平台默认值之前。`host-asar` 新增子进程用例（伪造 `process.execPath`）断言自锚定定位 + 随包产物判定为 `OK`。
+- **检查更新**：`preset-cross-host` 逐宿主注入 `DSH_HOST_VERSION`，断言团队行包名符合该代宿主、且一份 `standard` 不跨越改名点、跨宿主自愈产物同样带目标代包名；`host-asar` 断言自愈产物写出改名后的包名；这两个检查原先借 `loadArtifacts()` 连带要求「装有 npm 全局 dsh」，无宿主机器上会整项 SKIP（其自述前提只有 dist），现改为只依赖构建产物。区间数 7 → 8 份唯一 `standard`、5 → 6 份唯一 token 契约，检查集仍为 37。
+- **未验证**：运行时冷启动未在 17 个宿主上逐一执行；编译期 cohort 仍钉在 `0.2.1-rc.2`（与运行时解耦）；`0.2.3+` 仍显式排除（peer 上界 `<0.2.3-0`）。
+
 ## [0.6.0] — 2026-11-10（DSH 0.2.0-rc.1–0.2.2-rc.1 区间全版本适配 + 桌面 app.asar 自愈）
 
 ### 宿主区间全版本适配
