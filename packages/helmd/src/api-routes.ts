@@ -17,15 +17,8 @@ import fs from 'node:fs'
 import { gateStatus, retryFlow, skipThisLaunch, switchProfile } from './gate.js'
 import { profileStatus } from './profile.js'
 import { checkForUpdate } from './update-check.js'
-import { listCasesOnDisk, loadHypotheses, countEvidence, loadFindings, listEvidence, getCase, updateFinding, renderSarif, findingTrend, renderCaseReport, severityCounts } from './case.js'
-import {
-  createTicket, assignRole, recordReport, recordHandoff, closeTicket, teamStatus, getTicket, recordSteer,
-  proposeRevision, evaluateRevision, activateRevision, rollbackRevision, listRevisions,
-  type ArtifactKind, type ReportState, type TeamRole,
-} from './team.js'
-import { startTeamWorker } from './team-worker.js'
+import { listCasesOnDisk, loadHypotheses, countEvidence, loadFindings, listEvidence, getCase, updateFinding, renderSarif, findingTrend, renderCaseReport } from './case.js'
 import { loadSettings, saveSettings } from './settings.js'
-import { listApprovals, decideApproval } from './approval.js'
 import { TOOL_CATALOG, catalogEntry } from './toolbox/catalog.js'
 import { installCatalogTool, installCatalogMirror, latestRelease, toolHealth, uninstallCatalogTool, updateCatalogTool } from './toolbox/installer.js'
 
@@ -91,23 +84,36 @@ function queryParam(req: unknown, name: string): string | undefined {
 }
 
 /** Read stream intercept stats from the llm-stream-hook's in-memory counters. */
-function getInterceptStats(): { count: number; lastTime: string | null; lastSnippet: string | null } {
+function getInterceptStats(): { count: number; lastTime: string | null; lastSnippet: string | null; history: Array<{ at: string; phase: string; model: string; snippet: string }> } {
   try {
     // llm-stream-hook.js exports getStreamInterceptionStats
     // But we can't import it directly (circular). Read from the log file instead.
     const dshHome = process.env.DSH_HOME?.trim() || join(homedir(), '.dsh')
     const logPath = join(dshHome, 'helmd-stream-intercept.log')
-    if (!fs.existsSync(logPath)) return { count: 0, lastTime: null, lastSnippet: null }
+    if (!fs.existsSync(logPath)) return { count: 0, lastTime: null, lastSnippet: null, history: [] }
     const lines: string[] = fs.readFileSync(logPath, 'utf8').split('\n').filter((l: string) => l.trim())
-    const last = lines[lines.length - 1]
-    const timeMatch = last.match(/\[([^\]]+)\]/)
-    const snippetMatch = last.match(/refusal="([^"]*)"/)
+    const parseLine = (line: string) => {
+      const timeMatch = line.match(/\[([^\]]+)\]/)
+      const phaseMatch = line.match(/\] \[([^\]]+)\]/)
+      const modelMatch = line.match(/model=([^ ]+)/)
+      const snippetMatch = line.match(/refusal="([^"]*)"/)
+      return {
+        at: timeMatch ? timeMatch[1] : '',
+        phase: phaseMatch ? phaseMatch[1] : '',
+        model: modelMatch ? modelMatch[1] : 'unknown',
+        snippet: snippetMatch ? snippetMatch[1].slice(0, 160) : '',
+      }
+    }
+    const history = lines.slice(-20).map(parseLine)
+    const last = lines[lines.length - 1] ?? ''
+    const lastParsed = parseLine(last)
     return {
       count: lines.length,
-      lastTime: timeMatch ? timeMatch[1] : null,
-      lastSnippet: snippetMatch ? snippetMatch[1].slice(0, 120) : null,
+      lastTime: lastParsed.at || null,
+      lastSnippet: lastParsed.snippet || null,
+      history,
     }
-  } catch { return { count: 0, lastTime: null, lastSnippet: null } }
+  } catch { return { count: 0, lastTime: null, lastSnippet: null, history: [] } }
 }
 
 export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void {
@@ -303,161 +309,6 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
         ...(c.findingsBySeverity !== undefined ? { findingsBySeverity: c.findingsBySeverity } : {}),
         ...(c.staleFindings !== undefined ? { staleFindings: c.staleFindings } : {}),
       })),
-    }
-  })
-
-  // Local approval queue for dynamic-worker high-risk commands (T-09).
-  route(`${ROUTE_BASE}/approvals`, async (req) => {
-    const method = String(req?.method ?? 'GET').toUpperCase()
-    if (method !== 'POST') return listApprovals(true)
-    requireJson(req)
-    const body = await readJsonBody(req) as Record<string, unknown> | undefined
-    const id = typeof body?.id === 'string' ? body.id.trim() : ''
-    const decision = body?.decision === 'deny' ? 'denied' : 'approved'
-    if (id === '') throw new HttpError(400, 'id is required')
-    try {
-      return decideApproval(id, decision)
-    } catch (error) {
-      throw new HttpError(400, error instanceof Error ? error.message : String(error))
-    }
-  })
-
-  // Team collaboration: local tickets/assignments/reports/handoffs.
-  route(`${ROUTE_BASE}/team`, async (req) => {
-    const method = String(req?.method ?? 'GET').toUpperCase()
-    if (method !== 'POST') {
-      const status = teamStatus()
-      const tickets = await Promise.all(status.tickets.map(async (ticket) => {
-        const findings = await loadFindings(ticket.caseDir).catch(() => [])
-        return { ...ticket, findingsBySeverity: severityCounts(findings) }
-      }))
-      return { ...status, tickets }
-    }
-    requireJson(req)
-    const body = await readJsonBody(req) as Record<string, unknown> | undefined
-    const action = String(body?.action ?? '')
-    try {
-      if (action === 'create') {
-        // Workbench tickets may exist without a bound case; give them a stable
-        // workspace under the helmd storage so child workers still get a cwd.
-        let caseDir = String(body?.caseDir ?? '').trim()
-        if (caseDir === '') {
-          const home = process.env.DSH_HOME?.trim() || join(homedir(), '.dsh')
-          caseDir = join(home, 'storages', 'helmd', 'team', 'standalone')
-          fs.mkdirSync(caseDir, { recursive: true })
-        }
-        return createTicket({
-          goal: String(body?.goal ?? ''),
-          caseDir,
-          roles: Array.isArray(body?.roles) ? body.roles.map(String) as TeamRole[] : undefined,
-          roleDeps: body?.roleDeps !== null && typeof body?.roleDeps === 'object'
-            ? body.roleDeps as Partial<Record<TeamRole, TeamRole[]>>
-            : undefined,
-          revision: typeof body?.revision === 'number' ? body.revision : undefined,
-          ...(typeof body?.budgetMinutes === 'number' || typeof body?.maxToolCalls === 'number'
-            ? {
-              budget: {
-                ...(typeof body?.budgetMinutes === 'number' ? { wallTimeMs: Math.max(1, Math.min(60, Math.round(body.budgetMinutes))) * 60_000 } : {}),
-                ...(typeof body?.maxToolCalls === 'number' ? { maxToolCalls: Math.max(1, Math.round(body.maxToolCalls)) } : {}),
-              },
-            }
-            : {}),
-        })
-      }
-      if (action === 'assign') {
-        return assignRole(String(body?.ticketId ?? ''), String(body?.role ?? '') as TeamRole, String(body?.sessionId ?? ''))
-      }
-      if (action === 'start') {
-        const started = await startTeamWorker({
-          ctx,
-          ticketId: String(body?.ticketId ?? ''),
-          role: String(body?.role ?? '') as TeamRole,
-          task: typeof body?.task === 'string' ? body.task : undefined,
-          parentSessionId: String(body?.parentSessionId ?? ''),
-        })
-        return { ticketId: started.ticketId, role: started.role, sessionId: started.sessionId }
-      }
-      if (action === 'steer') {
-        const ticket = getTicket(String(body?.ticketId ?? ''))
-        if (ticket === undefined) throw new Error('unknown ticket')
-        const role = String(body?.role ?? '') as TeamRole
-        const assignment = ticket.roles.find((item) => item.role === role)
-        if (assignment === undefined) throw new Error(`role ${role} is not part of the ticket`)
-        if (assignment.state !== 'running' || assignment.sessionId === undefined) throw new Error(`role ${role} is not running`)
-        const subagents = (ctx as unknown as { get?: (name: string) => any }).get?.('subagents')
-        const agents = (ctx as unknown as { get?: (name: string) => any }).get?.('agents')
-        const parent = agents?.get?.(String(body?.parentSessionId ?? ''))
-        if (subagents?.steerPrompt === undefined || parent === undefined) throw new Error('steer runtime unavailable')
-        const message = String(body?.message ?? '').trim()
-        if (message === '') throw new Error('message is required')
-        const controller = new AbortController()
-        await subagents.steerPrompt(parent, assignment.sessionId, [{ type: 'text', text: `[helm-d steer ${ticket.id}/${role}] ${message}` }], { kind: 'user' }, controller.signal)
-        return recordSteer(ticket.id, role, message)
-      }
-      if (action === 'report') {
-        return recordReport({
-          ticketId: String(body?.ticketId ?? ''),
-          role: String(body?.role ?? '') as TeamRole,
-          state: String(body?.state ?? 'progress') as ReportState,
-          summary: String(body?.summary ?? ''),
-          evidenceIds: Array.isArray(body?.evidenceIds) ? body.evidenceIds.map(String) : undefined,
-          repro: typeof body?.repro === 'string' ? body.repro : undefined,
-          budget: typeof body?.budget === 'number' ? body.budget : undefined,
-        })
-      }
-      if (action === 'handoff') {
-        return recordHandoff({
-          ticketId: String(body?.ticketId ?? ''),
-          from: String(body?.from ?? '') as TeamRole,
-          to: String(body?.to ?? '') as TeamRole,
-          question: String(body?.question ?? ''),
-        })
-      }
-      if (action === 'close') {
-        const outcome = body?.outcome === 'dropped' ? 'dropped' : 'done'
-        return closeTicket(String(body?.ticketId ?? ''), outcome)
-      }
-      throw new Error(`unknown team action: ${action || '(empty)'}`)
-    } catch (error) {
-      throw new HttpError(400, error instanceof Error ? error.message : String(error))
-    }
-  })
-
-  // Versioned team artifacts + eval gate.
-  route(`${ROUTE_BASE}/team/versions`, async (req) => {
-    const method = String(req?.method ?? 'GET').toUpperCase()
-    if (method !== 'POST') {
-      const kind = queryParam(req, 'kind') as ArtifactKind | undefined
-      const id = queryParam(req, 'id')
-      return { revisions: listRevisions(kind, id), status: teamStatus() }
-    }
-    requireJson(req)
-    const body = await readJsonBody(req, 65536) as Record<string, unknown> | undefined
-    const action = String(body?.action ?? '')
-    try {
-      const kind = String(body?.kind ?? '') as ArtifactKind
-      const id = String(body?.id ?? '')
-      if (action === 'propose') {
-        return proposeRevision({ kind, id, value: String(body?.value ?? ''), source: String(body?.source ?? 'local') })
-      }
-      if (action === 'evaluate') {
-        const revision = Number(body?.revision ?? 0)
-        const baseline = body?.baseline
-        const candidate = body?.candidate
-        if (typeof baseline !== 'object' || baseline === null || typeof candidate !== 'object' || candidate === null) {
-          throw new Error('baseline and candidate metric objects are required')
-        }
-        return evaluateRevision({ kind, id, revision, baseline: baseline as Record<string, number>, candidate: candidate as Record<string, number> })
-      }
-      if (action === 'activate') {
-        return activateRevision(kind, id, Number(body?.revision ?? 0))
-      }
-      if (action === 'rollback') {
-        return rollbackRevision(kind, id)
-      }
-      throw new Error(`unknown version action: ${action || '(empty)'}`)
-    } catch (error) {
-      throw new HttpError(400, error instanceof Error ? error.message : String(error))
     }
   })
 

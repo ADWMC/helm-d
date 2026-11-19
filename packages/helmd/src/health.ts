@@ -41,13 +41,6 @@ import { saveSettings } from './settings.js'
  * store for the running process.
  */
 export const Config = z.object({
-  team: z.object({
-    autoTicket: z.boolean().default(false).description('begin_case 时自动创建 team ticket'),
-    defaultRoles: z.array(z.string()).default(['triage', 'static', 'critic', 'reporter'])
-      .description('新 ticket 的默认角色集'),
-    maxParallelWorkers: z.number().min(1).max(8).default(4).description('每 ticket 同时运行的 worker 上限'),
-    defaultWallTimeMin: z.number().min(1).max(60).default(15).description('worker 默认超时（分钟）'),
-  }),
   intercept: z.object({
     enabled: z.boolean().default(true).description('流式拒绝拦截总开关'),
   }),
@@ -345,10 +338,7 @@ function rowIds(text: string): string[] {
 export function assertPresetArtifact(deployed: string, hostStandardText: string): { ok: boolean; detail: string } {
   const hostIds = rowIds(hostStandardText)
   const deployedIds = rowIds(deployed)
-  // tool-agent-team rides INSIDE the helmd preset's plugins list (host-native
-  // experimental team tools, helmd-scoped); the agent-team service row sits at
-  // the composition top level, outside any plugins block, so rowIds never sees it.
-  const expected = [...hostIds, 'helmd', 'tool-agent-team'].sort()
+  const expected = [...hostIds, 'helmd'].sort()
   if (JSON.stringify([...deployedIds].sort()) !== JSON.stringify(expected)) {
     return {
       ok: false,

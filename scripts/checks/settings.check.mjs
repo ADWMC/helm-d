@@ -1,8 +1,8 @@
-// Subject: the operator settings store and the team knobs wired to it. The
-// file is the single runtime store (workbench 设置 tab + DSH settings-page row
-// both land here), so clamping/merging and the team consumers are pinned.
+// Subject: the operator settings store. The file is the single runtime store
+// (workbench 设置 tab + DSH settings-page row both land here), so
+// clamping/merging — including the toolbox group — is pinned here.
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -13,61 +13,40 @@ const home = mkdtempSync(join(tmpdir(), 'helmd-settings-'))
 process.env.DSH_HOME = home
 if (!existsSync(join(distDir, 'settings.js'))) skip('settings', 'need packages/helmd/dist (run pnpm build)')
 const settings = await import(pathToFileURL(join(distDir, 'settings.js')).href)
-const team = await import(pathToFileURL(join(distDir, 'team.js')).href)
-const worker = await import(pathToFileURL(join(distDir, 'team-worker.js')).href)
 const report = createReporter('settings')
 
 await report.check('defaults are returned when no settings file exists', () => {
   assert.equal(existsSync(settings.settingsPath()), false)
   const s = settings.loadSettings()
   assert.equal(s.intercept.enabled, true)
-  assert.equal(s.team.maxParallelWorkers, 4)
-  assert.deepEqual(s.team.defaultRoles, ['triage', 'static', 'critic', 'reporter'])
+  assert.equal(s.toolbox.modelInstall, false)
 })
 
 await report.check('saveSettings deep-merges, clamps and persists', () => {
-  const saved = settings.saveSettings({ team: { maxParallelWorkers: 99, defaultRoles: ['triage', 'ghost'] }, star: { popupDelaySec: -5 } })
-  assert.equal(saved.team.maxParallelWorkers, 8)
+  const saved = settings.saveSettings({ intercept: { enabled: false }, star: { popupDelaySec: -5 } })
+  assert.equal(saved.intercept.enabled, false)
   assert.equal(saved.star.popupDelaySec, 0)
-  assert.deepEqual(saved.team.defaultRoles, ['triage'])
-  assert.equal(saved.intercept.enabled, true, 'untouched group keeps its value')
+  assert.equal(saved.advisory.autonomyPacket, true, 'untouched group keeps its value')
   const onDisk = JSON.parse(readFileSync(settings.settingsPath(), 'utf8'))
-  assert.equal(onDisk.team.maxParallelWorkers, 8)
+  assert.equal(onDisk.intercept.enabled, false)
 })
 
 await report.check('invalid values fall back to defaults instead of breaking', () => {
-  const saved = settings.saveSettings({ team: { maxParallelWorkers: 'x' }, advisory: { nextActionNudge: 'yes' } })
-  assert.equal(saved.team.maxParallelWorkers, settings.DEFAULT_SETTINGS.team.maxParallelWorkers)
+  const saved = settings.saveSettings({ star: { popupDelaySec: 'x' }, advisory: { nextActionNudge: 'yes' } })
+  assert.equal(saved.star.popupDelaySec, settings.DEFAULT_SETTINGS.star.popupDelaySec)
   assert.equal(saved.advisory.nextActionNudge, true)
 })
 
-await report.check('createTicket default roles follow the settings store', () => {
-  settings.saveSettings({ team: { defaultRoles: ['triage', 'static'] } })
-  const ticket = team.createTicket({ goal: 'roles from settings', caseDir: join(home, 'case') })
-  assert.deepEqual(ticket.roles.map((r) => r.role), ['triage', 'static'])
-})
-
-await report.check('worker start enforces the configured per-ticket concurrency limit', async () => {
-  settings.saveSettings({ team: { maxParallelWorkers: 1 } })
-  const ticket = team.createTicket({ goal: 'limit', caseDir: join(home, 'limit'), roles: ['triage', 'static'] })
-  const runtime = {
-    subagents: {
-      getProvider: () => ({ name: 'spawn' }),
-      startActivation: async (spec) => ({
-        childId: `child-${spec.label}`,
-        result: new Promise(() => { /* worker stays running for this test */ }),
-        dispose: async () => {},
-      }),
-    },
-  }
-  const started = await worker.startTeamWorker({
-    ticketId: ticket.id, role: 'triage', parentAgent: { id: 'parent' }, runtime,
-  })
-  assert.ok(started.sessionId.startsWith('child-'))
-  await assert.rejects(
-    () => worker.startTeamWorker({ ticketId: ticket.id, role: 'static', parentAgent: { id: 'parent' }, runtime }),
-    /concurrency limit/,
-  )
+await report.check('saveSettings keeps the stored toolbox group when saving other keys', () => {
+  // F-001 (settings audit): the merge used to drop the toolbox key, silently
+  // resetting modelInstall to the default on every unrelated save.
+  const stored = JSON.parse(readFileSync(settings.settingsPath(), 'utf8'))
+  stored.toolbox = { modelInstall: true }
+  writeFileSync(settings.settingsPath(), JSON.stringify(stored), 'utf8')
+  const saved = settings.saveSettings({ intercept: { enabled: true } })
+  assert.equal(saved.toolbox.modelInstall, true, 'toolbox survives an unrelated save')
+  const onDisk = JSON.parse(readFileSync(settings.settingsPath(), 'utf8'))
+  assert.equal(onDisk.toolbox.modelInstall, true, 'toolbox survives on disk too')
 })
 
 rmSync(home, { recursive: true, force: true })

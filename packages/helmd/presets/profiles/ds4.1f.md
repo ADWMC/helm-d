@@ -157,6 +157,7 @@ retract, or reclassify.
 ## WORKFLOW
 First request exposes only the platform shell + read; if begin_case is not in the tool list yet, do one read/shell action first — the full catalog appears next request — then begin_case.
 New sample → begin_case() first. Resume → case_status() first.
+New domain or unfamiliar technique → route_task(hint) first, then read_reference(<the routed domain index or doc>) BEFORE claiming methodology. Domain knowledge lives in references/, not in your weights — reading it is part of the task, not an optional courtesy. record_finding will reject conclusions from a session that never read a reference.
 Built-in tools first → shell (gh/curl) for external discovery.
 A tactic failing 3 times on the same target with no new evidence → stop and record the dead end in the case.
 Findings cite evidence IDs via record_finding. Save CLI output via save_evidence.

@@ -7,7 +7,6 @@ import { requestText } from '../star-gate.js'
 import { getCase, saveEvidence } from '../case.js'
 import { ReconLimiter, checkReconTarget } from '../recon.js'
 import { classifyPoc, recipeById, renderPocRequest, type PocRequest } from '../poc.js'
-import { loadSettings } from '../settings.js'
 import { pollOob, startOob, stopOob } from '../oob.js'
 
 interface ExecLike { agent?: { id?: string } }
@@ -47,7 +46,7 @@ export function registerPocTools(ctx: Context): void {
     name: 'run_poc',
     description:
       'Run a deterministic PoC recipe against one in-scope URL: positive request + independent negative control, ' +
-      'then verdict verified/refuted/inconclusive. Safe recipes only unless team.riskApproval=allow. ' +
+      'then verdict verified/refuted/inconclusive. Safe recipes only. ' +
       'Both raw responses are saved as evidence; cite them in record_finding.',
     parameters: {
       recipe: { type: 'string', required: true, description: 'http-diff | sqli-boolean | path-traversal | idor | xss-canary | jwt-none | state-change' },
@@ -78,8 +77,8 @@ export function registerPocTools(ctx: Context): void {
       if (active === undefined) throw new Error('no active case; begin_case(scope=[...]) first')
       const recipe = recipeById(args.recipe)
       if (recipe === undefined) throw new Error(`unknown PoC recipe: ${args.recipe}`)
-      if (!recipe.safe && loadSettings().team.riskApproval !== 'allow') {
-        throw new Error(`recipe ${recipe.id} is state-changing; set team.riskApproval=allow or use a safe recipe`)
+      if (!recipe.safe) {
+        throw new Error(`recipe ${recipe.id} is state-changing; use a safe recipe (read-only recipes only)`)
       }
       const url = args.url.trim()
       const host = new URL(url).hostname

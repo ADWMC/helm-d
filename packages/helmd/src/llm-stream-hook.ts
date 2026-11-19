@@ -234,6 +234,9 @@ let retryCount = 0
 let lastInterceptionTime: string | null = null
 let lastRefusalSnippet: string | null = null
 let lastRefusalPhase: string | null = null
+/** Recent interceptions for the workbench 拦截 tab (bounded ring). */
+const interceptionHistory: Array<{ at: string; phase: string; model: string; snippet: string }> = []
+const HISTORY_LIMIT = 20
 
 export function getStreamInterceptionStats(): {
   count: number
@@ -242,6 +245,7 @@ export function getStreamInterceptionStats(): {
   lastSnippet: string | null
   lastPhase: string | null
   logFile: string
+  history: Array<{ at: string; phase: string; model: string; snippet: string }>
 } {
   return {
     count: interceptionCount,
@@ -250,6 +254,7 @@ export function getStreamInterceptionStats(): {
     lastSnippet: lastRefusalSnippet,
     lastPhase: lastRefusalPhase,
     logFile: getLogFilePath(),
+    history: [...interceptionHistory],
   }
 }
 
@@ -297,7 +302,15 @@ function recordRefusal(
   lastInterceptionTime = new Date().toISOString()
   lastRefusalSnippet = snippet
   lastRefusalPhase = phase
-  appendInterceptLog(snippet ?? '(unknown)', phase, typeof modelName === 'string' ? modelName : undefined)
+  const model = typeof modelName === 'string' ? modelName : 'unknown'
+  interceptionHistory.push({
+    at: lastInterceptionTime,
+    phase,
+    model,
+    snippet: (snippet ?? '(unknown)').replace(/\r?\n/g, ' ').trim().slice(0, 160),
+  })
+  if (interceptionHistory.length > HISTORY_LIMIT) interceptionHistory.shift()
+  appendInterceptLog(snippet ?? '(unknown)', phase, model)
   appendLedger({
     kind: 'refusal', model: modelName, provider, attempt, phase,
     snippet, responseSnippet: snippet, final, failureClass, strategy,

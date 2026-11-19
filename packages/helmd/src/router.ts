@@ -81,6 +81,21 @@ const ROUTE_TOOL: Record<string, string> = {
   tools: 'skill_catalog', status: 'case_status',
 }
 
+/** PRIMARY route -> the reference doc to read BEFORE running the route tool.
+ *  The guidance chain audit (2026-11-19) showed the model never reads references
+ *  on its own: the card must name the doc and the order, not just the tool. */
+const ROUTE_REF: Record<string, string> = {
+  apk: 'android/index.md', jvm: 'native/jvm-mod-deobf-workflow.md',
+  shell: 'native/packer-handling.md', crypto: 'native/crypto-analysis-methodology.md',
+  strings: 'native/index.md', hook: 'android/frida-hook-principles.md',
+  pcap: 'protocol/index.md', har: 'protocol/index.md',
+  ioc: 'malware/index.md', malware: 'malware/malware-analysis-methodology.md',
+  llm: 'ai-security/index.md', web: 'web/index.md', native: 'native/index.md',
+  evidence: 'evidence/reporting.md', install: 'toolbox/tool-install.md',
+  network: 'toolbox/network-egress.md', tree: 'toolbox/decision-tree.md',
+  tools: 'toolbox/tool-matrix.md', status: 'evidence/workflow.md',
+}
+
 export interface RouteHit {
   key: string
   why: string
@@ -107,14 +122,19 @@ export function renderRoute(hint: string): string {
     card = [
       'PRIMARY: tree — 未命中已知信号，按分诊决策树处理',
       '依据: 关键词无匹配；先读 references/toolbox/decision-tree.md',
+      'FIRST: read_reference("toolbox/decision-tree.md") — 决策树定类型后再动手',
       '备选: skill_catalog 查看全目录',
     ].join('\n')
   } else {
     const primary = hits[0]
+    const ref = ROUTE_REF[primary.key]
     const lines = [
       `PRIMARY: ${primary.key} — ${catalog[primary.key] ?? ''}`,
       `依据: 命中关键词 ${hits.filter((_, i) => i < 3).length ? `"${hint.trim().slice(0, 40)}" → ${primary.why}` : primary.why}`,
     ]
+    if (ref !== undefined) {
+      lines.push(`FIRST: read_reference("${ref}") — 读方法论再动手；本会话没读过参考时 record_finding 会拒绝结论`)
+    }
     if (hits.length > 1) {
       lines.push(`备选: ${hits.slice(1, 4).map((h) => h.key).join(', ')}`)
     }
@@ -194,7 +214,9 @@ const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../refere
 export function registerRouterTools(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'skill_catalog',
-    description: 'List available reference topics and when to read them.',
+    description:
+      'List available reference topics and when to read them. Call this when a task names a domain ' +
+      '(android/web/native/protocol/malware/ai/evidence) and you have not yet read that domain\'s docs this session.',
     parameters: {
       domain: { type: 'string', description: 'Optional domain filter.' },
     },
@@ -210,7 +232,10 @@ export function registerRouterTools(ctx: Context): void {
 
   ctx.tools.register(defineTool({
     name: 'read_reference',
-    description: 'Read a reference doc on demand; apply your own judgment. Use "index.md" for master index. Output limited to 200 lines per call — use offset to continue.',
+    description:
+      'Read a reference doc BEFORE applying a technique from memory. Call route_task first — its card names the ' +
+      'doc to read. Use "index.md" for the master index with the task-routing table. Output limited to 200 lines ' +
+      'per call — use offset to continue. record_finding rejects conclusions from a session that never read one.',
     parameters: {
       path: { type: 'string', required: true, description: 'Path relative to references/.' },
       offset: { type: 'number', description: 'Line offset for pagination (default 0).' },
@@ -264,8 +289,8 @@ export function registerRouterTools(ctx: Context): void {
     name: 'route_task',
     description:
       'Deterministic first-hop router: match the task hint against signal keywords, ' +
-      'return the PRIMARY route plus a one-line rationale (dhicoc master-route contract). ' +
-      'Call before touching an unfamiliar sample.',
+      'return the PRIMARY route plus the reference doc to read FIRST and the tool for the opening evidence. ' +
+      'Call before touching an unfamiliar sample, then follow the card: read_reference, then the route tool.',
     parameters: {
       hint: { type: 'string', required: true, description: 'Short task description or sample filename.' },
     },
@@ -274,13 +299,21 @@ export function registerRouterTools(ctx: Context): void {
       const card = renderRoute(args.hint ?? '')
       const primary = matchRoute(args.hint ?? '')[0]?.key
       const tool = primary ? ROUTE_TOOL[primary] : undefined
+      const ref = primary ? ROUTE_REF[primary] : undefined
       const sessionId = exec?.agent?.id
-      if (sessionId && primary && tool) {
+      if (sessionId && primary) {
+        // Proof accepts EITHER reading the routed reference OR running the route
+        // tool (tool_called with no argIncludes is a disjunction across the list):
+        // the guidance chain audit showed tool-only proof recorded a 5% adoption
+        // rate because the model skipped the reading step entirely.
         submitAdvisory(sessionId, {
           key: `route:${primary}`,
           tier: 'recommended',
-          content: `PRIMARY=${primary} — 先用 ${tool} 取得第一条证据再下结论。`,
-          proof: { kind: 'tool_called', tools: [tool] },
+          content: `PRIMARY=${primary} — 先 read_reference(${ref ?? 'index.md'})，再用 ${tool ?? '领域工具'} 取得第一条证据。`,
+          proof: {
+            kind: 'tool_called',
+            tools: ['read_reference', ...(tool !== undefined ? [tool] : [])],
+          },
           withinTurns: 2,
           trackOnly: true,
         }, sessionEvents(exec?.agent, 'route_task').length)

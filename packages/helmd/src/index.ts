@@ -15,12 +15,9 @@ import { registerMalwareTools } from './tools/malware.js'
 import { registerAiSecurityTools } from './tools/ai-security.js'
 import { registerEvidenceTools } from './tools/evidence.js'
 import { registerToolboxTools } from './tools/toolbox.js'
-import { registerTeamTools } from './tools/team.js'
 import { registerReconTools } from './tools/recon.js'
 import { registerPocTools } from './tools/poc.js'
 import { registerMiningTools } from './tools/mining.js'
-import { registerTeamPolicy } from './team-policy.js'
-import { registerTeamContext } from './team-context.js'
 import { registerIcaContext } from './ica-context.js'
 import { registerGate } from './gate.js'
 
@@ -58,11 +55,6 @@ export function apply(ctx: Context): void {
     // Router tools: skill_catalog + read_reference + route_task + analysis_mode
     registerRouterTools(ctx)
 
-
-    // Local team protocol: role guard + orchestrator contract + dispatch.
-    registerTeamPolicy(ctx)
-    registerTeamContext(ctx)
-    registerTeamTools(ctx)
 
     // Case lifecycle: begin_case / case_status / record_finding / save_evidence / end_case
     registerCaseflowTools(ctx)

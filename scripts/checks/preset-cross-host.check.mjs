@@ -4,7 +4,7 @@
 // fixtures/host-standard-<sha>.patch.yml (deduplicated by content; see
 // fixtures/dsh-host-manifest.json). Two contracts are exercised per standard:
 //   1. generation: gen-preset.mjs produces an artifact that passes the runtime
-//      structural assertion (assertPresetArtifact) and keeps the team rows that
+//      structural assertion (assertPresetArtifact) and asserts the team rows are
 //      stand down when the host already runs the official Agent Teams bundle;
 //   2. cross-host repair: an artifact generated for a different host generation
 //      reads HOST_UPGRADED and is regenerated to the target fingerprint.
@@ -70,21 +70,9 @@ try {
       assert.equal(verdict.ok, true, `${std.fixture}: ${verdict.detail}`)
     })
 
-    await report.check(`the team rows stand down when the host already runs Agent Teams (${std.hosts[0]}…)`, () => {
-      // dsh 0.2.2-rc.2 renamed the host-native team packages; a standard must not
-      // straddle that rename, and the row must name the target host's packages.
-      const renamedHosts = std.hosts.filter((version) => semver.gte(version, '0.2.2-rc.2'))
-      assert.ok(renamedHosts.length === 0 || renamedHosts.length === std.hosts.length,
-        `standard ${std.sha256.slice(0, 12)} spans the Agent Teams rename: ${std.hosts.join(', ')}`)
-      const toolPackage = renamedHosts.length > 0
-        ? '@deepseek-ai/dsh-tool-agent-team'
-        : '@deepseek-ai/dsh-experimental-tool-agent-team'
-      assert.ok(text.includes(`name: '${toolPackage}'`), `host ${std.hosts[0]} must name ${toolPackage}`)
-      assert.match(text, /^ {10}- id: tool-agent-team$/m, 'the preset-scoped team tool row must exist')
-      assert.match(text, /disabled: !!js "\[\.\.\.\(ctx\.get\('loader'\)/, 'the team tool row must carry the host-standdown condition')
-      assert.match(text, /^    - id: helmd-agent-team$/m, 'the top-level team service row must exist under its own id')
-      assert.match(text, /^ {6}disabled: !!js "\[\.\.\.\(ctx\.get\('loader'\)/m, 'the team service row must carry the host-standdown condition')
+    await report.check(`the generated preset declares helmd exactly once (${std.hosts[0]}…)`, () => {
       assert.equal((text.match(/@adwmc\/helm-d/g) ?? []).length, 1, 'helmd must be declared exactly once')
+      assert.doesNotMatch(text, /agent-team/, 'team rows must not be present after the team removal')
     })
   }
 
@@ -113,10 +101,9 @@ try {
       assert.match(healed, new RegExp(`^# gen-preset: host=${hostHash}`), 'the repair must re-anchor the target fingerprint')
       const verdict = assertPresetArtifact(healed, hostText)
       assert.equal(verdict.ok, true, `healed artifact: ${verdict.detail}`)
-      const expectedTool = semver.gte(target.hosts[0], '0.2.2-rc.2')
-        ? '@deepseek-ai/dsh-tool-agent-team'
-        : '@deepseek-ai/dsh-experimental-tool-agent-team'
-      assert.ok(healed.includes(`name: '${expectedTool}'`), `the repair must name ${expectedTool}`)
+      // The team feature is gone: a repaired artifact must carry no Agent Teams
+      // specifier, neither the pre- nor the post-rename name.
+      assert.doesNotMatch(healed, /agent-team/, 'the repair must not re-add team rows')
     })
   }
 

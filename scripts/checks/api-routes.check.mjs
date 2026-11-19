@@ -31,7 +31,7 @@ process.env.HELMD_PRESET_PATCH = presetProbe
 const report = createReporter('api-routes')
 
 const ROUTE_BASE = '/api/helmd'
-const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry', 'settings', 'tools/catalog', 'tools/update', 'tools/mirror', 'case/sarif', 'case/report', 'approvals']
+const ROUTES = ['tools', 'intercept', 'profile', 'update', 'gate/retry', 'settings', 'tools/catalog', 'tools/update', 'tools/mirror', 'case/sarif', 'case/report']
 
 /** Registry contents, reachable only through register/schemas — no layer internals. */
 const registered = []
@@ -46,17 +46,6 @@ const services = {
   settings: { register: () => {} },
   webServer: { register: () => {} },
   agents: { get: (id) => ({ id }) },
-  subagents: {
-    getProvider: (name) => ({ name }),
-    startActivation: async () => ({
-      childId: 'sess-api-worker',
-      result: Promise.resolve({
-        stopReason: 'completed',
-        output: [{ type: 'text', text: '{"state":"ready","summary":"api worker","evidenceIds":["E-001"],"repro":"file sample"}' }],
-      }),
-      dispose: async () => {},
-    }),
-  },
 }
 
 const routes = new Map()
@@ -231,51 +220,14 @@ await report.check('GET /case/findings follows the same session binding', async 
   assert.deepEqual(other.payload.data, [])
 })
 
-await report.check('POST /team creates a local analysis ticket', async () => {
-  const created = await post(`${ROUTE_BASE}/team`, {
-    action: 'create',
-    goal: 'api team ticket',
-    caseDir: join(process.env.HELMD_CASES_DIR, 'team-case'),
-    roles: ['triage', 'static', 'critic', 'reporter'],
-  })
-  assert.equal(created.status, 200, `got ${created.status}: ${created.payload?.error ?? ''}`)
-  assert.equal(created.payload.data.state, 'open')
-  const listed = await call(`${ROUTE_BASE}/team`)
-  assert.ok(listed.payload.data.tickets.some((ticket) => ticket.goal === 'api team ticket'))
-})
-
-await report.check('POST /team starts a local worker and records its report', async () => {
-  const created = await post(`${ROUTE_BASE}/team`, {
-    action: 'create',
-    goal: 'api worker ticket',
-    caseDir: join(process.env.HELMD_CASES_DIR, 'api-worker-case'),
-    roles: ['triage'],
-  })
-  assert.equal(created.status, 200, created.payload?.error ?? '')
-  const started = await post(`${ROUTE_BASE}/team`, {
-    action: 'start',
-    ticketId: created.payload.data.id,
-    role: 'triage',
-    parentSessionId: 'sess-api',
-  })
-  assert.equal(started.status, 200, started.payload?.error ?? '')
-  assert.equal(started.payload.data.sessionId, 'sess-api-worker')
-  await new Promise((resolve) => setTimeout(resolve, 20))
-  const listed = await call(`${ROUTE_BASE}/team`)
-  const ticket = listed.payload.data.tickets.find((item) => item.id === created.payload.data.id)
-  assert.equal(ticket.roles[0].sessionId, 'sess-api-worker')
-  assert.equal(ticket.reports.at(-1).summary, 'api worker')
-  assert.equal(ticket.reports.at(-1).source, 'worker')
-})
-
 await report.check('GET/POST /settings round-trips and clamps through the store', async () => {
   const initial = await call(`${ROUTE_BASE}/settings`)
   assert.equal(initial.status, 200)
   assert.equal(initial.payload.data.intercept.enabled, true)
-  const saved = await post(`${ROUTE_BASE}/settings`, { star: { popupDelaySec: 9 }, team: { maxParallelWorkers: 2 } })
+  const saved = await post(`${ROUTE_BASE}/settings`, { star: { popupDelaySec: 9 }, advisory: { nextActionNudge: false } })
   assert.equal(saved.status, 200)
   assert.equal(saved.payload.data.star.popupDelaySec, 9)
-  assert.equal(saved.payload.data.team.maxParallelWorkers, 2)
+  assert.equal(saved.payload.data.advisory.nextActionNudge, false)
   assert.equal(saved.payload.data.intercept.enabled, true, 'untouched group survives the patch')
   const onDisk = JSON.parse(readFileSync(join(process.env.DSH_HOME, 'storages', 'helmd', 'settings.json'), 'utf8'))
   assert.equal(onDisk.star.popupDelaySec, 9)

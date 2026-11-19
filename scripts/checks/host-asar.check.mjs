@@ -102,10 +102,10 @@ try {
     assert.match(base.autoHeal, /^healed \(HOST_UPGRADED → OK\)/, `unexpected verdict: ${base.autoHeal}`)
     const healed = readFileSync(patchPath, 'utf8')
     assert.match(healed, new RegExp(`^# gen-preset: host=${newest.standard.sha256}`), 'the repair must anchor the archived host')
-    // The fixture archive carries the host CLI manifest, so the repair reads the
-    // target version and must emit the post-0.2.2-rc.2 Agent Teams package names.
-    assert.match(healed, /name: '@deepseek-ai\/dsh-tool-agent-team'$/m, 'the repair must name the archived host generation\'s team packages')
+    // The team rows were removed with the team feature; a repaired artifact must
+    // carry none of the Agent Teams specifiers, pre- or post-rename.
     assert.doesNotMatch(healed, /dsh-experimental-tool-agent-team/, 'the repair must not keep the pre-rename team package name')
+    assert.doesNotMatch(healed, /dsh-tool-agent-team/, 'the repair must not re-add the renamed team package either')
   })
 
   // A desktop install in a custom root (D:\…, portable) matches none of the

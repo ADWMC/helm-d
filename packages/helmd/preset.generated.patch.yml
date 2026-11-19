@@ -137,13 +137,5 @@
           - id: tool-plugin-market
             name: '@deepseek-ai/dsh-plugin-market/tools'
             disabled: true
-          - id: tool-agent-team
-            name: '@deepseek-ai/dsh-tool-agent-team'
-            disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-tool-agent-team' && !e.disabled)"
           - id: helmd
             name: '@adwmc/helm-d/agent'
-    - id: helmd-agent-team
-      name: '@deepseek-ai/dsh-agent-team'
-      disabled: !!js "[...(ctx.get('loader')?.entries?.() ?? [])].some((e) => e.options?.name === '@deepseek-ai/dsh-agent-team' && e.options?.id !== 'helmd-agent-team' && !e.disabled)"
-      config:
-        maxMembers: 8

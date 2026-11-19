@@ -11,15 +11,33 @@
 
 ## [Unreleased]
 
-### DSH 0.2.2-rc.3 适配
+### 兼容性
 
-- **受支持区间**：扩展到 DSH `0.2.0-rc.1` – `0.2.2-rc.3`，区间内全部 17 个已发布版本（新增 `0.2.2-rc.2` / `0.2.2-rc.3`）。`scripts/checks/fixtures/dsh-host-manifest.json` 仍是唯一事实源：rc.2 / rc.3 的兄弟包钉版（dsh-web-app / dsh-settings / dsh-tools 与宿主锁步）、cordis `~4.1.0`、schemastery `~3.19.0` 均取自 registry 实际发布元数据；peer 分段范围已覆盖这两个版本，无需改范围。
-- **新 fixture**：rc.2 / rc.3 共用一份 `standard`（sha256 `e40bb192…`，较 rc.1 新增 `tool-office` 平台行、`skill-filesystem` 的 `customSkillDirs`、`tool-subagent-control` 的 `interrupt: false`）与一份前端 token 契约（`dsh-web-frontend` 的 `dist/assets/*.css` + `dsh-client-ui-theme` 的 `lib/client.js` 提取，覆盖 client.js 用到的全部 28 个 `--dsw-*` token）。`desktop-app.asar` fixture 用官方 `@electron/asar` 4.3.1 重建，除目标 `standard` 外还带 `dsh/package.json`，使自愈路径能读出目标宿主版本。
-- **Agent Teams 包改名适配（行为修复）**：DSH `0.2.2-rc.2` 把宿主原生团队包 `@deepseek-ai/dsh-experimental-tool-agent-team` / `@deepseek-ai/dsh-experimental-agent-team` 改名为 `@deepseek-ai/dsh-tool-agent-team` / `@deepseek-ai/dsh-agent-team`（`experimental-*` 停在 `0.2.2-rc.1`）。preset 里这两行的 `name` 是包说明符，行被启用时才导入，旧名在新宿主上会静默丢掉团队工具。`gen-preset.mjs` 改为按目标宿主选择包名：优先读宿主树里 `@deepseek-ai/dsh/package.json` 的版本，`DSH_HOST_VERSION` 可覆盖（裸 fixture / 测试用），读不到时退回改名前的名字并打印提示；生成期断言两行包名与所选宿主一代一致，禁止在改名宿主残留 `dsh-experimental-*`。
-- **快照重新生成**：`preset.generated.patch.yml` 按运行中的 `0.2.2-rc.3` 桌面宿主重新生成（指纹 `e40bb192…`，含新的 `tool-office` 行、`interrupt: false` 与改名后的团队行）。
-- **桌面宿主定位修复（行为修复）**：0.6.0 只用平台默认安装根与 PATH 上溯探测桌面归档；装在自定义路径（本机 `D:\DeepSeek Harness`）或不在 PATH 上时定位失败，实测运行中的插件返回 `status: UNKNOWN`，于是 preset 自愈从不发生、旧团队包名一直留在产物里。`desktopAsarCandidates()`（`health.ts` 与两份 `gen-preset.mjs` 三处镜像）新增自锚定候选：`<dirname(process.execPath)>/resources/app.asar` 与 Electron 的 `process.resourcesPath/app.asar`，排在平台默认值之前。`host-asar` 新增子进程用例（伪造 `process.execPath`）断言自锚定定位 + 随包产物判定为 `OK`。
-- **检查更新**：`preset-cross-host` 逐宿主注入 `DSH_HOST_VERSION`，断言团队行包名符合该代宿主、且一份 `standard` 不跨越改名点、跨宿主自愈产物同样带目标代包名；`host-asar` 断言自愈产物写出改名后的包名；这两个检查原先借 `loadArtifacts()` 连带要求「装有 npm 全局 dsh」，无宿主机器上会整项 SKIP（其自述前提只有 dist），现改为只依赖构建产物。区间数 7 → 8 份唯一 `standard`、5 → 6 份唯一 token 契约，检查集仍为 37。
-- **未验证**：运行时冷启动未在 17 个宿主上逐一执行；编译期 cohort 仍钉在 `0.2.1-rc.2`（与运行时解耦）；`0.2.3+` 仍显式排除（peer 上界 `<0.2.3-0`）。
+- **DSH 区间上界 0.2.2-rc.1 → 0.2.2-rc.5**：补齐 0.2.2-rc.2/rc.3/rc.4/rc.5 四个版本（吸收远端 0c3a387 的 rc.2/rc.3 适配与 token fixture 提取方法）。npm 实测四版本同元组（cordis ~4.1.0 / schemastery ~3.19.0）、standard.patch.yml 字节一致（sha256 e40bb192ed3b…）、token 契约一致；peer 范围经双语义实测无缺口。落地：manifest 19 hosts、standard/token fixture、desktop-app.asar 重建、preset 快照重锚 e40bb1…。0.2.3+ 仍显式排除。
+- **桌面宿主定位修复**（来自远端 0c3a387）：desktopAsarCandidates()（health.ts 与两份 gen-preset.mjs 镜像）新增 process.execPath / process.resourcesPath 自锚定候选，修复自定义安装路径下 status UNKNOWN、preset 自愈从不发生。
+
+### 移除
+
+- **Team 功能整体移除**：删除 5 个模型工具（team_create / team_dispatch / team_status / team_report / team_steer）、ticket/进化/审批三层实现（team.ts / team-worker.ts / team-eval.ts / team-policy.ts / team-context.ts / approval.ts）、工作台 Team tab、/api/helmd/team* 与 /api/helmd/approvals 路由、team:eval 脚本、preset 的 tool-agent-team / helmd-agent-team 两行（含远端 0c3a387 加的按宿主代选包名逻辑）、settings.team 配置组。工具数 49 → 44；工作台 7 tab → 6 tab。动机：两轮审查证实进化层/审批层从未被使用（versions.json 不存在、approvals.json 恒空）、ticket 无收尾闭环、handoff 前后端均未接线——维护成本大于价值。
+
+### 修复（UX 审查）
+
+- **saveSettings 合并丢 toolbox 键**：merged 对象遗漏第五键 toolbox，任何设置保存都会把 toolbox.modelInstall=true 静默重置为 false；补齐 merge 并新增回归断言。
+- **工作台 12 个 API 静默吞错**：poll() 的 fetch 全部 .catch(()=>null)，后端不可达时 UI 无提示显示空/陈旧数据；现统计失败数并渲染错误横幅（完全不可达保留旧数据并提示过期）。
+- **Case tab 导出入口**：报告（markdown）与 SARIF 2.1.0 导出端点早已存在但无 UI 入口；case 卡头部新增两个链接。
+- **拦截 Tab 历史**：原来只渲染 4 行硬编码内容；getInterceptStats 现从日志解析最近 20 条拦截记录（时间/阶段/模型/摘录），前端逐条渲染。
+- **SettingsNumber 无法清空**：受控 input 在删除时 Number()=NaN 强制回落最小值；改为本地文本 state，仅合法数值提交。
+- **About 过时摘要**：离线 fallback 更新日志写着工具数 33 / 4 tab（v0.4 时代）；改为明确的拉取失败提示加当前能力概览。
+- **finding triage 静默降级**：无 sessionId 时 patchFinding 直接 return，按钮点了没反应；现经面板级 notice 提示原因。
+- **finding detail 截断**：240 字截断无展开；超长 detail 现可展开/收起。
+- **asset select 反模式**：choice.assets[0].name 直接变异对象且 select 不受控；改为独立 pickedAsset state。
+- **Star gate retryAt 渲染**：后端返回退避时间但前端只显示稍后自动重试；现渲染将于 m:ss 后自动重试。
+- **中英混杂清理**：空态英文残留（Adjusted filter / Open hypotheses / Open right sidebar）改为中文。
+- **run_poc 描述**：移除已失效的 team.riskApproval 引用（状态变更类 recipe 一律拒绝）。
+
+### 修复（references 引导链）
+
+- **知识库引导链五层修复**：ledger 实测 route:* 建议采纳率 5%。persona WORKFLOW 加知识库条款（profiles.dat 重建）、skill_catalog/read_reference/route_task 描述加触发子、ROUTE_REF 18 路由→首读文档映射 + 卡片 FIRST 行、armReferenceGuidance（ref:read-first，闲置的 reference_read proof 首个生产者）、persist 领域工具输出后的 ref reminder 尾注。
 
 ## [0.6.0] — 2026-11-10（DSH 0.2.0-rc.1–0.2.2-rc.1 区间全版本适配 + 桌面 app.asar 自愈）
 

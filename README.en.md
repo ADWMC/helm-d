@@ -9,7 +9,7 @@
 
 **A security-analysis plugin for DeepSeek Harness.**
 
-49 tools · 353 reference docs + 9 indexes · enforced evidence chain · four hot-swappable persona profiles · local Team collaboration
+44 tools · 353 reference docs + 9 indexes · enforced evidence chain · four hot-swappable persona profiles
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -56,7 +56,7 @@ Telegram / X / Apple / Google / GPT accounts and memberships, with order lookup 
 
 helm-d is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin. It does not modify the host binary; it adds four things through cordis hooks:
 
-- **49 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle, routing and local Team dispatch.
+- **44 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle and routing.
 - **An evidence chain**: tool output lands in `evidence/`; conclusions must cite E ids and a reproducible `repro_cmd`.
 - **On-demand knowledge**: 353 reference docs plus 9 indexes read through `read_reference`, never stuffed into the system prompt.
 - **Four persona tiers**: ds4.1f / stealth / redteam-max / gpt-6x, switched from the workbench without restarting the host.
@@ -107,7 +107,7 @@ Citing an E id that does not exist is rejected. `repro_cmd` is required: a concl
 | **Persona profiles** | ds4.1f / stealth / redteam-max / gpt-6x; `POST /api/helmd/profile` disposes and re-registers the persona section in place — no host restart |
 | **On-demand references** | 353 docs plus 9 indexes routed by `skill_catalog` and read by `read_reference`, not injected into the system prompt |
 | **Autonomy packet** | `case_status` returns hypotheses, findings, evidence, dead ends, the matching playbook and the next action |
-| **Workbench** | Seven tabs — Armor / Case / Team / Tools / Intercept / Settings / About — with a sidebar-first entry, backed by `/api/helmd/*` |
+| **Workbench** | Six tabs — Armor / Case / Tools / Intercept / Settings / About — with a sidebar-first entry, backed by `/api/helmd/*` |
 
 <details>
 <summary>What the four persona profiles change (expand)</summary>
@@ -129,18 +129,17 @@ Click the `helmd` workbench button in the DSH session header. It opens the right
 
 - **Profiles**: switch between the four personas live.
 - **Case**: the case bound to this session — hypotheses, findings, evidence and open questions. When unbound it shows a hint plus recent on-disk cases instead of another session's investigation.
-- **Team**: local multi-agent collaboration — tickets, role workers, reports, evidence, evolution revisions and the A/B gate.
 - **Tools**: external tool catalog (GitHub repos only), install status, release-asset install/uninstall.
-- **Intercept**: counts and excerpts from the stream refusal loop.
-- **Settings**: Team concurrency / default roles / auto-ticket, intercept switch, autonomy helpers, Star delay — one store shared with the DSH settings page.
+- **Intercept**: counts and recent history from the stream refusal loop.
+- **Settings**: intercept switch, autonomy helpers, Star delay — one store shared with the DSH settings page.
 - **About**: version, author, disclaimer, update address, changelog and an on-demand update check.
 
 ## Tools
 
-Most-used entry points: `begin_case` / `case_status` / `record_finding` / `update_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode` / `team_create` / `team_dispatch` / `team_status`.
+Most-used entry points: `begin_case` / `case_status` / `record_finding` / `update_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode`.
 
 <details>
-<summary><strong>All 49 tools (expand by domain)</strong></summary>
+<summary><strong>All 44 tools (expand by domain)</strong></summary>
 
 | Domain | Tools |
 |---|---|
@@ -157,7 +156,6 @@ Most-used entry points: `begin_case` / `case_status` / `record_finding` / `updat
 | **Recon** | `recon_passive` `recon_ports` `recon_http` `recon_crawl` `recon_import` |
 | **PoC / Mining / OOB** | `run_poc` `mine_candidates` `oob_start` `oob_poll` `oob_stop` |
 | **Toolbox** | `tool_recommend` `toolbox` |
-| **Team** | `team_dispatch` `team_create` `team_status` `team_report` `team_steer` |
 
 </details>
 
@@ -213,7 +211,7 @@ See [architecture](docs/architecture.md) and [design principles](docs/principles
 
 | Item | Requirement |
 |---|---|
-| DSH | every published version in `0.2.0-rc.1` – `0.2.2-rc.3` (preset generation/repair and workbench UI tokens regression-tested across the whole interval; runtime cold-start not executed on each of the 17 hosts) |
+| DSH | every published version in `0.2.0-rc.1` – `0.2.2-rc.5` (preset generation/repair and workbench UI tokens regression-tested across the whole interval; runtime cold-start not executed on each of the 19 hosts) |
 | Node | `>= 22.19.0` |
 | Platform | Windows uses `pwsh`; Linux / macOS use `bash`; WSL via `wsl.exe` |
 

@@ -7,7 +7,7 @@ import { getCase, saveEvidence, loadHypotheses, loadFindings, listEvidence } fro
 import { getLevel } from './mode.js'
 import { deriveNextAction } from './autonomy.js'
 import { submitAdvisory } from './advisory.js'
-import { sessionEvents } from './session-log.js'
+import { sessionEvents, toolCalls } from './session-log.js'
 import { loadSettings } from './settings.js'
 
 const NO_PERSIST = new Set([
@@ -16,8 +16,6 @@ const NO_PERSIST = new Set([
   'evidence_reference', 'native_reference', 'web_reference',
   'malware_reference', 'ai_reference', 'protocol_reference',
   'tool_recommend',
-  // coordination, not an artifact of the analysis
-  'team_dispatch',
   // case lifecycle / ledger bookkeeping itself
   'begin_case', 'case_status', 'record_finding', 'end_case', 'save_evidence',
   'record_hypothesis', 'update_hypothesis',
@@ -31,6 +29,14 @@ const NO_PERSIST = new Set([
 export function isNoPersist(toolName: string): boolean {
   return NO_PERSIST.has(toolName)
 }
+
+/** Domain tools whose output feeds methodology conclusions — reading the domain's
+ *  reference before/around them is the discipline the reminder enforces. */
+const DOMAIN_TOOLS = new Set([
+  'apk_fingerprint', 'detect_packer', 'scan_strings', 'xor_bruteforce', 'encoding_detect',
+  'pcap_parse', 'parse_har', 'ioc_extract', 'yara_gen', 'llm_sim', 'bot_analyze',
+  'triage_artifact', 'state_machine',
+])
 
 const lastNudge = new Map<string, { at: number; next: string }>()
 
@@ -90,6 +96,20 @@ async function persistHook(
   } catch {
     // The nudge is best-effort; a case/ledger read failure must not break the tool result.
   }
+  // Reference-read reminder: a domain tool ran but this session never read a
+  // reference doc (guidance chain audit 2026-11-19: the model skips the reading
+  // step unless reminded at the point of use; record_finding will reject
+  // conclusions from such a session anyway — say it before, not after).
+  let refNote = ''
+  if (sessionId !== undefined && DOMAIN_TOOLS.has(toolName)) {
+    try {
+      const events = sessionEvents(agent as unknown as Parameters<typeof sessionEvents>[0], 'persist')
+      const alreadyRead = toolCalls(events).some((c) => c.name === 'read_reference')
+      if (!alreadyRead) {
+        refNote = '\n[ref reminder: this session has not read any reference doc. read_reference("<domain>/index.md") before drawing methodology conclusions; record_finding will reject otherwise.]'
+      }
+    } catch { /* session log unavailable — skip the reminder */ }
+  }
   if (large) {
     return [
       `[evidence: ${id} saved to ${active.name} — full output is ${result.length} bytes at ${path}]`,
@@ -98,9 +118,9 @@ async function persistHook(
       result.slice(0, 4096),
       '--- tail ---',
       result.slice(-4096),
-    ].join('\n')
+    ].join('\n') + refNote
   }
-  return result + `\n[evidence: ${id} saved to ${active.name}]`
+  return result + `\n[evidence: ${id} saved to ${active.name}]` + refNote
 }
 
 /**

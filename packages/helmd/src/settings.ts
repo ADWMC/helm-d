@@ -12,24 +12,8 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, normalize } from 'node:path'
-import { TEAM_ROLES, type TeamRole } from './team.js'
 
 export interface HelmdSettings {
-  team: {
-    /** begin_case 也自动开一个 team ticket。 */
-    autoTicket: boolean
-    defaultRoles: TeamRole[]
-    /** 每 ticket 同时运行的 worker 上限。 */
-    maxParallelWorkers: number
-    /** 无 budget-policy artifact 时的默认 worker 超时（分钟）。 */
-    defaultWallTimeMin: number
-    /** dynamic worker 的高风险命令审批：ask | deny | allow（默认 ask）。 */
-    riskApproval: 'ask' | 'deny' | 'allow'
-    /** 审批队列超时秒数（1-3600；超时即拒）。 */
-    approvalTimeoutSec: number
-    /** 每角色工具 allow/deny（deny 优先；allow 非空时只放行列出的工具）。 */
-    roleToolPolicy: Record<string, { allow?: string[]; deny?: string[] }>
-  }
   intercept: {
     /** 流式拒绝拦截总开关（等价 HELMD_STREAM_MODE=off）。 */
     enabled: boolean
@@ -55,15 +39,6 @@ export interface HelmdSettings {
 }
 
 export const DEFAULT_SETTINGS: HelmdSettings = {
-  team: {
-    autoTicket: false,
-    defaultRoles: ['triage', 'static', 'critic', 'reporter'],
-    maxParallelWorkers: 4,
-    defaultWallTimeMin: 15,
-    riskApproval: 'ask',
-    approvalTimeoutSec: 300,
-    roleToolPolicy: {},
-  },
   intercept: { enabled: true },
   advisory: { autonomyPacket: true, nextActionNudge: true, requireDocRead: true, requireToolEvidence: true },
   star: { popupDelaySec: 2 },
@@ -84,40 +59,11 @@ function clampBool(value: unknown, fallback: boolean): boolean {
 
 function normalizeSettings(raw: unknown): HelmdSettings {
   const src = (raw !== null && typeof raw === 'object' ? raw : {}) as Record<string, any>
-  const team = (src.team !== null && typeof src.team === 'object' ? src.team : {}) as Record<string, any>
   const intercept = (src.intercept !== null && typeof src.intercept === 'object' ? src.intercept : {}) as Record<string, any>
   const advisory = (src.advisory !== null && typeof src.advisory === 'object' ? src.advisory : {}) as Record<string, any>
   const star = (src.star !== null && typeof src.star === 'object' ? src.star : {}) as Record<string, any>
-  const roles = Array.isArray(team.defaultRoles)
-    ? [...new Set(team.defaultRoles.map(String))].filter((role): role is TeamRole => (TEAM_ROLES as readonly string[]).includes(role))
-    : []
-  const roleToolPolicy: Record<string, { allow?: string[]; deny?: string[] }> = {}
-  if (team.roleToolPolicy !== null && typeof team.roleToolPolicy === 'object') {
-    for (const [role, raw] of Object.entries(team.roleToolPolicy as Record<string, unknown>)) {
-      if (!(TEAM_ROLES as readonly string[]).includes(role) || raw === null || typeof raw !== 'object') continue
-      const policy = raw as { allow?: unknown; deny?: unknown }
-      const allow = Array.isArray(policy.allow) ? policy.allow.map(String).filter(Boolean) : undefined
-      const deny = Array.isArray(policy.deny) ? policy.deny.map(String).filter(Boolean) : undefined
-      if ((allow?.length ?? 0) > 0 || (deny?.length ?? 0) > 0) {
-        roleToolPolicy[role] = {
-          ...(allow !== undefined && allow.length > 0 ? { allow } : {}),
-          ...(deny !== undefined && deny.length > 0 ? { deny } : {}),
-        }
-      }
-    }
-  }
-  const riskApproval = team.riskApproval === 'deny' || team.riskApproval === 'allow' ? team.riskApproval : 'ask'
   const d = DEFAULT_SETTINGS
   return {
-    team: {
-      autoTicket: clampBool(team.autoTicket, d.team.autoTicket),
-      defaultRoles: roles.length > 0 ? roles : [...d.team.defaultRoles],
-      maxParallelWorkers: clampNumber(team.maxParallelWorkers, 1, 8, d.team.maxParallelWorkers),
-      defaultWallTimeMin: clampNumber(team.defaultWallTimeMin, 1, 60, d.team.defaultWallTimeMin),
-      riskApproval,
-      approvalTimeoutSec: clampNumber(team.approvalTimeoutSec, 1, 3600, d.team.approvalTimeoutSec),
-      roleToolPolicy,
-    },
     intercept: { enabled: clampBool(intercept.enabled, d.intercept.enabled) },
     advisory: {
       autonomyPacket: clampBool(advisory.autonomyPacket, d.advisory.autonomyPacket),
@@ -149,10 +95,10 @@ export function saveSettings(patch: unknown): HelmdSettings {
   const current = loadSettings() as Mutable<HelmdSettings>
   const src = (patch !== null && typeof patch === 'object' ? patch : {}) as Record<string, any>
   const merged = {
-    team: { ...current.team, ...(src.team !== null && typeof src.team === 'object' ? src.team : {}) },
     intercept: { ...current.intercept, ...(src.intercept !== null && typeof src.intercept === 'object' ? src.intercept : {}) },
     advisory: { ...current.advisory, ...(src.advisory !== null && typeof src.advisory === 'object' ? src.advisory : {}) },
     star: { ...current.star, ...(src.star !== null && typeof src.star === 'object' ? src.star : {}) },
+    toolbox: { ...current.toolbox, ...(src.toolbox !== null && typeof src.toolbox === 'object' ? src.toolbox : {}) },
   }
   const next = normalizeSettings(merged)
   try {

@@ -5,7 +5,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import { hasPending, reckonAdvisories, renderAdvisories, submitAdvisory } from './advisory.js'
-import { USER_MESSAGE, latestEventText, sessionEvents } from './session-log.js'
+import { USER_MESSAGE, latestEventText, sessionEvents, toolCalls } from './session-log.js'
 import { agentSessionId, registerAssemblyListener, stripHarnessPersona, type AssemblyLike } from './prompt-assembly.js'
 import { normalizeInput } from './input-normalizer.js'
 
@@ -168,6 +168,33 @@ function armNormalizerMetric(sessionId: string, events: readonly unknown[]): voi
 }
 
 /**
+ * Reference-read guidance: the audit of 2026-11-19 (advisory ledger, 141 records)
+ * showed the model never reads references/ unprompted — no advisory key ever
+ * guided a read, and route:* cards were ignored at 95%. Arm a per-domain nudge
+ * when the user turn names a domain signal AND the session log shows no
+ * read_reference call yet. Adaptive: once the reading discipline holds, the
+ * reminder retires and only the measurement continues.
+ */
+const REF_DOMAIN_RE = /apk|安卓|android|frida|hook|xss|sqli|ssrf|渗透|越狱|jailbreak|prompt.?injection|抓包|pcap|木马|malware|壳|packer|vmp|脱壳|逆向|reverse|exploit|提权/i
+export const REF_KEY = 'ref:read-first'
+
+function armReferenceGuidance(sessionId: string, events: readonly unknown[]): void {
+  if (hasPending(sessionId, REF_KEY)) return
+  const turn = latestEventText(events, USER_MESSAGE) ?? ''
+  if (!turn || !REF_DOMAIN_RE.test(turn)) return
+  const alreadyRead = toolCalls(events).some((c) => c.name === 'read_reference')
+  if (alreadyRead) return
+  submitAdvisory(sessionId, {
+    key: REF_KEY,
+    tier: 'recommended',
+    content: 'read_reference first: route_task(hint) → read the routed doc, THEN analyze. Domain knowledge lives in references/, not in your weights; record_finding rejects conclusions from a session that never read one.',
+    proof: { kind: 'reference_read' },
+    withinTurns: 1,
+    adaptive: true,
+  }, events.length)
+}
+
+/**
  * Whether the newest event is the user's message, i.e. the turn is still open.
  * Standing metrics measure the reply to a user turn, so they arm only here. Arming after the
  * reply has already arrived (which an unconditional per-assembly arm does) leaves an entry
@@ -191,6 +218,7 @@ export function registerAdvisoryHook(ctx: Context): void {
         armChallengeMetric(sessionId, events)
         armReportMetric(sessionId, events)
         armNormalizerMetric(sessionId, events)
+        armReferenceGuidance(sessionId, events)
       } catch {
         // reckoning is bookkeeping — never block the assembly
       }

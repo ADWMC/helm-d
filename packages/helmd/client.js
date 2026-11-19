@@ -500,6 +500,7 @@ exports.apply = function apply(ctx) {
 		var severityFilterState = React.useState("all"); var severityFilter = severityFilterState[0]; var setSeverityFilter = severityFilterState[1];
 		var statusFilterState = React.useState("all"); var statusFilter = statusFilterState[0]; var setStatusFilter = statusFilterState[1];
 		var findingBusyState = React.useState(""); var findingBusy = findingBusyState[0]; var setFindingBusy = findingBusyState[1];
+		var expandedState = React.useState({}); var expandedDetails = expandedState[0]; var setExpandedDetails = expandedState[1];
 		var severityRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
 		var visibleFindings = findings
 			.filter(function (f) { return (severityFilter === "all" || f.severity === severityFilter) && (statusFilter === "all" || f.status === statusFilter); })
@@ -507,7 +508,12 @@ exports.apply = function apply(ctx) {
 		var criticalCount = findings.filter(function (f) { return f.severity === "critical"; }).length;
 		var highCount = findings.filter(function (f) { return f.severity === "high"; }).length;
 		function patchFinding(f, status) {
-			if (!props.sessionId) return;
+			// F-010 (UX audit): a missing sessionId used to return silently —
+			// the triage buttons appeared dead. Explain instead.
+			if (!props.sessionId) {
+				if (props.onNotice) props.onNotice("当前面板没有会话 id，无法更新结论状态；请从 helmd 会话打开工作台。");
+				return;
+			}
 			setFindingBusy(f.id + ":" + status);
 			fetch("/api/helmd/case/findings", {
 				method: "POST", headers: { "content-type": "application/json" },
@@ -545,6 +551,12 @@ exports.apply = function apply(ctx) {
 				h("span", { style: S.pill(color) }, hh.status)
 			);
 		});
+		// F-015 (UX audit): the report/SARIF export endpoints existed but had no
+		// UI entry — the analysis product could not be taken out of the tab.
+		var exportBase = props.sessionId
+			? "?sessionId=" + encodeURIComponent(String(props.sessionId))
+			: "";
+		var exportLink = { color: TONE.info, textDecoration: "none", fontSize: 11 };
 		return h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
 			h("div", { style: S.card },
 				h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
@@ -555,6 +567,14 @@ exports.apply = function apply(ctx) {
 							overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 						},
 					}, cd.name || "case"),
+					h("a", {
+						href: "/api/helmd/case/report" + exportBase, target: "_blank", rel: "noopener noreferrer",
+						title: "下载当前 case 的 markdown 报告", style: exportLink,
+					}, "报告"),
+					h("a", {
+						href: "/api/helmd/case/sarif" + exportBase, target: "_blank", rel: "noopener noreferrer",
+						title: "下载当前 case 的 SARIF 2.1.0 文件", style: exportLink,
+					}, "SARIF"),
 					h("button", {
 						type: "button", onClick: props.onRefresh, className: "hm-btn",
 						style: {
@@ -568,9 +588,9 @@ exports.apply = function apply(ctx) {
 				),
 				cd.goal ? h("div", { style: Object.assign({}, S.body, { marginTop: 6 }) }, cd.goal) : null,
 				h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 } },
-					h(StatTile, { label: "Evidence", value: cd.evidenceCount || 0, tone: TONE.info }),
+					h(StatTile, { label: "证据", value: cd.evidenceCount || 0, tone: TONE.info }),
 					h(StatTile, {
-						label: "Open hypotheses",
+						label: "未决假设",
 						value: cd.openHypotheses || 0,
 						tone: (cd.openHypotheses || 0) > 0 ? TONE.warn : TONE.success,
 					}),
@@ -626,7 +646,21 @@ exports.apply = function apply(ctx) {
 									f.seenCount > 1 ? h("span", { style: S.caption }, "×" + f.seenCount) : null
 								),
 								h("div", { style: { marginTop: 3, fontSize: 12, fontWeight: 500, color: "var(--dsw-alias-label-primary)" } }, f.title),
-								f.detail ? h("div", { style: { marginTop: 2, fontSize: 11, lineHeight: "17px", color: "var(--dsw-alias-label-secondary)", whiteSpace: "pre-wrap" } }, f.detail.slice(0, 240)) : null,
+								f.detail ? h("div", null,
+									h("div", { style: { marginTop: 2, fontSize: 11, lineHeight: "17px", color: "var(--dsw-alias-label-secondary)", whiteSpace: "pre-wrap" } },
+										expandedDetails[f.id] ? f.detail : f.detail.slice(0, 240)
+									),
+									f.detail.length > 240 ? h("button", {
+										type: "button", onClick: function () {
+											setExpandedDetails(function (prev) {
+												var next = Object.assign({}, prev);
+												next[f.id] = !prev[f.id];
+												return next;
+											});
+										},
+										style: { border: 0, background: "none", padding: 0, fontSize: 10.5, color: TONE.info, cursor: "pointer", marginTop: 2 },
+									}, expandedDetails[f.id] ? "收起" : "展开全部（" + f.detail.length + " 字）") : null
+								) : null,
 								f.evidence ? h("div", { style: { marginTop: 3, fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, f.evidence) : null,
 								f.repro
 									? h("div", { style: { marginTop: 2, fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, "repro: " + f.repro)
@@ -688,6 +722,11 @@ exports.apply = function apply(ctx) {
 		var busy = busyState[0]; var setBusy = busyState[1];
 		var choiceState = React.useState(null);
 		var choice = choiceState[0]; var setChoice = choiceState[1];
+		// F-016 (UX audit): the asset picker used to mutate choice.assets[0].name
+		// directly in onChange (uncontrolled defaultValue + object mutation).
+		// Keep a separate selected-asset string instead.
+		var pickedAssetState = React.useState("");
+		var pickedAsset = pickedAssetState[0]; var setPickedAsset = pickedAssetState[1];
 		var queryState = React.useState("");
 		var query = queryState[0]; var setQuery = queryState[1];
 
@@ -767,7 +806,7 @@ exports.apply = function apply(ctx) {
 					},
 				})
 			),
-			filtered.length === 0 ? h("div", { style: S.card }, h(EmptyState, { title: "没有匹配的工具", hint: "Adjusted filter or catalog unavailable." })) : null,
+			filtered.length === 0 ? h("div", { style: S.card }, h(EmptyState, { title: "没有匹配的工具", hint: "调整过滤词，或 catalog 暂不可用。" })) : null,
 			filtered.map(function (entry) {
 				var health = entry.health || {};
 				var isInstalled = !!health.installed;
@@ -806,12 +845,12 @@ exports.apply = function apply(ctx) {
 					choice && choice.id === entry.id ? h("div", { style: { marginTop: 8, display: "flex", gap: 6, alignItems: "center" } },
 						h("span", { style: S.caption }, "选择资产（" + choice.tag + "）"),
 						h("select", {
-							defaultValue: choice.assets[0].name,
-							onChange: function (e) { choice.assets[0].name = e.target.value; },
+							value: pickedAsset || choice.assets[0].name,
+							onChange: function (e) { setPickedAsset(e.target.value); },
 							style: { height: 26, borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: 11 },
 						}, choice.assets.map(function (a) { return h("option", { key: a.name, value: a.name }, a.name + " (" + Math.round(a.size / 1024) + " KB)"); })),
 						h("button", {
-							type: "button", className: "hm-btn", onClick: function () { doInstall(choice.id, choice.assets[0].name); },
+							type: "button", className: "hm-btn", onClick: function () { doInstall(choice.id, pickedAsset || choice.assets[0].name); },
 							style: { height: 24, padding: "0 8px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: "var(--dsw-alias-label-secondary)", fontSize: 11, cursor: "pointer" },
 						}, "确认安装")
 					) : null
@@ -821,7 +860,6 @@ exports.apply = function apply(ctx) {
 	}
 
 	// ── Tab: 设置（runtime settings store + DSH 设置页同源） ─────
-	var TEAM_ROLE_LIST = ["orchestrator", "triage", "static", "dynamic", "decoy-audit", "critic", "reporter"];
 	function SettingsRow(props) {
 		return h("div", { style: { display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 0" } },
 			h("div", { style: { width: 118, flex: "none" } },
@@ -847,12 +885,21 @@ exports.apply = function apply(ctx) {
 			props.checked ? "开" : "关"
 		);
 	}
+	// F-005 (UX audit): the controlled input forced Number('') (NaN) back to
+	// min on every keystroke, so the field could never be cleared. A local
+	// text state lets the operator delete-then-retype; the parsed value only
+	// commits when it is a finite number in range.
 	function SettingsNumber(props) {
+		var textState = React.useState(String(props.value));
+		var text = textState[0]; var setText = textState[1];
+		React.useEffect(function () { setText(String(props.value)); }, [props.value]);
 		return h("input", {
 			type: "number", min: props.min, max: props.max, step: 1,
-			value: String(props.value), onChange: function (e) {
-				var n = Number(e.target.value);
-				props.onChange(Number.isFinite(n) ? n : props.min);
+			value: text, onChange: function (e) {
+				var raw = e.target.value;
+				setText(raw);
+				var n = Number(raw);
+				if (raw !== "" && Number.isFinite(n)) props.onChange(n);
 			},
 			style: {
 				width: 84, height: 26, padding: "0 8px", borderRadius: "var(--dsw-radius-sm)",
@@ -883,17 +930,6 @@ exports.apply = function apply(ctx) {
 				return next;
 			});
 		}
-		function toggleRole(role) {
-			setForm(function (prev) {
-				if (!prev) return prev;
-				var next = JSON.parse(JSON.stringify(prev));
-				var list = next.team.defaultRoles || [];
-				next.team.defaultRoles = list.indexOf(role) >= 0
-					? list.filter(function (r) { return r !== role; })
-					: list.concat([role]);
-				return next;
-			});
-		}
 		function save() {
 			if (!form) return;
 			setSaving(true); setNotice("");
@@ -909,7 +945,6 @@ exports.apply = function apply(ctx) {
 		if (!form) {
 			return h("div", { style: S.card }, h(EmptyState, { title: "设置读取中…", hint: "等待 /api/helmd/settings。" }));
 		}
-		var roles = form.team.defaultRoles || [];
 		var inputStyle = {
 			width: "100%", height: 28, padding: "0 8px", borderRadius: "var(--dsw-radius-sm)",
 			border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
@@ -917,49 +952,6 @@ exports.apply = function apply(ctx) {
 		};
 		return h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
 			notice ? h("div", { style: { padding: "7px 9px", borderRadius: 4, fontSize: 11.5, color: TONE.info, background: "var(--dsw-alias-bg-layer-1)" } }, notice) : null,
-			h("div", { style: S.card },
-				h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
-					h("span", { style: S.title }, "Team 协作"),
-					h("span", { style: S.caption }, "worker / ticket")
-				),
-				h("div", { style: { marginTop: 4 } },
-					h(SettingsRow, { label: "begin_case 自动建单", hint: "每次开案自动创建 team ticket" },
-						h(SettingsToggle, { checked: !!form.team.autoTicket, onChange: function (v) { setIn("team.autoTicket", v); } })
-					),
-					h(SettingsRow, { label: "默认角色集", hint: "新 ticket 预含的角色" },
-						h("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } },
-							TEAM_ROLE_LIST.map(function (role) {
-								var on = roles.indexOf(role) >= 0;
-								return h("button", {
-									key: role, type: "button", onClick: function () { toggleRole(role); },
-									style: {
-										padding: "2px 8px", borderRadius: 4, fontSize: 11, cursor: "pointer",
-										border: "0.5px solid " + (on ? TONE.info : "var(--dsw-alias-border-l3)"),
-										background: on ? "color-mix(in srgb, " + TONE.info + " 12%, transparent)" : "transparent",
-										color: on ? TONE.info : "var(--dsw-alias-label-secondary)",
-									},
-								}, role);
-							})
-						)
-					),
-					h(SettingsRow, { label: "并发 worker 上限", hint: "每 ticket 同时运行数（1-8）" },
-						h(SettingsNumber, { value: form.team.maxParallelWorkers, min: 1, max: 8, onChange: function (v) { setIn("team.maxParallelWorkers", v); } })
-					),
-						h(SettingsRow, { label: "默认 worker 超时", hint: "分钟（1-60），budget artifact 可覆盖" },
-							h(SettingsNumber, { value: form.team.defaultWallTimeMin, min: 1, max: 60, onChange: function (v) { setIn("team.defaultWallTimeMin", v); } })
-						),
-						h(SettingsRow, { label: "动态 worker 高风险命令", hint: "ask 走审批队列；deny 直接拒绝；allow 放行" },
-							h("select", {
-								value: (form.team && form.team.riskApproval) || "ask",
-								onChange: function (e) { setIn("team.riskApproval", e.target.value); },
-								style: { height: 24, borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: 11 },
-							}, ["ask", "deny", "allow"].map(function (v) { return h("option", { key: v, value: v }, v); }))
-						),
-						h(SettingsRow, { label: "审批超时", hint: "秒（1-3600）；超时即拒" },
-							h(SettingsNumber, { value: (form.team && form.team.approvalTimeoutSec) || 300, min: 1, max: 3600, onChange: function (v) { setIn("team.approvalTimeoutSec", v); } })
-						)
-				)
-			),
 			h("div", { style: S.card },
 				h("div", { style: S.title }, "拦截"),
 				h("div", { style: { marginTop: 4 } },
@@ -989,37 +981,6 @@ exports.apply = function apply(ctx) {
 				)
 			),
 			h("div", { style: S.card },
-				h("div", { style: S.title }, "审批队列"),
-				h("div", { style: { marginTop: 4 } },
-					(Array.isArray(props.approvals) ? props.approvals : []).filter(function (a) { return a.status === "pending" || a.status === "approved"; }).slice(0, 8).map(function (a) {
-						return h("div", { key: a.id, style: { display: "flex", alignItems: "center", gap: 6, padding: "5px 0", borderBottom: "0.5px solid var(--dsw-alias-border-l1)" } },
-							h("span", { style: { fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, a.id),
-							h("span", { style: { flex: 1, minWidth: 0, fontSize: 11, color: "var(--dsw-alias-label-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, a.summary || a.tool),
-							h("span", { style: S.pill(a.status === "approved" ? TONE.success : TONE.warn, true) }, a.status),
-							h("button", {
-								type: "button", disabled: a.status !== "pending",
-								onClick: function () {
-									fetch("/api/helmd/approvals", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: a.id, decision: "approve" }) })
-										.then(function () { if (props.onRefresh) props.onRefresh(); });
-								},
-								style: { height: 20, padding: "0 6px", borderRadius: 3, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: TONE.success, fontSize: 10, cursor: "pointer" },
-							}, "允许"),
-							h("button", {
-								type: "button", disabled: a.status !== "pending",
-								onClick: function () {
-									fetch("/api/helmd/approvals", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: a.id, decision: "deny" }) })
-										.then(function () { if (props.onRefresh) props.onRefresh(); });
-								},
-								style: { height: 20, padding: "0 6px", borderRadius: 3, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: TONE.warn, fontSize: 10, cursor: "pointer" },
-							}, "拒绝")
-						);
-					}),
-					(!props.approvals || props.approvals.filter(function (a) { return a.status === "pending" || a.status === "approved"; }).length === 0)
-						? h("div", { style: S.caption }, "没有待审批的高风险命令")
-						: null
-				)
-			),
-			h("div", { style: S.card },
 				h("div", { style: S.title }, "Star 弹窗"),
 				h("div", { style: { marginTop: 4 } },
 					h(SettingsRow, { label: "延迟秒数", hint: "0-60 秒；0 为立即" },
@@ -1040,340 +1001,7 @@ exports.apply = function apply(ctx) {
 			)
 		);
 	}
-
-	// ── Tab 2: Team（本地多 agent 协作 + 进化） ─────────────────
-	function TeamTab(props) {
-		var team = props.teamData || {};
-		var tickets = Array.isArray(team.tickets) ? team.tickets : [];
-		var versions = props.versions || {};
-		var revisions = Array.isArray(versions.revisions) ? versions.revisions : [];
-		var activeMap = (versions.status && versions.status.active) || {};
-		var selectedState = React.useState(null);
-		var selectedId = selectedState[0]; var setSelectedId = selectedState[1];
-		var noticeState = React.useState("");
-		var notice = noticeState[0]; var setNotice = noticeState[1];
-		var busyState = React.useState("");
-		var busy = busyState[0]; var setBusy = busyState[1];
-		var goalState = React.useState("");
-		var goalInput = goalState[0]; var setGoalInput = goalState[1];
-		var steerState = React.useState({});
-		var steerTexts = steerState[0]; var setSteerTexts = steerState[1];
-		var newRolesState = React.useState(["triage", "static", "critic", "reporter"]);
-		var newRoles = newRolesState[0]; var setNewRoles = newRolesState[1];
-		React.useEffect(function () {
-			var cd = props.caseData;
-			if (!goalInput && cd && cd.active && cd.goal) setGoalInput(cd.goal);
-		}, [props.caseData, goalInput]);
-		var selected = null;
-		tickets.forEach(function (t) { if (t.id === selectedId) selected = t; });
-		if (!selected && tickets.length > 0) selected = tickets[0];
-		React.useEffect(function () {
-			if (!selectedId && tickets.length > 0) setSelectedId(tickets[0].id);
-		}, [tickets.length, selectedId]);
-
-		function callJson(path, body) {
-			return fetch(path, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify(body),
-			}).then(function (r) { return r.json(); }).then(function (res) {
-				if (!res || !res.ok) throw new Error((res && res.error) || "请求失败");
-				return res.data;
-			});
-		}
-		function done(label) {
-			setBusy("");
-			setNotice(label || "");
-			if (props.onRefresh) props.onRefresh();
-		}
-		function createTicket() {
-			var goal = String(goalInput || "").trim();
-			if (goal === "") { setNotice("先填写分析目标（goal）。"); return; }
-			var cd = props.caseData;
-			setBusy("create");
-			callJson("/api/helmd/team", {
-				action: "create",
-				goal: goal,
-				caseDir: cd && cd.active && cd.dir ? cd.dir : undefined,
-				roles: newRoles && newRoles.length > 0 ? newRoles : undefined,
-			})
-				.then(function (t) { setSelectedId(t.id); setGoalInput(""); done("已创建 " + t.id); })
-				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
-		}
-		function startRole(role) {
-			if (!selected) return;
-			if (!props.sessionId) {
-				setNotice("当前面板没有会话 id；先从 helmd 会话打开工作台。");
-				return;
-			}
-			setBusy(role);
-			callJson("/api/helmd/team", {
-				action: "start",
-				ticketId: selected.id,
-				role: role,
-				task: selected.goal,
-				parentSessionId: props.sessionId,
-			}).then(function (res) { done("已启动 " + res.role + " · " + res.sessionId); })
-				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
-		}
-		function steerRole(role) {
-			if (!selected || !props.sessionId) { setNotice("当前面板没有会话 id。"); return; }
-			var message = String(steerTexts[role] || "").trim();
-			if (message === "") { setNotice("先填写纠偏指令。"); return; }
-			setBusy("steer:" + role);
-			callJson("/api/helmd/team", {
-				action: "steer", ticketId: selected.id, role: role,
-				message: message, parentSessionId: props.sessionId,
-			}).then(function (res) {
-				setSteerTexts(function (prev) { var next = Object.assign({}, prev); delete next[role]; return next; });
-				done("已纠偏 " + role + " · " + (res.id || ""));
-			}).catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
-		}
-		function closeTicket() {
-			if (!selected) return;
-			setBusy("close");
-			callJson("/api/helmd/team", { action: "close", ticketId: selected.id, outcome: "done" })
-				.then(function () { done("ticket 已关闭"); })
-				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
-		}
-		function versionAction(action, revision) {
-			setBusy(action + ":" + revision.kind + ":" + revision.id);
-			callJson("/api/helmd/team/versions", {
-				action: action,
-				kind: revision.kind,
-				id: revision.id,
-				revision: revision.revision,
-			}).then(function () { done(action === "activate" ? "已激活新 revision" : "已回滚"); })
-				.catch(function (e) { setBusy(""); setNotice(String(e.message || e)); });
-		}
-
-		function stateColor(state) {
-			if (state === "done" || state === "ready") return TONE.success;
-			if (state === "blocked" || state === "failed") return TONE.error;
-			if (state === "working" || state === "running" || state === "progress") return TONE.info;
-			return TONE.muted;
-		}
-
-		var ticketRows = tickets.map(function (t) {
-			var isCurrent = selected && t.id === selected.id;
-			return h("button", {
-				key: t.id, type: "button", className: "hm-row",
-				onClick: function () { setSelectedId(t.id); },
-				style: {
-					display: "flex", alignItems: "center", gap: 8, width: "100%",
-					padding: "6px 7px", borderRadius: "var(--dsw-radius-xs)",
-					border: "0.5px solid " + (isCurrent ? "var(--dsw-alias-border-l3)" : "transparent"),
-					background: isCurrent ? "var(--dsw-alias-bg-layer-1)" : "transparent",
-					color: "var(--dsw-alias-label-secondary)", textAlign: "left", cursor: "pointer",
-				},
-			},
-				h("span", { style: { fontFamily: CODE, fontSize: 10.5, color: TONE.muted, flex: "none" } }, t.id),
-				h("span", {
-					style: {
-						flex: 1, minWidth: 0, fontSize: 12, overflow: "hidden",
-						textOverflow: "ellipsis", whiteSpace: "nowrap",
-					},
-				}, t.goal),
-				h("span", { style: S.pill(stateColor(t.state)) }, t.state),
-				t.findingsBySeverity ? h("span", { style: { fontSize: 10.5, color: TONE.warn, flex: "none" } }, "C" + t.findingsBySeverity.critical + " H" + t.findingsBySeverity.high) : null,
-				h("span", { style: { fontSize: 10.5, color: TONE.muted, flex: "none" } }, (t.reports || []).length + "R")
-			);
-		});
-
-		var roleRows = selected ? selected.roles.map(function (role) {
-			var deps = (selected.roleDeps && selected.roleDeps[role.role]) || [];
-			var unmet = deps.filter(function (dep) {
-				var depRole = selected.roles.find(function (r) { return r.role === dep; });
-				return depRole && depRole.state !== "done";
-			});
-			return h("div", {
-				key: role.role,
-				style: {
-					display: "flex", alignItems: "center", gap: 8, padding: "7px 6px",
-					borderRadius: "var(--dsw-radius-xs)",
-				},
-			},
-				h("span", { style: { width: 6, height: 6, borderRadius: 999, background: stateColor(role.state), flex: "none" } }),
-				h("span", { style: { fontSize: 12, minWidth: 74, color: "var(--dsw-alias-label-primary)" } }, role.role),
-				h("span", { style: Object.assign({}, S.caption, { flex: 1, minWidth: 0, fontFamily: CODE }) },
-					role.sessionId ? role.sessionId.slice(0, 12) : (unmet.length ? "waits: " + unmet.join(",") : "not started")),
-				h("span", { style: S.pill(stateColor(role.state), true) }, role.state),
-				role.state === "running" ? h("input", {
-					type: "text", value: steerTexts[role.role] || "", placeholder: "steer…",
-					onChange: function (e) {
-						var value = e.target.value;
-						setSteerTexts(function (prev) { return Object.assign({}, prev, { [role.role]: value }); });
-					},
-					style: {
-						width: 110, height: 22, padding: "0 6px", borderRadius: 4,
-						border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
-						color: "var(--dsw-alias-label-primary)", fontSize: 10.5, outline: "none",
-					},
-				}) : null,
-				role.state === "running" ? h("button", {
-					type: "button", className: "hm-btn", disabled: busy === "steer:" + role.role,
-					onClick: function () { steerRole(role.role); },
-					style: {
-						height: 22, padding: "0 7px", borderRadius: 4,
-						border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent",
-						color: "var(--dsw-alias-label-secondary)", fontSize: 11, cursor: "pointer",
-					},
-				}, busy === "steer:" + role.role ? "发送中" : "纠偏") : null,
-				h("button", {
-					type: "button", className: "hm-btn", disabled: role.state === "running" || busy === role.role,
-					onClick: function () { startRole(role.role); },
-					style: {
-						height: 22, padding: "0 7px", borderRadius: 4,
-						border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent",
-						color: role.state === "running" ? TONE.muted : "var(--dsw-alias-label-secondary)",
-						fontSize: 11, cursor: role.state === "running" ? "default" : "pointer",
-					},
-				}, busy === role.role ? "启动中" : "启动")
-			);
-		}) : [];
-
-		var reportRows = selected ? selected.reports.slice().reverse().slice(0, 10).map(function (r) {
-			return h("div", {
-				key: r.id,
-				style: {
-					padding: "7px 9px", borderRadius: 4,
-					background: "var(--dsw-alias-bg-layer-1)",
-					border: "0.5px solid var(--dsw-alias-border-l1)",
-				},
-			},
-				h("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-					h("span", { style: { fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, r.id + " · " + r.role),
-					h("span", { style: S.pill(stateColor(r.state)) }, r.state),
-					r.stopReason ? h("span", { style: Object.assign({}, S.caption, { marginLeft: "auto" }) }, r.stopReason) : null
-				),
-				h("div", { style: { marginTop: 3, fontSize: 11.5, lineHeight: "17px", color: "var(--dsw-alias-label-secondary)", whiteSpace: "pre-wrap" } }, r.summary),
-				r.evidenceIds && r.evidenceIds.length ? h("div", { style: { marginTop: 3, fontFamily: CODE, fontSize: 10.5, color: TONE.info } }, r.evidenceIds.join(" ")) : null,
-				r.repro ? h("div", { style: { marginTop: 2, fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, "repro: " + r.repro) : null,
-				r.wallTimeMs ? h("div", { style: Object.assign({}, S.caption, { marginTop: 2 }) }, (r.wallTimeMs / 1000).toFixed(1) + "s" + (r.source ? " · " + r.source : "")) : null
-			);
-		}) : [];
-
-		var revisionRows = revisions.slice().reverse().slice(0, 14).map(function (rev) {
-			var key = rev.kind + ":" + rev.id;
-			var isActive = activeMap[key] === rev.revision;
-			var passed = rev.eval && rev.eval.pass;
-			return h("div", {
-				key: key + "@" + rev.revision,
-				style: {
-					display: "flex", alignItems: "center", gap: 6, padding: "5px 6px",
-					borderRadius: "var(--dsw-radius-xs)", background: isActive ? "var(--dsw-alias-bg-layer-1)" : "transparent",
-				},
-			},
-				h("span", { style: { fontFamily: CODE, fontSize: 10.5, color: TONE.muted, flex: "none" } }, key + "@" + rev.revision),
-				h("span", { style: S.caption }, rev.source || "local"),
-				h("span", {
-					style: S.pill(passed ? TONE.success : (rev.eval ? TONE.error : TONE.muted), !rev.eval),
-				}, rev.eval ? (passed ? "eval pass" : "eval fail") : "no eval"),
-				isActive ? h("span", { style: S.pill(TONE.info) }, "active") : null,
-				h("span", { style: { flex: 1 } }),
-				!isActive && passed ? h("button", {
-					type: "button", className: "hm-btn", onClick: function () { versionAction("activate", rev); },
-					style: { height: 21, padding: "0 6px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: "var(--dsw-alias-label-secondary)", fontSize: 10.5, cursor: "pointer" },
-				}, "activate") : null,
-				isActive && rev.parent > 0 ? h("button", {
-					type: "button", className: "hm-btn", onClick: function () { versionAction("rollback", rev); },
-					style: { height: 21, padding: "0 6px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: "var(--dsw-alias-label-secondary)", fontSize: 10.5, cursor: "pointer" },
-				}, "rollback") : null
-			);
-		});
-
-		return h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-			notice ? h("div", {
-				style: {
-					padding: "7px 9px", borderRadius: 4, fontSize: 11.5, lineHeight: "17px",
-					color: TONE.warn, background: "var(--dsw-alias-bg-layer-1)",
-				},
-			}, notice) : null,
-			h("div", { style: S.card },
-				h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-					h("span", { style: S.title }, "Tickets"),
-					h("span", { style: S.caption }, String(tickets.length))
-				),
-				h("div", { style: { marginTop: 6 } },
-					h("input", {
-						type: "text", value: goalInput,
-						placeholder: "分析目标（goal），例如：分析 samples/app.apk 的加固方式",
-						onChange: function (e) { setGoalInput(e.target.value); },
-						onKeyDown: function (e) { if (e.key === "Enter" && !(e.nativeEvent && e.nativeEvent.isComposing)) createTicket(); },
-						style: {
-							width: "100%", height: 28, padding: "0 8px", borderRadius: "var(--dsw-radius-sm)",
-							border: "0.5px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-1)",
-							color: "var(--dsw-alias-label-primary)", fontSize: 12.5, outline: "none", boxSizing: "border-box",
-						},
-					}),
-					h("div", { style: { display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6 } },
-						TEAM_ROLE_LIST.map(function (role) {
-							var on = (newRoles || []).indexOf(role) >= 0;
-							return h("button", {
-								key: "new-" + role, type: "button",
-								onClick: function () {
-									setNewRoles(function (prev) {
-										var list = prev || [];
-										return list.indexOf(role) >= 0 ? list.filter(function (r) { return r !== role; }) : list.concat([role]);
-									});
-								},
-								style: {
-									padding: "2px 7px", borderRadius: 4, fontSize: 10.5, cursor: "pointer",
-									border: "0.5px solid " + (on ? TONE.info : "var(--dsw-alias-border-l3)"),
-									background: on ? "color-mix(in srgb, " + TONE.info + " 12%, transparent)" : "transparent",
-									color: on ? TONE.info : "var(--dsw-alias-label-secondary)",
-								},
-							}, role);
-						}),
-						h("button", {
-							type: "button", className: "hm-btn", onClick: createTicket, disabled: busy === "create",
-							style: { marginLeft: "auto", height: 24, padding: "0 10px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: "var(--dsw-alias-label-secondary)", fontSize: 11, cursor: "pointer" },
-						}, busy === "create" ? "创建中…" : "新建 ticket")
-					),
-					h("div", { style: Object.assign({}, S.caption, { marginTop: 4 }) },
-						"绑定 case 时用 case 目录作 workspace；未绑定时用 helmd 存储下的 standalone 目录。")
-				),
-				ticketRows.length ? h("div", { style: { display: "flex", flexDirection: "column", gap: 1, marginTop: 8 } }, ticketRows) : h(EmptyState, {
-					title: "还没有 ticket",
-					hint: "填 goal 新建，或在对话里让模型 team_create。",
-				})
-			),
-			selected ? h("div", { style: S.card },
-				h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-					h("span", { style: S.title }, selected.id),
-					h("span", { style: S.pill(stateColor(selected.state)) }, selected.state),
-					h("button", {
-						type: "button", className: "hm-btn", onClick: closeTicket, disabled: busy === "close",
-						style: { marginLeft: "auto", height: 24, padding: "0 8px", borderRadius: 4, border: "0.5px solid var(--dsw-alias-border-l3)", background: "transparent", color: "var(--dsw-alias-label-secondary)", fontSize: 11, cursor: "pointer" },
-					}, busy === "close" ? "关闭中" : "完成")
-				),
-				h("div", { style: Object.assign({}, S.body, { marginTop: 5 }) }, selected.goal),
-				h("div", { style: Object.assign({}, S.caption, { marginTop: 3, fontFamily: CODE }) }, selected.caseDir),
-				h("div", { style: { display: "flex", flexDirection: "column", gap: 1, marginTop: 8 } }, roleRows)
-			) : null,
-			selected ? h("div", { style: S.card },
-				h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: reportRows.length ? 6 : 0 } },
-					h("span", { style: S.title }, "Reports"),
-					h("span", { style: S.caption }, String(selected.reports.length))
-				),
-				reportRows.length ? h("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, reportRows) : h(EmptyState, {
-					title: "还没有 report",
-					hint: "启动一个 role worker，结果会自动回写；worker 失败也会留下 failed 记录。",
-				})
-			) : null,
-			h("div", { style: S.card },
-				h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: revisionRows.length ? 6 : 0 } },
-					h("span", { style: S.title }, "Evolution"),
-					h("span", { style: S.caption }, "revision + A/B gate")
-				),
-				revisionRows.length ? h("div", { style: { display: "flex", flexDirection: "column", gap: 3 } }, revisionRows) : h(EmptyState, {
-					title: "还没有 revision",
-					hint: "用 /api/helmd/team/versions 或 scripts/team-eval.mjs 提案、评估；只有 pass 的 revision 能激活。",
-				})
-			)
-		);
-	}
-
+	
 	// ── Tab 3: 破甲档位（热切换） ────────────────────────────────
 	function ProfileTab(props) {
 		var p = props.profileData;
@@ -1504,12 +1132,20 @@ exports.apply = function apply(ctx) {
 					className: "hm-scroll",
 					style: {
 						padding: "10px 12px", fontFamily: CODE, fontSize: 11, lineHeight: "18px",
-						maxHeight: 220, overflowY: "auto",
+						maxHeight: 260, overflowY: "auto",
 					},
 				},
 					line("[STREAM-OK]", "拦截器已上线 · 已处理 " + count + " 次"),
-					d.lastTime ? line("[LAST]", d.lastTime, TONE.muted) : null,
-					d.lastSnippet ? line("[REFUSAL]", "\"" + d.lastSnippet + "\"", TONE.warn) : null,
+					// F-007 (UX audit): the log area used to render 4 hardcoded lines
+					// only; the backend already keeps a history. Render it.
+					(Array.isArray(d.history) ? d.history.slice().reverse() : []).slice(0, 20).map(function (item) {
+						return line(
+							"[" + (item.phase || "?") + "]",
+							(item.at || "") + " · " + (item.model || "unknown") + " · \"" + (item.snippet || "") + "\"",
+							TONE.warn,
+						);
+					}),
+					count === 0 ? line("[INFO]", "暂无拦截记录", TONE.muted) : null,
 					line("[AUDIT]", "~/.dsh/helmd-stream-intercept.log", TONE.muted)
 				)
 			)
@@ -1553,11 +1189,13 @@ exports.apply = function apply(ctx) {
 			fontFamily: CODE, fontSize: 11, lineHeight: "17px",
 			color: "var(--dsw-alias-label-secondary)", overflowX: "auto",
 		};
+		// F-009 (UX audit): the hardcoded fallback used to describe a v0.4-era
+		// feature set (33 tools / 4 tabs), contradicting the version check above
+		// it. When the release notes cannot be fetched, say so instead of
+		// showing a stale summary.
 		var fallbackChanges = [
-			"破甲档位热切换：ds4.1f / stealth / redteam-max / gpt-6x，下一次模型调用生效",
-			"工作台改为破甲 / Case / 拦截 / 关于，对齐 DSH 原生样式",
-			"工具数 33；移除 find_tool 与静态工具目录",
-			"星标浮层迁入 shell.overlay，不再写 document.body",
+			"拉取 GitHub 更新日志失败（网络或代理问题）；以上为占位说明，不代表当前版本特性。",
+			"当前能力概览：49 个工具、四档破甲热切换、Case 证据链、按需参考知识库。",
 		];
 		var changes = result && Array.isArray(result.releaseNotes) && result.releaseNotes.length > 0
 			? result.releaseNotes
@@ -1644,6 +1282,11 @@ exports.apply = function apply(ctx) {
 		var data = apiData[0]; var setData = apiData[1];
 		var reload = React.useState(0);
 		var reloadTick = reload[0]; var setReloadTick = reload[1];
+		// F-001 (UX audit): every poll used to swallow fetch errors with
+		// .catch(()=>null); when the host API is down the workbench silently
+		// showed empty/stale data. Track failures and render a banner instead.
+		var apiFailState = React.useState(0);
+		var apiFailures = apiFailState[0]; var setApiFailures = apiFailState[1];
 		React.useEffect(function () {
 			var alive = true;
 			function poll() {
@@ -1655,21 +1298,22 @@ exports.apply = function apply(ctx) {
 					}
 				} catch (err) {}
 				var caseQuery = sid ? "?sessionId=" + encodeURIComponent(String(sid)) : "";
+				var jsonOr = function (r) { return r.json(); };
 				Promise.all([
-					fetch('/api/helmd/tools').then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/intercept').then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/health').then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/case' + caseQuery).then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/profile').then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/case/findings' + caseQuery).then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/case/evidence' + caseQuery).then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/team').then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/team/versions').then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/settings').then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/tools/catalog').then(function(r){return r.json()}).catch(function(){return null}),
-					fetch('/api/helmd/approvals').then(function(r){return r.json()}).catch(function(){return null}),
+					fetch('/api/helmd/tools').then(jsonOr),
+					fetch('/api/helmd/intercept').then(jsonOr),
+					fetch('/api/helmd/health').then(jsonOr),
+					fetch('/api/helmd/case' + caseQuery).then(jsonOr),
+					fetch('/api/helmd/profile').then(jsonOr),
+					fetch('/api/helmd/case/findings' + caseQuery).then(jsonOr),
+					fetch('/api/helmd/case/evidence' + caseQuery).then(jsonOr),
+					fetch('/api/helmd/settings').then(jsonOr),
+					fetch('/api/helmd/tools/catalog').then(jsonOr),
 				]).then(function(results) {
 					if (!alive) return;
+					var dead = results.filter(function (r) { return r === null || r === undefined; }).length;
+					setApiFailures(dead);
+					if (dead === results.length) return; // total outage: keep stale data
 					setData({
 						tools: (results[0] && results[0].data) || [],
 						intercept: (results[1] && results[1].data) || null,
@@ -1678,13 +1322,14 @@ exports.apply = function apply(ctx) {
 						profile: (results[4] && results[4].data) || null,
 						findings: (results[5] && results[5].data) || [],
 						evidence: (results[6] && results[6].data) || [],
-						teamData: (results[7] && results[7].data) || null,
-						versions: (results[8] && results[8].data) || null,
-						settings: (results[9] && results[9].data) || null,
-						catalog: (results[10] && results[10].data) || null,
-						approvals: (results[11] && results[11].data) || [],
+						settings: (results[7] && results[7].data) || null,
+						catalog: (results[8] && results[8].data) || null,
 						sessionId: sid || null,
 					});
+				}, function () {
+					// Total fetch failure (host API unreachable): keep stale data,
+					// surface the outage via the banner state.
+					if (alive) setApiFailures(99);
 				});
 			}
 			poll();
@@ -1700,11 +1345,13 @@ exports.apply = function apply(ctx) {
 			var el = scrollRef.current;
 			if (el && stickBottom.current) el.scrollTop = el.scrollHeight;
 		}, [data, tab]);
-		React.useEffect(function () { if (tab === "case" || tab === "team") refresh(); }, [tab]);
+		React.useEffect(function () { if (tab === "case") refresh(); }, [tab]);
 		var switching = React.useState(false);
 		var isSwitching = switching[0]; var setSwitching = switching[1];
 		var profileError = React.useState("");
 		var profileErr = profileError[0]; var setProfileErr = profileError[1];
+		var panelNoticeState = React.useState("");
+		var panelNotice = panelNoticeState[0]; var setPanelNotice = panelNoticeState[1];
 
 		function switchTo(id) {
 			setSwitching(true);
@@ -1726,21 +1373,18 @@ exports.apply = function apply(ctx) {
 				.then(function () { setSwitching(false); });
 		}
 
-		var teamTickets = (data.teamData && Array.isArray(data.teamData.tickets)) ? data.teamData.tickets : [];
-		var openTickets = teamTickets.filter(function (t) { return t.state !== "done" && t.state !== "dropped"; }).length;
+		var openCase = data.caseData && data.caseData.active ? (data.caseData.openHypotheses || 0) : null;
+		var toolCount = (data.tools && data.tools.length) || 0;
+		var liveProfile = (data.profile && data.profile.activeId) || "core";
+		var apiDown = apiFailures > 0;
 		var tabs = [
 			{ key: "profile", label: "破甲", badge: 0 },
 			{ key: "case", label: "Case", badge: (data.caseData && data.caseData.active && data.caseData.openHypotheses) || 0 },
-			{ key: "team", label: "Team", badge: openTickets },
 			{ key: "tools", label: "工具", badge: ((data.catalog || []).filter(function (e) { return e.health && e.health.installed; }).length) },
 			{ key: "intercept", label: "拦截", badge: (data.intercept && data.intercept.count) || 0 },
 			{ key: "settings", label: "设置", badge: 0 },
 			{ key: "about", label: "关于", badge: 0 },
 		];
-
-		var openCase = data.caseData && data.caseData.active ? (data.caseData.openHypotheses || 0) : null;
-		var toolCount = (data.tools && data.tools.length) || 0;
-		var liveProfile = (data.profile && data.profile.activeId) || "core";
 
 		return h("div", {
 			className: "helmd-workbench",
@@ -1777,6 +1421,14 @@ exports.apply = function apply(ctx) {
 						},
 					}, h(CloseIcon, null)) : null
 				),
+				panelNotice ? h("div", {
+					role: "status", "aria-live": "polite",
+					style: {
+						margin: "8px 0 0", padding: "7px 9px", borderRadius: "var(--dsw-radius-sm)",
+						fontSize: 11.5, lineHeight: "17px", color: TONE.warn,
+						background: "var(--dsw-alias-bg-layer-1)",
+					},
+				}, panelNotice) : null,
 				h("div", { style: { display: "flex", gap: 18, marginTop: 10 } },
 					tabs.map(function (t) {
 						var current = tab === t.key;
@@ -1825,18 +1477,21 @@ exports.apply = function apply(ctx) {
 					key: tab, className: "hm-fade",
 					style: { display: "flex", flexDirection: "column", gap: 10 },
 				},
+					apiDown ? h("div", {
+						role: "status", "aria-live": "polite",
+						style: {
+							padding: "8px 10px", borderRadius: "var(--dsw-radius-sm)", fontSize: 11.5, lineHeight: "17px",
+							color: TONE.error, background: "var(--dsw-alias-state-error-secondary)",
+							border: "0.5px solid color-mix(in srgb, " + TONE.error + " 35%, transparent)",
+						},
+					}, apiFailures >= 99
+						? "连接失败：宿主 API 不可达，下方数据可能已过期。"
+						: "部分数据加载失败（" + apiFailures + " 个接口无响应），显示的可能是旧数据。") : null,
 					tab === "profile" ? h(ProfileTab, { profileData: data.profile, onSwitch: switchTo, switching: isSwitching, error: profileErr }) : null,
-					tab === "case" ? h(CaseTab, { caseData: data.caseData, findings: data.findings, evidence: data.evidence, sessionId: data.sessionId, onRefresh: refresh }) : null,
-					tab === "team" ? h(TeamTab, {
-						teamData: data.teamData,
-						versions: data.versions,
-						caseData: data.caseData,
-						sessionId: data.sessionId || props.sessionId || null,
-						onRefresh: refresh,
-					}) : null,
+					tab === "case" ? h(CaseTab, { caseData: data.caseData, findings: data.findings, evidence: data.evidence, sessionId: data.sessionId, onRefresh: refresh, onNotice: setPanelNotice }) : null,
 					tab === "tools" ? h(ToolsTab, { catalog: data.catalog, onRefresh: refresh }) : null,
 					tab === "intercept" ? h(InterceptTab, { interceptData: data.intercept }) : null,
-					tab === "settings" ? h(SettingsTab, { settings: data.settings, approvals: data.approvals, onRefresh: refresh }) : null,
+					tab === "settings" ? h(SettingsTab, { settings: data.settings, onRefresh: refresh }) : null,
 					tab === "about" ? h(AboutTab, { version: (data.health && data.health.version) || "unknown" }) : null
 				)
 			)
@@ -1870,6 +1525,16 @@ exports.apply = function apply(ctx) {
 	});
 
 	// ── Star gate overlay (rendered only inside the helmd header capsule) ──
+	/** F-003 (UX audit): the backend returns retryAt (next backoff attempt) but
+	 *  the panel never showed it. Render "将于 mm:ss 后重试" when known. */
+	function gateRetryHint(status) {
+		if (!status || !status.retryAt) return "（稍后自动重试）";
+		var ms = Date.parse(status.retryAt) - Date.now();
+		if (!Number.isFinite(ms) || ms <= 0) return "（即将重试）";
+		var sec = Math.round(ms / 1000);
+		var mm = Math.floor(sec / 60); var ss = sec % 60;
+		return "（将于 " + mm + ":" + (ss < 10 ? "0" : "") + ss + " 后自动重试）";
+	}
 	function HelmdGatePanel() {
 		var state = React.useState(null);
 		var status = state[0]; var setStatus = state[1];
@@ -2079,11 +1744,11 @@ exports.apply = function apply(ctx) {
 					),
 				status.error ? h("div", {
 					style: { marginTop: 6, fontSize: 11, color: "var(--dsw-alias-state-error-primary)", wordBreak: "break-word" },
-				}, "校验失败：" + status.error + "（稍后自动重试）") : null
+				}, "校验失败：" + status.error + gateRetryHint(status)) : null
 			) : null,
 			status.error && !expanded ? h("div", {
 				style: { marginTop: 6, fontSize: 11, lineHeight: "16px", color: "var(--dsw-alias-state-error-primary)", wordBreak: "break-word" },
-			}, "自动验证暂不可用：" + status.error + "（稍后自动重试）") : null,
+			}, "自动验证暂不可用：" + status.error + gateRetryHint(status)) : null,
 			h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 } },
 				h("div", { style: { fontSize: 11, lineHeight: "16px", color: "var(--dsw-alias-label-tertiary)" } },
 					"遇到问题？ ",

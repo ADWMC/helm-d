@@ -23,7 +23,6 @@ import { renderAutonomyPacket, detectNoPath } from '../autonomy.js'
 import { loadSettings } from '../settings.js'
 import { loadAssets, coverageLine } from '../recon.js'
 import { miningLine } from '../mining.js'
-import { createTicket } from '../team.js'
 import { sessionEvents, toolCalls } from '../session-log.js'
 
 /** Per-session evidence snapshot for the NO_PATH guard. */
@@ -98,22 +97,9 @@ export function registerCaseflowTools(ctx: Context): void {
         ...(args.scope !== undefined && args.scope.length > 0 ? { scope: args.scope } : {}),
       })
       bindCase(exec?.agent?.id, info)
-      // Optional team hook: settings.team.autoTicket opens a ticket per case so
-      // the model can dispatch immediately. Best-effort — a team failure must
-      // never block opening the case.
-      let teamNote = ''
-      if (loadSettings().team.autoTicket) {
-        try {
-          const ticket = createTicket({ goal: args.goal ?? info.goal, caseDir: info.dir })
-          teamNote = `team ticket: ${ticket.id} (${ticket.roles.map((r) => r.role).join(', ')}) — dispatch with team_dispatch`
-        } catch (error) {
-          teamNote = `team ticket: skipped (${error instanceof Error ? error.message : String(error)})`
-        }
-      }
       return [
         `case opened: ${info.dir}`,
         `mode: ${mode}`,
-        ...(teamNote !== '' ? [teamNote] : []),
         '',
         RULES,
       ].join('\n')
@@ -330,10 +316,10 @@ export function registerCaseflowTools(ctx: Context): void {
         const citedFiles = (args.evidence_ids ?? []).map((id) => byId.get(id)).filter((file): file is string => file !== undefined)
         // `manual_` is the reserved prefix save_evidence stamps on every
         // model-authored capture, so a spoofed label can never pass as tool output.
-        const selfAuthored = /^E-\d+-(manual_|save_evidence|team_report)/
+        const selfAuthored = /^E-\d+-(manual_|save_evidence)/
         if (!citedFiles.some((file) => !selfAuthored.test(file))) {
           return [
-            'REJECTED — every cited evidence id is self-authored (save_evidence/team_report).',
+            'REJECTED — every cited evidence id is self-authored (save_evidence).',
             `cited: ${citedFiles.join(', ') || '(none)'}`,
             'Run a real analysis tool first; its output is auto-captured as evidence with the tool name in the filename.',
           ].join('\n')
