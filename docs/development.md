@@ -35,6 +35,10 @@ pnpm test:checks
 
 ## 参考索引
 
+首次请求可见 `route_task` / `read_reference`；逆向任务由 prompt assembly 提供有限首读预览。预览不计成功读取，只有 `read_reference` 返回内容才给会话阅读回执；`route-read:*` 账本按路由指定路径计数，不能靠任意领域工具刷采纳率。主包打包 `references.dat`；独立 `skill-native` 是历史包，不参与当前 release。
+
+保护分流的纯函数位于 `packages/helmd/src/protection-route.ts`，`protection_route` 仅返回基于调用方信号的建议，不执行程序，也不验证 E-id 的语义关联；必须结合 `native/protection-detection-methodology.md` 与 `native/packer-handling.md` 的条件核查。
+
 `references/index.md` 与 8 个领域索引是**生成物**，不要手改。新增/删除/重命名正文后：
 
 ```bash

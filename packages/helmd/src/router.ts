@@ -8,7 +8,7 @@ import { readTextSeam, assertWithinRoot } from './seam.js'
 import { readSealedReference } from './sealed-refs.js'
 import { getLevel, setLevel, normalizeLevel, renderContract } from './mode.js'
 import { playbookFor } from './autonomy.js'
-import { submitAdvisory, renderAdvisoryStats } from './advisory.js'
+import { submitAdvisory, renderAdvisoryStats, markReferenceLoaded } from './advisory.js'
 import { sessionEvents, type AgentLike } from './session-log.js'
 
 // 目录：领域 -> 触发信号与去向（可发现性元数据，不下结论）
@@ -64,7 +64,7 @@ const ROUTE_TABLE: Route[] = [
   { key: 'malware', kw: ['恶意', 'malware', '病毒', 'backdoor', '木马', 'yara'], why: '恶意样本判定' },
   { key: 'llm', kw: ['prompt', '提示词', '模型评测', '模型安全', '大模型', 'injection', 'llm', '越狱', 'jailbreak'], why: 'LLM 应用安全' },
   { key: 'web', kw: ['sqli', 'xss', 'ssrf', 'ssti', 'xxe', 'rce', 'lfi', '文件上传', '越权', 'idor', 'jwt', 'oauth', 'csrf', '渗透', 'pentest', 'webshell'], why: 'Web 攻击特征 -> references/web/（含 hs-* 攻击 playbook）' },
-  { key: 'native', kw: ['exploit', 'pwn', '提权', 'privesc', 'kerberos', 'ntlm', '内网', '横向', 'rop', '堆溢出', 'heap'], why: '主机/二进制攻击特征 -> references/native/（含 hs-* 攻击 playbook）' },
+  { key: 'native', kw: ['elf', '.so', '.dll', '.exe', 'pe 文件', 'mach-o', '二进制', '逆向', 'reverse engineering', 'exploit', 'pwn', '提权', 'privesc', 'kerberos', 'ntlm', '内网', '横向', 'rop', '堆溢出', 'heap'], why: '主机/二进制分析入口 -> references/native/' },
   { key: 'evidence', kw: ['报告', 'report', '存证', '证据', 'case'], why: '取证与报告' },
   { key: 'install', kw: ['安装', '下载', 'install', 'download', '环境', 'setup', '装'], why: '工具获取' },
   { key: 'network', kw: ['超时', 'timeout', '连不上', '无法连接', '无法访问', '代理', 'proxy', 'dns', 'connection refused', 'connection reset', 'unreachable', '网络不通', '下载失败'], why: '出站通道故障 -> 探本机代理，探不到则直连+换源' },
@@ -86,7 +86,7 @@ const ROUTE_TOOL: Record<string, string> = {
  *  on its own: the card must name the doc and the order, not just the tool. */
 const ROUTE_REF: Record<string, string> = {
   apk: 'android/index.md', jvm: 'native/jvm-mod-deobf-workflow.md',
-  shell: 'native/packer-handling.md', crypto: 'native/crypto-analysis-methodology.md',
+  shell: 'native/protection-detection-methodology.md', crypto: 'native/crypto-analysis-methodology.md',
   strings: 'native/index.md', hook: 'android/frida-hook-principles.md',
   pcap: 'protocol/index.md', har: 'protocol/index.md',
   ioc: 'malware/index.md', malware: 'malware/malware-analysis-methodology.md',
@@ -113,6 +113,11 @@ export function matchRoute(hint: string): RouteHit[] {
     }))
     .filter((h) => h.score > 0)
     .sort((a, b) => b.score - a.score)
+}
+
+export function firstReference(hint: string): string {
+  const primary = matchRoute(hint)[0]?.key ?? 'tree'
+  return ROUTE_REF[primary] ?? 'toolbox/decision-tree.md'
 }
 
 export function renderRoute(hint: string): string {
@@ -241,8 +246,9 @@ export function registerRouterTools(ctx: Context): void {
       offset: { type: 'number', description: 'Line offset for pagination (default 0).' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: { path: string; offset?: number }) {
+    async execute(args: { path: string; offset?: number }, exec?: { agent?: AgentLike }) {
       const MVI_MAX = 200
+      const sessionId = exec?.agent?.id ?? exec?.agent?.session?.id
       const offset = Math.max(0, args.offset ?? 0)
       const mvi = (text: string): string => {
         const lines = text.split('\n')
@@ -252,20 +258,33 @@ export function registerRouterTools(ctx: Context): void {
         const footer = `\n[truncated: ${lines.length} total lines, showing ${offset + 1}–${offset + slice.length}. read_reference(path, offset=${offset + MVI_MAX}) to continue]`
         return header + slice.join('\n') + footer
       }
-      const rel = (args.path ?? '').replace(/\\/g, '/').replace(/^\//, '')
-      const sealed = readSealedReference(rel)
-      if (sealed !== undefined) return mvi(sealed)
-      const sealedIndex = readSealedReference(rel ? rel.replace(/\/?$/, '/index.md') : 'index.md')
-      if (sealedIndex !== undefined) return mvi(sealedIndex)
-      const target = resolveReferenceFile(refRoot, args.path)
+      const rel = (args.path ?? '').replace(/\\/g, '/').replace(/^\//, '').replace(/^references\//, '')
+      if (rel.split('/').includes('..')) return 'REJECTED — reference path out of scope.'
+      const raw = resolve(refRoot, args.path ?? '')
+      if (args.path && (args.path.startsWith('/') || /^[a-z]:[/\\]/i.test(args.path))) return 'REJECTED — reference path out of scope.'
+      assertWithinRoot(raw, refRoot)
+      const local = resolveReferenceFile(refRoot, args.path)
+      const sealed = local && existsSync(local) ? undefined : readSealedReference(rel)
+      if (sealed !== undefined) {
+        if (sealed.trim() && offset < sealed.split('\n').length) markReferenceLoaded(sessionId, rel)
+        return mvi(sealed)
+      }
+      const sealedIndex = local ? undefined : readSealedReference(rel ? rel.replace(/\/?$/, '/index.md') : 'index.md')
+      if (sealedIndex !== undefined) {
+        if (sealedIndex.trim() && offset < sealedIndex.split('\n').length) markReferenceLoaded(sessionId, rel.replace(/\/?$/, '/index.md'))
+        return mvi(sealedIndex)
+      }
+      const target = local
       if (target) {
         assertWithinRoot(target, refRoot)
-        return mvi(await readTextSeam(ctx, target))
+        const text = await readTextSeam(ctx, target)
+        if (text.trim() && offset < text.split('\n').length) markReferenceLoaded(sessionId, target.slice(refRoot.length + 1).replace(/\\/g, '/'))
+        return mvi(text)
       }
-      const raw = resolve(refRoot, args.path ?? '')
-      assertWithinRoot(raw, refRoot)
       try {
-        return mvi(await readTextSeam(ctx, raw))
+        const text = await readTextSeam(ctx, raw)
+        if (text.trim() && offset < text.split('\n').length) markReferenceLoaded(sessionId, raw.slice(refRoot.length + 1).replace(/\\/g, '/'))
+        return mvi(text)
       } catch {
         return [
           `参考文档未找到: "${args.path}"`,
@@ -297,23 +316,16 @@ export function registerRouterTools(ctx: Context): void {
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: { hint: string }, exec?: { agent?: AgentLike }) {
       const card = renderRoute(args.hint ?? '')
-      const primary = matchRoute(args.hint ?? '')[0]?.key
+      const primary = matchRoute(args.hint ?? '')[0]?.key ?? 'tree'
       const tool = primary ? ROUTE_TOOL[primary] : undefined
-      const ref = primary ? ROUTE_REF[primary] : undefined
-      const sessionId = exec?.agent?.id
+      const ref = firstReference(args.hint ?? '')
+      const sessionId = exec?.agent?.id ?? exec?.agent?.session?.id
       if (sessionId && primary) {
-        // Proof accepts EITHER reading the routed reference OR running the route
-        // tool (tool_called with no argIncludes is a disjunction across the list):
-        // the guidance chain audit showed tool-only proof recorded a 5% adoption
-        // rate because the model skipped the reading step entirely.
         submitAdvisory(sessionId, {
-          key: `route:${primary}`,
+          key: `route-read:${primary}`,
           tier: 'recommended',
           content: `PRIMARY=${primary} — 先 read_reference(${ref ?? 'index.md'})，再用 ${tool ?? '领域工具'} 取得第一条证据。`,
-          proof: {
-            kind: 'tool_called',
-            tools: ['read_reference', ...(tool !== undefined ? [tool] : [])],
-          },
+          proof: { kind: 'reference_loaded', path: ref },
           withinTurns: 2,
           trackOnly: true,
         }, sessionEvents(exec?.agent, 'route_task').length)

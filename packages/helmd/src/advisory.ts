@@ -22,6 +22,7 @@ export type Proof =
   | { kind: 'case_opened' }
   | { kind: 'evidence_saved' }
   | { kind: 'reference_read'; pathIncludes?: string }
+  | { kind: 'reference_loaded'; path?: string }
   | { kind: 'mode_set' }
   /** Adopted when NO marker appears in the assistant replies inside the window. */
   | { kind: 'reply_avoids'; markers: string[] }
@@ -64,6 +65,7 @@ export interface Reckoned {
 interface Pending {
   advisory: Advisory
   atEventCount: number
+  loadedAt: number
 }
 
 const TIER_ORDER: Record<AdvisoryTier, number> = { mandatory: 0, recommended: 1, hint: 2 }
@@ -77,6 +79,36 @@ const LEDGER_KEEP_ROWS = 5000
 const MAX_PENDING_SESSIONS = 64
 
 const pending = new Map<string, Pending[]>()
+const loadedReferences = new Map<string, Map<string, number>>()
+
+/** Receipts are issued only after a reference tool has returned real content. */
+export function markReferenceLoaded(sessionId: string | undefined, path: string): void {
+  if (!sessionId) return
+  const paths = loadedReferences.get(sessionId) ?? new Map<string, number>()
+  paths.set(path, (paths.get(path) ?? 0) + 1)
+  loadedReferences.delete(sessionId)
+  loadedReferences.set(sessionId, paths)
+  if (loadedReferences.size > MAX_PENDING_SESSIONS) {
+    const oldest = loadedReferences.keys().next().value
+    if (oldest !== undefined) loadedReferences.delete(oldest)
+  }
+}
+
+export function hasLoadedReference(sessionId: string | undefined): boolean {
+  return !!sessionId && (loadedReferences.get(sessionId)?.size ?? 0) > 0
+}
+
+/** The current route needs its own document, not an arbitrary older read. */
+export function hasLoadedPath(sessionId: string | undefined, path: string): boolean {
+  return !!sessionId && loadCount(sessionId, path) > 0
+}
+
+function loadCount(sessionId: string, path?: string): number {
+  const paths = loadedReferences.get(sessionId)
+  if (!paths) return 0
+  if (path !== undefined) return paths.get(path) ?? 0
+  return [...paths.values()].reduce((a, b) => a + b, 0)
+}
 
 /** Advisory ledger path; shares the runtime state directory with transport logs. */
 export function advisoryLedgerPath(): string {
@@ -86,7 +118,7 @@ export function advisoryLedgerPath(): string {
 /** Submit or refresh one advisory for a session. `atEventCount` anchors the proof window. */
 export function submitAdvisory(sessionId: string, advisory: Advisory, atEventCount: number): void {
   const list = pending.get(sessionId) ?? []
-  const next: Pending = { advisory, atEventCount }
+  const next: Pending = { advisory, atEventCount, loadedAt: loadCount(sessionId, advisory.proof?.kind === 'reference_loaded' ? advisory.proof.path : undefined) }
   const index = list.findIndex((entry) => entry.advisory.key === advisory.key)
   if (index >= 0) list[index] = next
   else list.push(next)
@@ -124,6 +156,8 @@ function proven(proof: Proof | undefined, calls: ToolCall[], after: readonly unk
     case 'reference_read':
       return calls.some((c) => c.name === 'read_reference'
         && (proof.pathIncludes === undefined || c.args.includes(proof.pathIncludes)))
+    case 'reference_loaded':
+      return false // evaluated from successful tool-result receipts in reckonAdvisories
     case 'mode_set':
       return calls.some((c) => c.name === 'analysis_mode')
     case 'reply_avoids': {
@@ -206,7 +240,8 @@ export function reckonAdvisories(sessionId: string, events: readonly unknown[]):
     const waited = eventCount(after, ASSISTANT_MESSAGE)
     const proof = entry.advisory.proof
     let verdict: Verdict | null = null
-    if (proofedNow(proof, after)) verdict = 'adopted'
+    if (proof?.kind === 'reference_loaded' && loadCount(sessionId, proof.path) > entry.loadedAt) verdict = 'adopted'
+    else if (proofedNow(proof, after)) verdict = 'adopted'
     else if (proof === undefined) verdict = 'delivered'
     else if (waited >= (entry.advisory.withinTurns ?? 1)) verdict = 'ignored'
     if (verdict === null) {

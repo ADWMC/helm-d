@@ -120,7 +120,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/downloa
 - 描述里的**数字声明会被 reviewer 和 decay scan 对照代码核验**（工具数、版本号）。改了工具集必须同步：
   - README.md / README.en.md 的徽章行和目录树行
   - registry yml 的 en/zh description（需向上游提 PR）
-- 当前计数基准：44 个工具（router 4 + 案件生命周期 6（含 save_evidence、update_finding）+ 领域 23 + toolbox 1 + recon 5 + run_poc 1 + oob 3 + mine_candidates 1；team 5 个工具已随 team 功能整体移除；create_case 已废弃）。核对方法：`pnpm test:checks` 里的 `tool-catalog` 检查——它读本行声明的数字与 mock-ctx 实际注册名比对，不一致即红（改工具集而忘了改文档会当场失败）。
+- 当前计数基准：45 个工具（router 4 + 案件生命周期 6（含 save_evidence、update_finding）+ 领域 24（含只给建议的 protection_route）+ toolbox 1 + recon 5 + run_poc 1 + oob 3 + mine_candidates 1；team 5 个工具已随 team 功能整体移除；create_case 已废弃）。核对方法：`pnpm test:checks` 里的 `tool-catalog` 检查——它读本行声明的数字与 mock-ctx 实际注册名比对，不一致即红（改工具集而忘了改文档会当场失败）。
 - fork `ADWMC/awesome-dsh-plugin`：PR 合并后即可删（`gh repo delete --yes`）；再提 PR 时重新 fork 即可
 
 ### 4.1 各商店收录台账（2026-09-14/15，v0.3.1）

@@ -257,6 +257,8 @@ def nrv2b_decompress(src, dst_size):
 
 ## 六、关键教训
 
+以下是该 ARM64 .so 的回顾，不是产品指纹或跨版本自动化规则。新样本从 `protection-detection-methodology.md` 进入，目标不可见时再按 `packer-handling.md` 选择实验；原案例未成功的静态尝试不能证明该家族静态不可恢复。
+
 ### 0. 先检测保护器类型
 
 ```
@@ -266,17 +268,13 @@ def nrv2b_decompress(src, dst_size):
   3. rafind2 -s "TUSI" target
   4. 查看文件末尾 trailer 区域
 
-保护器决定绕过策略:
-  - 标准 UPX      → upx -d
-  - TUSI          → Frida 动态脱壳
-  - VMProtect     → 需要专用工具
-  - OLLVM         → 控制流反混淆
+签名只形成候选；核对当前构建的映射/变换、目标可见性及环境后再选静态或动态策略。
 ```
 
 ### 1. TUSI 保护的特征组合
 
 ```
-当同时出现以下特征时，几乎可以确认是 TUSI:
+该样本同时出现以下特征；可提出 TUSI 候选，但不能仅由组合确认产品或具体算法:
   ✗ "UPX_BySpra" 或 "UPX_By" 在 ELF header padding
   ✗ /dev/shm 和 /proc/self/exe 在代码段
   ✗ "TUSI-ObfuscatorClang" 在文件末尾
@@ -288,12 +286,12 @@ def nrv2b_decompress(src, dst_size):
 ### 2. 静态分析极限判断
 
 ```
-当遇到以下情况时，应放弃静态分析转动态:
+该个案选择动态的触发观察如下；新样本需额外确认目标代码静态不可见、存在相关写后执行/解码路径、隔离运行及观测器可用:
   - 保护器检测到 TUSI/VMProtect/Themida
   - 无硬编码调试参数
   - 无明文字符串
   - 标准解压工具失败
-  → 立即转 Frida 动态方案，不要在静态上浪费时间
+  → 满足上述前提时设计有两种不同预测的局部动态实验；否则继续目标相关静态分析或如实记录阻塞
 ```
 
 ### 3. /dev/shm 是 TUSI 的标志性行为
@@ -302,8 +300,8 @@ def nrv2b_decompress(src, dst_size):
 TUSI 解壳时创建 /dev/shm 临时文件:
   - 在 Android 上，/dev/shm 可能不存在
   - openat(AT_FDCWD, "/dev/shm", O_CREAT|...) 创建的是文件而非目录
-  - 这是 Frida hook 的最佳拦截点
-  - 检测到 write 大块数据 + ELF magic → dump 解压后的代码
+  - 在该样本中可作为待校准观察点；其他变体可能不用此路径
+  - 大块 write + ELF magic 仅构成候选产物；须检查映射、ELF 结构与消费工具解析结果
 ```
 
 ---
@@ -313,4 +311,4 @@ TUSI 解壳时创建 /dev/shm 临时文件:
 | 文件 | 说明 |
 |------|------|
 | `15e09edebe45176f.so` | 原始 TUSI 保护的 .so |
-| `tusi_unpack_bypass.js` | Frida 脱壳+绕过脚本 (通用模板) |
+| `tusi_unpack_bypass.js` | 该案例的 Frida 脱壳+绕过脚本（需按当前构建核验） |

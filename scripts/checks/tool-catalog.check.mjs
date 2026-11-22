@@ -52,7 +52,7 @@ await report.check('no tool is registered twice', () => {
 })
 
 await report.check('the load-bearing tool names are all present', () => {
-  for (const name of ['begin_case', 'case_status', 'record_finding', 'save_evidence', 'end_case', 'route_task', 'update_finding', 'toolbox', 'recon_passive', 'recon_ports', 'recon_http', 'recon_crawl', 'recon_import', 'run_poc', 'mine_candidates']) {
+  for (const name of ['begin_case', 'case_status', 'record_finding', 'save_evidence', 'end_case', 'route_task', 'update_finding', 'protection_route', 'toolbox', 'recon_passive', 'recon_ports', 'recon_http', 'recon_crawl', 'recon_import', 'run_poc', 'mine_candidates']) {
     assert.ok(names.includes(name), `missing tool: ${name}`)
   }
 })

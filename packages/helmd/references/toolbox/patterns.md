@@ -1,21 +1,23 @@
 # Patterns — 安全分析模式速查
 
-> 常见保护器签名、反分析技术、Patch 编码速查表。
+> 候选线索速查；先读 `native/protection-detection-methodology.md`，策略见 `native/packer-handling.md`。名称、字符串和段名不确认保护器或算法。
 
 ## 保护器/加壳器签名
 
-| 保护器 | 签名特征 | 策略 |
+| 候选家族 | 线索（可伪造） | 下一项核查 |
 |--------|---------|------|
-| UPX | `UPX!` magic、节名 `UPX0`/`UPX1` | `upx -d` 直接脱壳 |
-| VMProtect | PE: `.winlice` + `.boot` 节；ELF: `.vmp0`/`.vmp1` | 仅动态分析，无法静态脱壳 |
-| Themida | PE: `.themida` 节、高熵区域 | 动态 dump + 修复导入表 |
-| TUSI | `UPX_BySpra` + trailer `TUSI-Obfus` | Frida 动态脱壳 |
-| Jiagu (360) | `libjiagu.so` + `libjiagu_art.so` | `adb shell am start` + attach dump |
-| OLLVM | 扁平化 CFG、虚假块、控制流混淆 | IDA + 脚本去混淆 |
-| SHVMP | 自定义 VM、ChaCha20 按页加密 | Unicorn 模拟执行 |
-| ZKM | 字符串加密、Indy 指令混淆 | Fernflower + 字符串还原脚本 |
+| UPX | `UPX!`、`UPX0`/`UPX1` | 核对块布局与解包器版本；在副本上试解并验证产物，失败不改签名硬试 |
+| VMProtect | PE `.winlice`/`.boot`；ELF `.vmp0`/`.vmp1` | 核对入口、目标函数可见性与局部 VM 边界；按目标选静/动态 |
+| Themida | `.themida`、高熵区域 | 核对映射、目标数据流和写后执行证据；dump 不是默认产物 |
+| TUSI | `UPX_BySpra`、`TUSI-Obfus` | 对照当前 stub/块表与映射；个案 Frida 路径不适用于所有变体 |
+| Jiagu (360) | `libjiagu.so`、`libjiagu_art.so` | 确认 DEX 是否隐藏及观察点；dump 需完整性校验 |
+| OLLVM | CFG 扁平化、虚假块 | 校验目标调用链，局部去混淆 |
+| SHVMP | 个案中的 VM、按页变换 | 定位当前样本 dispatcher 与数据流；不能由名称推出 ChaCha20 |
+| ZKM | 字符串变换、Indy 指令 | 定位具体解码调用与输入输出 |
 
 ## 反分析技术速查
+
+以下操作不是自动绕过步骤；先定位检测点并对比干预前后行为。Patch 编码还需核实 ISA、指令长度和跳转目标。
 
 | 技术 | 检测方式 | 绕过方法 |
 |------|---------|---------|

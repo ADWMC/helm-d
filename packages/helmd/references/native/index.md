@@ -4,7 +4,7 @@
 
 **职责边界**：PE/ELF/Mach-O、壳与反调试、ARM64、密码与 JVM 常量、PWN/利用、驱动、Windows/AD/内网、Linux/macOS/容器。
 
-**先读**：[样本接管流程（Intake Playbook）](./sample-intake-playbook.md) · [Native / 二进制逆向核心原则](./native-principles.md) · [PE/ELF 保护检测方法论](./protection-detection-methodology.md) · [加壳/混淆二进制处理策略](./packer-handling.md) · [反调试绕过方法论](./anti-debug-methodology.md)
+**先读**：[样本接管流程（Intake Playbook）](./sample-intake-playbook.md) · [Native / 二进制逆向核心原则](./native-principles.md) · [PE/ELF 保护迹象：候选识别入口](./protection-detection-methodology.md) · [加壳与运行时变换：任务导向的处理卡](./packer-handling.md) · [反调试绕过方法论](./anti-debug-methodology.md)
 
 ## 入口与方法论（4）
 
@@ -33,7 +33,7 @@
 | [代码混淆与反混淆](./code-obfuscation-deobfuscation.md) | 控制流、字符串、常量与自修改代码的混淆识别和去混淆流程。 | 参考 |
 | [反调试技术](./anti-debugging-techniques.md) | 反调试检测与绕过：ptrace/PEB/时序/异常等检测点及对应绕过。 | 手册 |
 | [反调试绕过方法论](./anti-debug-methodology.md) | 检测与绕过常见反调试技术的系统化流程 | 方法论 |
-| [加壳/混淆二进制处理策略](./packer-handling.md) | 加壳检测后：定位 OEP、dump、修复与静态兜底策略。 | 参考 |
+| [加壳与运行时变换：任务导向的处理卡](./packer-handling.md) | 保护目标代码不可见时：静态/动态切换、变换恢复与分级验收。 | 参考 |
 | [卡密/License 验证绕过工作流](./license-bypass-workflow.md) | 原理：程序读取本地配置文件决定是否跳过验证。 | 方法论 |
 | [模型/数据文件解密密钥运行时捕获](./model-decryption-key-capture.md) | 目标程序包含加密的模型/数据文件（如 .aes、.enc、.bin），静态分析无法提取密钥时加载本文档。 | 参考 |
 | [商业级加固标准 → ELF 保护适配](./commercial-hardening-standards.md) | 关键：不同失败原因 → 相同外部行为。攻击者无法区分"解密失败"和"正常运行"。 | 参考 |
@@ -42,7 +42,7 @@
 | [ELF VMP (Virtual Machine Protection) 架构与实现](./vmp-elf-protection.md) | SHVMP 项目实战经验。项目地址: https://github.com/ADWMC/shvmp | 参考 |
 | [ELVMP 分析工作流](./elvmp-analysis-workflow.md) | SHVMP v3.0 保护的 .elvmp 文件分析方法论。基于 ADLI.full.noad.elvmp 实战（2026-07）。 | 方法论 |
 | [Memory.patchCode Bypass — When API Hooks Fail](./memory-patchcode-bypass.md) | API Hook 失效时的 Memory.patchCode 绕过与验证。 | 手册 |
-| [PE/ELF 保护检测方法论](./protection-detection-methodology.md) | 检测和分析常见二进制保护器：UPX, VMProtect, Themida, OLLVM, TUSI | 方法论 |
+| [PE/ELF 保护迹象：候选识别入口](./protection-detection-methodology.md) | 本页是分诊入口，不是按产品名自动选工具的指令。先保存样本哈希、格式/架构、入口映射及目标问题；需要恢复代码时再读 packer-handling.md。不运行未经隔离的未知程序。 | 方法论 |
 | [processpatch.py 完整参数参考](./process-patch-reference.md) | 通用进程 Patch + 值捕获工具。替代手写 ctypes 脚本（OpenProcess/VirtualProtectEx/WriteProcessMemory 等样板代码）。 | 参考 |
 | [VMProtect PE + Frida 动态分析（Windows 桌面）](./vmp-pe-frida-windows.md) | 适用场景：VMP 加壳的 Windows PE 程序（.winlice + .boot 节），需要在 Windows 桌面机上动态分析。 | 参考 |
 | [VMProtect PE 快速识别与决策](./vmp-pe-fast-triage.md) | VMProtect PE 快速识别：先处理 Defender，再按 URL/域名/strings 信号决定是否继续静态分析。 | 参考 |
@@ -53,8 +53,8 @@
 
 | 文档 | 讲什么 | 类型 |
 |---|---|---|
-| [动态分析策略 — Frida 模式（后备）](./dynamic-analysis-frida.md) | Frida 动态分析后备流程：IDA 调试失败时的 attach/spawn、Hook 与验证。 | 参考 |
-| [动态分析策略 — IDA 调试器（首选）](./dynamic-analysis.md) | IDA 调试器动态分析首选流程：断点、调用跟踪与内存检查。 | 参考 |
+| [动态分析策略 — Frida 模式](./dynamic-analysis-frida.md) | Frida 进程插桩：按目标与观测条件选择 attach/spawn、Hook 与验证。 | 参考 |
+| [动态分析策略 — IDA 调试器](./dynamic-analysis.md) | IDA 调试器动态分析：可断点目标的调用跟踪与内存检查。 | 参考 |
 | [固件/驱动 EEPROM 数据分析方法论](./firmware-eeprom-analysis.md) | 分析驱动包中的加密 EEPROM 数据、固件 blob、校准文件的通用思路。适用于 WiFi/BT/网卡等外设驱动。 | 参考 |
 | [固件分析方法论](./firmware-analysis-methodology.md) | IoT/嵌入式固件逆向、提取、分析系统化流程 | 方法论 |
 | [APK 签名验证与完整性校验模式](./apk-signature-verification.md) | 典型的游戏 SDK APK 渠道签名验证类，位于 IIPS/Source/app/versionmanager/signature/ChannelInfoUtil.cpp。 | 参考 |

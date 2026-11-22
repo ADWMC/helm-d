@@ -14,7 +14,7 @@
 ## 2. 启动协议（7 步）
 
 1. 分诊路由：`file` / `hash` / `detect_packer` / `scan_strings` → 按信号路由表定方向
-2. 建证据与时间线：`create_case` + `hash_artifact` 留档
+2. 建证据与时间线：`begin_case` + `hash_artifact` 留档
 3. 拆 track：static / runtime / loading-unpacking / protocol / data-flow
 4. 只加载路由表命中的模块，不整本塞上下文
 5. 最小可复现：重建关键请求 / hook / dump，验证假设
@@ -25,17 +25,17 @@
 
 | 信号 | 先加载 |
 |------|--------|
-| APK / AAB / DEX / smali / class loader | `apk_fingerprint` → skill-android |
+| APK / AAB / DEX / smali / class loader | `apk_fingerprint` → android 域 |
 | SO / PE / ELF / Mach-O / 汇编 | `detect_packer` + `native_reference` |
-| 壳 / packer / loader / OEP | `detect_packer` → `packer-handling.md` |
+| 壳 / packer / loader / OEP | `detect_packer` 仅提供候选 → `protection-detection-methodology.md` → 必要时 `packer-handling.md` |
 | Frida / Interceptor / spawn / attach | `dynamic-analysis-frida.md` |
 | anti-Frida / maps / 端口 / 线程 / Root | `anti-frida-workarounds.md` / `anti-debug-methodology.md` |
-| JS hook / fetch / XHR / WebSocket / 签名 | `bot_analyze` → skill-web |
+| JS hook / fetch / XHR / WebSocket / 签名 | `bot_analyze` → web 域 |
 | 混淆 / JSFuck / webpack / 控制流平坦化 | `code-obfuscation-deobfuscation.md` |
 | sign / token / cookie / 加密请求 | `crypto-analysis-methodology.md` / `custom-xor-cipher-reversal.md` |
-| PCAP / TCP / UDP / WebSocket / gRPC | `pcap_parse` / `state_machine` → skill-protocol |
-| 恶意样本 / C2 / IOC | `ioc_extract` / `yara_gen` → skill-malware |
-| prompt / model / injection | `llm_sim` → skill-ai-security |
+| PCAP / TCP / UDP / WebSocket / gRPC | `pcap_parse` / `state_machine` → protocol 域 |
+| 恶意样本 / C2 / IOC | `ioc_extract` / `yara_gen` → malware 域 |
+| prompt / model / injection | `llm_sim` → ai-security 域 |
 | 崩溃 / fuzz / minidump / 覆盖率 | `unicorn-templates.md` / 动态分析 |
 | CTF / crackme / flag | CTF 流程 + 决策点 |
 

@@ -119,7 +119,7 @@ decrypt     : python scripts/native/jvm/decrypt_sites.py sites.json oracle_out.t
 | Stage-2 | `javap -c -p`（JDK 自带） | 解剖四元组，无第三方依赖 |
 | Stage-3/4 | `KeyProbe.java` / `Oracle.java` | headless JVM 直调 |
 | 反编译交叉印证 | garlic / jadx | 快速反编译对照明文常量 |
-| 报告 | `create_case` / `evidence_reference` | 存证与报告模板 |
+| 报告 | `begin_case` / `evidence_reference` | 存证与报告模板 |
 
 ## 8. 案例基准（验证数字，供对拍）
 

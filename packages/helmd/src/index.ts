@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { applyBootstrapFilter } from './bootstrap.js'
 import { applyDescriptionWash } from './tool-wash.js'
 import { registerAdvisoryHook } from './advisory-hook.js'
+import { registerReferencePreview } from './reference-preview.js'
 import { registerLlmStreamHook } from './llm-stream-hook.js'
 import { applyPersistenceWrap } from './persist.js'
 import { registerRouterTools } from './router.js'
@@ -41,15 +42,17 @@ export function apply(ctx: Context): void {
     // Registered before everything else — it needs systemPrompt only.
     registerIcaContext(ctx)
 
-    // Bootstrap filter: first request only exposes the platform shell + read
+    // First request also exposes the reference router and reader: an invisible
+    // tool cannot be called merely because the persona asks for it.
     applyBootstrapFilter(ctx, {
       shellTools: [NATIVE_SHELL],
-      commonTools: ['read'],
+      commonTools: ['read', 'route_task', 'read_reference'],
       promoteOn: 'either',
     })
 
     // Advisory ledger: producers submit before the renderer runs its post-next render.
     registerAdvisoryHook(ctx)
+    registerReferencePreview(ctx)
     registerLlmStreamHook(ctx)
 
     // Router tools: skill_catalog + read_reference + route_task + analysis_mode

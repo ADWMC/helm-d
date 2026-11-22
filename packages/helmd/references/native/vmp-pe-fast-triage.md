@@ -1,6 +1,8 @@
 # VMProtect PE 快速识别与决策
 
-## 快速识别（3步内确认）
+> 本文是 PE 个案观察点，不能由节名或字符串缺失确认 VMProtect、完整加密或 API hook 失效。先读 `protection-detection-methodology.md`；目标不可见时按 `packer-handling.md` 设计实验。
+
+## 快速识别（3步内形成候选）
 
 ### Step 1: PE 节名检测
 ```bash
@@ -19,14 +21,11 @@ for i in range(n):
 ```
 
 **VMP 特征节名**：
-- `.winlice` — VMP license 段（必现）
-- `.boot` — VMP 虚拟化代码段（必现，所有保护代码在此）
-- `.vmp0`, `.vmp1` — VMP 标准节名
+- `.winlice` / `.boot` / `.vmp0` / `.vmp1` — 曾见于特定构建；均可改名或伪造，需进一步验证入口、映射与数据流
 
 ### Step 2: 确认加密
 ```bash
-# 如果是 VMP，strings 搜索应该无关键业务字符串
-# 只能看到 DLL 名（导入表未完全加密）和 manifest
+# 搜索目标相关的静态线索；命中或未命中均不单独证明加密状态
 python -c "
 import re
 with open('target.exe', 'rb') as f:
@@ -38,7 +37,7 @@ print(f'Domains found: {len(domains)}')
 "
 ```
 
-如果 URLs=0 且 Domains=0 → VMP 完全加密，**静态分析到此为止**。
+如果 URLs=0 且 Domains=0，仅说明当前搜索未命中；继续核查目标函数、资源、编码形式及静态可见性。仅当目标不可见且有相关运行时变换证据时才评估受控动态。
 
 ### Step 3: 入口点确认
 ```python
@@ -46,18 +45,18 @@ import struct
 pe = struct.unpack_from('<I', data, 0x3C)[0]
 entry_rva = struct.unpack_from('<I', data, pe+0x28)[0]
 img_base = struct.unpack_from('<Q', data, pe+0x30)[0]
-# 如果 entry RVA 落在 .boot 或 .winlice 节内 → VMP 虚拟化入口
+# entry RVA 落在候选节内只是装载入口线索，不能证明是 VM dispatcher
 ```
 
 ## 决策树
 
 ```
-VMP 确认后:
+目标静态不可见且受控动态条件成立后（以下是个案候选观察手段，需校准）：
 ├─ 有 GUI 服务器（能运行 .exe）
-│  ├─ 方案 A: Frida spawn + Nt* 导出 hook（推荐）
+│  ├─ 方案 A: Frida spawn + Nt* 导出 hook（先确认目标确实经过这些导出）
 │  │  → 用 enumerateExports() 找 NtDeviceIoControlFile / NtCreateFile 等
 │  │  → 捕获 DNS 查询（ioctl 0x12000f）、TCP 连接（ioctl 0x120007）
-│  │  → ⚠️ Win32 API hook（connect/send/recv/HttpSend）全部无效
+│  │  → 某些路径可绕开 Win32 API hook；需用正对照校准覆盖
 │  ├─ 方案 B: Frida 内存扫描（离线验证场景）
 │  │  → setTimeout 等 10-12 秒让 VMP 解包
 │  │  → 扫描 UTF-16LE 中文字符串找验证消息

@@ -124,7 +124,7 @@
 
 | 任务 | 首选 | 替代 | 存证 |
 |---|---|---|---|
-| 创建 case 工作区 | `create_case` | 手动创建目录 | case.json |
+| 创建 case 工作区 | `begin_case` | 手动创建目录 | CASE.md / evidence/ |
 | 离线分诊 | `triage_artifact` | 手动分析 | 分诊报告 |
 | SHA-256 哈希 | `hash_artifact` | `sha256sum` | 哈希值 |
 | 报告生成 | `evidence_reference` | 手动编写 | Markdown 报告 |

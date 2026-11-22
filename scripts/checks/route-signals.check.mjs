@@ -23,4 +23,12 @@ await report.check('generic hijacking and injection hints do not route to llm', 
   }
 })
 
+await report.check('native sample names and generic reverse tasks reach native guidance', () => {
+  for (const hint of ['逆向', '分析这个 ELF', '检查 sample.so']) {
+    assert.equal(primary(hint), 'native', `expected native for: ${hint}`)
+  }
+  assert.equal(primary('UPX 壳'), 'shell')
+  assert.equal(primary('APK classes.dex'), 'apk')
+})
+
 report.finish()

@@ -2,6 +2,8 @@
 
 > 常见加固方案识别特征 + Frida 内存 dump DEX 的 3 种策略 + 验证步骤。
 
+本卡只针对 APK 中目标 DEX 不可见的情形；若目标是 native ELF/.so，先读 `native/protection-detection-methodology.md`，不要把 DEX 扫描当 ELF 解包。Application 类名、库名和小型 DEX 都只是候选线索；先确认目标代码是否确实不可见。以下扫描可漏掉尚未加载、非连续或非标准映射的 DEX；单个 magic 命中不等于完整恢复。
+
 | 当...时 | 使用本节 |
 |---------|---------|
 | 需要识别应用是否加固 | §1 常见加固识别特征 |
@@ -38,7 +40,7 @@ grep -i "application" unpacked/AndroidManifest.xml | head -5
 ls -la unpacked/lib/*/ | grep -v "^d"
 
 # 4. 检查 classes.dex 大小
-# 加固 APK 通常只有一个很小的 classes.dex（壳代码），原始 DEX 被加密存储
+# 小 DEX 只是候选线索；不可据此断言原始 DEX 被加密
 ls -la unpacked/classes.dex
 ```
 
@@ -46,11 +48,11 @@ ls -la unpacked/classes.dex
 
 ## 脱壳方法论
 
-### 策略 1：maps 扫描（推荐）
+### 策略 1：maps 扫描（有可定位映射时）
 
 **原理**：扫描 `/proc/<pid>/maps` 中的 DEX 文件映射，直接从内存读取。
 
-**优点**：稳定，不依赖 Java Bridge。**缺点**：可能漏掉未被 mmap 映射的 DEX。
+**优点**：不依赖 Java Bridge。**缺点**：可能漏掉未映射、分段或已卸载的 DEX；映射命中不保证采集完整。
 
 ```
 1. 读取 /proc/<pid>/maps
@@ -65,7 +67,7 @@ ls -la unpacked/classes.dex
 
 **原理**：扫描进程全部可读内存区域，逐块搜索 DEX magic。
 
-**优点**：最全面，能找到所有 DEX。**缺点**：耗时较长（大进程可能需要 30-60 秒）。
+**优点**：可发现更多候选区域。**缺点**：成本、漏报与误报取决于权限、扫描窗口及页覆盖；不能保证找到所有 DEX。
 
 ```
 1. Process.enumerateRanges('r--')  获取所有可读内存区域
@@ -111,8 +113,8 @@ Java.perform(function() {
 1. 识别加固类型（见上表）
 2. 启动 frida-server（scripts/manage_frida.py --action start）
 3. 启动目标 app（等待加固壳解密 DEX）
-4. 使用全量扫描 dump DEX（策略 2，最全面）
-5. 验证 dump 结果
+4. 按实际映射与观察窗口选择采集策略；记录未覆盖的区域和时段
+5. 逐个验证 DEX header 的 file_size、边界、校验字段与解析结果，交叉检查目标类及调用行为；非空、可反编译不等于完整恢复
 ```
 
 ---
@@ -123,7 +125,7 @@ Java.perform(function() {
 
 ```bash
 ls -la output_dir/*.dex
-# 预期：多个 DEX，总大小与原 APK 的 classes*.dex 差异大（脱壳后更大）
+# 数量和大小仅供定位，不能证明完整或正确
 ```
 
 ### 2. 验证 DEX 头部

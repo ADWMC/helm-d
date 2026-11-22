@@ -11,6 +11,13 @@
 
 ## [Unreleased]
 
+### 保护样本分流（开发中）
+
+- 修复知识主动调用链：首轮暴露路由和阅读工具，逆向任务提示层给有限首读预览；成功读取回执与路由指定文档的采纳统计分离，报告门禁不再接受只调用未成功的文档工具。独立 legacy skill-native 保留兼容入口但同步保护卡，当前 release 仍只打主包。
+
+- `protection_route` 仅对已有 Case 的 E-id 和明确的信号进行保守分流；`detect_packer` 不再把签名说成确认的壳。重写保护识别和加壳入口以区分静态目标、局部 VM、写后执行与观测器故障；Case 核心限制保护 finding 晋升并允许 deep 模式如实未解结束。不包含自动解密或已验证的动态执行闭环。
+- 同步逆向 playbook、保护器速查、IDA/Frida 动态卡、Android DEX 卡及 TUSI 案例边界：移除签名即操作、工具固定优先级与单次 hook 绝对可靠的指导；修正旧 `create_case` 引用并重建参考索引。
+
 ### 兼容性
 
 - **DSH 区间上界 0.2.2-rc.1 → 0.2.2-rc.5**：补齐 0.2.2-rc.2/rc.3/rc.4/rc.5 四个版本（吸收远端 0c3a387 的 rc.2/rc.3 适配与 token fixture 提取方法）。npm 实测四版本同元组（cordis ~4.1.0 / schemastery ~3.19.0）、standard.patch.yml 字节一致（sha256 e40bb192ed3b…）、token 契约一致；peer 范围经双语义实测无缺口。落地：manifest 19 hosts、standard/token fixture、desktop-app.asar 重建、preset 快照重锚 e40bb1…。0.2.3+ 仍显式排除。

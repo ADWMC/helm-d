@@ -69,6 +69,9 @@ export function deriveNextAction(input: AutonomyInput): string {
     return 'Triage the sample first (hash/file/strings), then record the first testable hypothesis.'
   }
   if (input.findings.length === 0) {
+    if (input.hypotheses.every((h) => h.status === 'blocked' || h.status === 'refuted')) {
+      return 'No verified conclusion follows from blocked/refuted hypotheses: report uncertainty, then end_case with an explicit inconclusive or blocked summary; do not invent a finding.'
+    }
     return 'Resolved state exists: write the conclusion with record_finding(title, detail, evidence_ids, repro_cmd).'
   }
   const missingRepro = input.findings.find((f) => (f.repro ?? '').trim() === '')

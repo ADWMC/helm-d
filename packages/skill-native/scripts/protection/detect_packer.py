@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Packer Detection - Detect PE/ELF packers: UPX, VMProtect, Themida, OLLVM, TUSI.
+"""Packer signature hints for PE/ELF. Names and entropy are NOT a confirmed packer or algorithm.
 
 Usage:
     python detect_packer.py target.bin
@@ -31,7 +31,7 @@ def detect_pe_packer(data):
         raw_size = struct.unpack_from('<I', sec, 16)[0]
         sections.append(name)
         if raw_size == 0 and vsize > 0:
-            signs.append(f"section {name}: RSize=0 (packed)")
+            signs.append(f"section {name}: RSize=0 (unmapped bytes; check loader mapping)")
     signs_detect = []
     if any('.vmp' in s for s in sections): signs_detect.append("VMProtect (.vmp section)")
     if any('.winlice' in s for s in sections): signs_detect.append("VMProtect/Themida (.winlice)")
@@ -73,11 +73,12 @@ def main():
     elf_signs, elf_secs = detect_elf_packer(data)
     signs = pe_signs or elf_signs
     secs = pe_secs or elf_secs
+    print("Classification: candidate hints only; no algorithm, decryption key, or unpacked image verified")
     if signs:
-        print(f"Detected packers:")
+        print(f"Candidate signatures (verify independently):")
         for s in signs: print(f"  [!] {s}")
     else:
-        print("No known packer signatures detected")
+        print("No known signatures found (does not rule out protection)")
     if secs:
         print(f"\nSections: {', '.join(secs[:15])}")
 

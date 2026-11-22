@@ -9,7 +9,7 @@
 
 **A security-analysis plugin for DeepSeek Harness.**
 
-44 tools · 353 reference docs + 9 indexes · enforced evidence chain · four hot-swappable persona profiles
+45 tools · 353 reference docs + 9 indexes · enforced evidence chain · four hot-swappable persona profiles
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -56,7 +56,7 @@ Telegram / X / Apple / Google / GPT accounts and memberships, with order lookup 
 
 helm-d is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin. It does not modify the host binary; it adds four things through cordis hooks:
 
-- **44 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle and routing.
+- **45 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle and routing.
 - **An evidence chain**: tool output lands in `evidence/`; conclusions must cite E ids and a reproducible `repro_cmd`.
 - **On-demand knowledge**: 353 reference docs plus 9 indexes read through `read_reference`, never stuffed into the system prompt.
 - **Four persona tiers**: ds4.1f / stealth / redteam-max / gpt-6x, switched from the workbench without restarting the host.
@@ -82,7 +82,7 @@ The boot-time health check validates and, when needed, repairs the preset agains
 
 1. Open a new DSH session and select the **helmd** agent preset.
 2. Send `helmd` to activate it.
-3. Do one read/list action first. The first turn only exposes `shell + read`; the full 46-tool catalog (including `begin_case`) appears on the next turn — that is the host promotion mechanism, not a broken plugin.
+3. `route_task` and `read_reference` are available from the first request. Route and read the relevant reference; that call promotes the full catalog, including `begin_case`. No unrelated shell call is needed to unlock routing.
 4. Give it a task, for example:
 
    > Analyze how `samples/app.apk` is protected, open a case, collect evidence, and finish with a conclusion that includes `repro_cmd`.
@@ -139,7 +139,7 @@ Click the `helmd` workbench button in the DSH session header. It opens the right
 Most-used entry points: `begin_case` / `case_status` / `record_finding` / `update_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode`.
 
 <details>
-<summary><strong>All 44 tools (expand by domain)</strong></summary>
+<summary><strong>All 45 tools (expand by domain)</strong></summary>
 
 | Domain | Tools |
 |---|---|
@@ -148,7 +148,7 @@ Most-used entry points: `begin_case` / `case_status` / `record_finding` / `updat
 | **Routing / knowledge** | `skill_catalog` `read_reference` `route_task` `analysis_mode` |
 | **Android** | `apk_fingerprint` |
 | **Web** | `web_reference` `bot_analyze` |
-| **Native** | `native_reference` `detect_packer` `scan_strings` `xor_bruteforce` `encoding_detect` |
+| **Native** | `native_reference` `detect_packer` `protection_route` `scan_strings` `xor_bruteforce` `encoding_detect` |
 | **Protocol** | `protocol_reference` `pcap_parse` `state_machine` `parse_har` |
 | **Malware** | `malware_reference` `ioc_extract` `yara_gen` |
 | **AI-Security** | `ai_reference` `llm_sim` |
@@ -166,7 +166,7 @@ The 353 reference docs plus 9 indexes live in [`references/`](packages/helmd/ref
 ## How it runs
 
 ```text
-request → first-turn anchor (shell + read) → route_task
+request → first-turn anchor (shell + read + route_task + read_reference) → route_task
         → domain tools / read_reference → evidence/ (E ids)
         → conclusion with confidence and repro_cmd
 ```
@@ -174,7 +174,7 @@ request → first-turn anchor (shell + read) → route_task
 <details>
 <summary>Architecture and runtime hooks (expand)</summary>
 
-- `bootstrap`: first turn exposes only the platform shell + `read`; promotes after a tool call or assistant message.
+- `bootstrap`: first turn exposes the platform shell, `read`, `route_task`, and `read_reference`; promotes after a tool call or assistant message. Reverse-engineering tasks get a bounded first-reference preview; a successful read is still required for the full document.
 - `gate`: registers the `helm-d:persona` section; the Star panel is a notice layer only and never gates a feature.
 - `persist`: captures output from every later-registered domain tool into `evidence/`.
 - `advisory-hook` / `llm-stream-hook` / `ica-context`: refusal detection, stream interception loop and behavior examples.

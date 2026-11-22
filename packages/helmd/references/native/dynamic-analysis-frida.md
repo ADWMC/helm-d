@@ -1,17 +1,16 @@
-# 动态分析策略 — Frida 模式（后备）
+# 动态分析策略 — Frida 模式
 
-> AI 编排器在 IDA 调试器失败时通过 Read 工具加载本后备方案。
-> IDA 调试器为首选，详见 `dynamic-analysis.md`。
+> 需要目标进程插桩且具备隔离、版本适配与观测器校准时读取。IDA 断点追踪是另一选择，见 `dynamic-analysis.md`；动态切换条件见 `packer-handling.md`。
 > **GUI 交互经验与 `dynamic-analysis.md` 保持一致。**
 > **验证结果时的完整决策树见 `verification-patterns.md`。**
 > **Hook 注入参数和 Hook 读取结果的模板见 `verification-patterns.md` 的"方案 C1"章节。**
 
 ## 触发条件
 
-IDA 调试器失败时（强反调试、无法启动、WoW64 断点不工作）：
+目标问题需要运行时观测时（IDA 不可用也可以是原因之一）：
 
 1. **算法验证**：静态分析推导出算法后，需要用实际输入/输出对比验证
-2. **动态脱壳**：IDA 调试器 dump 失败（详见 `packer-handling.md` 阶段 3.5b）
+2. **运行时恢复**：目标代码静态不可见且有写后执行证据，观察目标区域；不预设完整 dump 或 OEP（见 `packer-handling.md`）
 3. **运行时数据追踪**：需要追踪特定函数的参数、返回值、内存状态
 4. **GUI 程序自动化**：需要向 GUI 控件输入数据并读取结果
 
@@ -30,7 +29,7 @@ IDA 调试器失败时（强反调试、无法启动、WoW64 断点不工作）�
 ```javascript
 Interceptor.attach(ptr(compare_addr), {
     onEnter: function(args) {
-        // args[0], args[1] 是比较的两个操作数
+        // 仅示意：先核实函数签名、ABI、地址和参数来源；不能直接假设为比较操作数
         send({
             type: "compare",
             arg0: args[0].toInt32(),

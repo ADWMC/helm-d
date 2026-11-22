@@ -18,7 +18,7 @@
 | 文档 | 讲什么 | 类型 |
 |---|---|---|
 | [工具矩阵（Tool Matrix）](./tool-matrix.md) | 按任务分类，每类填「首选 \| 替代 \| 存证」。 | 手册 |
-| [Patterns — 安全分析模式速查](./patterns.md) | 常见保护器签名、反分析技术、Patch 编码速查表。 | 手册 |
+| [Patterns — 安全分析模式速查](./patterns.md) | 候选线索速查；先读 native/protection-detection-methodology.md，策略见 native/packer-handling.md。名称、字符串和段名不确认保护器或算法。 | 手册 |
 
 ## 环境与出站（2）
 

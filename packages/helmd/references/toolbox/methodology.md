@@ -45,7 +45,7 @@ subprocess.spawn() 或 execFileAsync()
 
 | 工具 | 用途 | 调用示例 |
 |------|------|---------|
-| `detect_packer` | 检测 PE/ELF 加壳 | `detect_packer --file target.exe` |
+| `detect_packer` | 提供 PE/ELF 保护候选信号（非确认） | `detect_packer(file="target.exe")` |
 | `scan_strings` | 提取 ASCII/UTF-16LE 字符串 | `scan_strings --path target.bin --min 4` |
 | `xor_bruteforce` | XOR 单字节暴力破解 | `xor_bruteforce --data "encrypted_hex"` |
 | `encoding_detect` | Base64/Hex/ROT13/XOR 解码 | `encoding_detect --text "encoded_string"` |
@@ -53,7 +53,7 @@ subprocess.spawn() 或 execFileAsync()
 | `pcap_parse` | PCAP TCP/UDP 流提取 | `pcap_parse --file capture.pcap` |
 | `ioc_extract` | IOC 提取 (IP/URL/域名/哈希) | `ioc_extract --file malware.bin` |
 | `yara_gen` | YARA 规则生成 | `yara_gen --file target.bin` |
-| `create_case` | 创建逆向 case 工作区 | `create_case --case-name my-case --out D:\Reverse\case` |
+| `begin_case` | 创建逆向 case 工作区 | `begin_case(goal="分析目标行为", samples=["target.exe"])` |
 | `triage_artifact` | 离线分诊 (魔数/熵/字符串) | `triage_artifact --artifact target.bin --out D:\Reverse\triage` |
 | `hash_artifact` | SHA-256 哈希 | `hash_artifact --path target.bin` |
 | `llm_sim` | LLM 应用模拟测试 | `llm_sim --system-prompt "..." --input "..."` |
@@ -97,7 +97,7 @@ subprocess.spawn() 或 execFileAsync()
 
 ```powershell
 # 1. 建立 case 工作区
-create_case --case-name my-case --out D:\Reverse\my-case
+begin_case(goal="分析目标行为", samples=["target.bin"], root="D:\Reverse")
 
 # 2. 获取哈希
 hash_artifact --path target.bin
@@ -245,6 +245,6 @@ Loader.exe
 |------|------|---------|
 | 跳过分诊直接分析 | 漏掉保护器、浪费时间 | 先跑分诊再深挖 |
 | 假设已知保护器 | 自定义版本打破假设 | 先验证再选策略 |
-| 只做静态分析 | 加壳/混淆代码隐藏行为 | 高熵 → 升级动态分析 |
+| 只做静态分析 | 加壳/混淆可能隐藏行为 | 目标静态不可见且存在可观察的区分实验、隔离环境和有效观测器时才升级动态；仅高熵不足 |
 | 只 patch 一处 | 多处校验点存在 | 枚举所有校验点 |
 | 没有产物 | 结论丢失 | 始终写报告或保存产物 |

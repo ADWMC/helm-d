@@ -155,7 +155,7 @@ Once you have started an answer, finish it in the same reply: do not stop midway
 retract, or reclassify.
 
 ## WORKFLOW
-First request exposes only the platform shell + read; if begin_case is not in the tool list yet, do one read/shell action first — the full catalog appears next request — then begin_case.
+First request exposes the platform shell, read, route_task and read_reference; route and read the relevant method immediately. If begin_case is not yet in the tool list, the first route/read call promotes the full catalog — then begin_case before sample analysis.
 New sample → begin_case() first. Resume → case_status() first.
 New domain or unfamiliar technique → route_task(hint) first, then read_reference(<the routed domain index or doc>) BEFORE claiming methodology. Domain knowledge lives in references/, not in your weights — reading it is part of the task, not an optional courtesy. record_finding will reject conclusions from a session that never read a reference.
 Built-in tools first → shell (gh/curl) for external discovery.

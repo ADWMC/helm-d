@@ -26,7 +26,7 @@
 | 需要选工具 / 装环境 / 网络不通 | [工具矩阵（Tool Matrix）](toolbox/tool-matrix.md) · [工具安装指南](toolbox/tool-install.md) · [出站通道规则 — 代理发现与直连回退](toolbox/network-egress.md) | 选型 → 安装 → 出站回退 |
 | APK 指纹 / 框架识别 | [APK Fingerprint 参考](android/fingerprint.md) | Flutter/RN/加固先分流 |
 | APK 反编译与改包 | [Garlic — 快速 APK/DEX/JAR 反编译器 + ELF 分析器](android/garlic.md) · [Android 逆向工具安装与 CLI 参考](android/android-tools.md) | jadx/apktool/garlic 的选择 |
-| Android 加固与脱壳 | [Android 加固识别与脱壳](android/android-unpacking.md) | 识别加固 → dump DEX → 验证 |
+| Android 加固与脱壳 | [Android 加固识别与脱壳](android/android-unpacking.md) | 区分 APK/DEX 与 native ELF，验证采集覆盖 |
 | Frida 基础与模板 | [Frida Hook 核心原则与 Java Bridge 陷阱](android/frida-hook-principles.md) · [Frida Hook 架构与模板](android/frida-hook-templates.md) | 先读铁律与 Java Bridge 陷阱 |
 | Frida 17.x 迁移 | [Frida 17.x API 变化速查（移动端补充）](android/frida-17x-api.md) · [Frida 17.x Bridge 编译与使用指南（移动端）](android/frida-17x-bridge.md) | Bridge 拆分后的用法 |
 | SSL pinning / 移动流量 | [移动端 SSL Pinning 绕过](android/mobile-ssl-pinning-bypass.md) · [移动端 MITM 方案选型指南](android/mitm-methodology.md) | 先选 MITM 方案再绕 pinning |
@@ -34,8 +34,8 @@
 | iOS 测试 | [iOS 渗透测试](android/ios-pentesting-tricks.md) · [iOS 逆向工具安装与 CLI 参考](android/ios-tools.md) | runtime/keychain/URL scheme |
 | APK 隐藏代码 / 恶意 APK | [Android APK 恶意代码检测方法论](android/android-apk-malware-detection.md) · [Android APK 恶意代码分析](android/android-apk-malware-analysis.md) | 源码对比与权限/DEX 审计 |
 | 云控 ELF / 卡密 | [Android 云端下发 Native 二进制（Cloud-Native Binary）模式](android/android-cloud-native-binary.md) · [Android 云端下发 ELF 卡密绕过 — 通用方法论](android/frida-license-bypass-android.md) | 运行时下发与校验绕过 |
-| PE/ELF 初判 | [Native / 二进制逆向核心原则](native/native-principles.md) · [PE/ELF 保护检测方法论](native/protection-detection-methodology.md) | 先判保护与风险面 |
-| 壳 / VMP / 脱壳 | [加壳/混淆二进制处理策略](native/packer-handling.md) · [VMProtect PE 快速识别与决策](native/vmp-pe-fast-triage.md) · [ELF VMP (Virtual Machine Protection) 架构与实现](native/vmp-elf-protection.md) | 先验证保护类型再选策略 |
+| PE/ELF 初判 | [Native / 二进制逆向核心原则](native/native-principles.md) · [PE/ELF 保护迹象：候选识别入口](native/protection-detection-methodology.md) | 先判保护与风险面 |
+| 壳 / VMP / 脱壳 | [PE/ELF 保护迹象：候选识别入口](native/protection-detection-methodology.md) · [加壳与运行时变换：任务导向的处理卡](native/packer-handling.md) · [VMProtect PE 快速识别与决策](native/vmp-pe-fast-triage.md) · [ELF VMP (Virtual Machine Protection) 架构与实现](native/vmp-elf-protection.md) | 候选识别 → 核对目标可见性 → 条件分流 |
 | 反调试 / anti-Frida | [反调试绕过方法论](native/anti-debug-methodology.md) · [Anti-Frida DLL 绕过的替代方案](native/anti-frida-workarounds.md) | 检测点枚举后再绕过 |
 | OLLVM / 代码混淆 | [代码混淆与反混淆](native/code-obfuscation-deobfuscation.md) | 控制流/字符串/常量分层处理 |
 | ARM64 逆向 | [arm64 无符号逆向方法论](native/arm64-reverse-methodology.md) · [ARM64 ADRP+ADD 字符串引用搜索](native/arm64-string-xref-search.md) | 调用约定、xref 与字符串定位 |
@@ -97,7 +97,7 @@
 #### 速查与选型
 
 - [工具矩阵（Tool Matrix）](toolbox/tool-matrix.md) — 按任务分类，每类填「首选 | 替代 | 存证」。 *(手册)*
-- [Patterns — 安全分析模式速查](toolbox/patterns.md) — 常见保护器签名、反分析技术、Patch 编码速查表。 *(手册)*
+- [Patterns — 安全分析模式速查](toolbox/patterns.md) — 候选线索速查；先读 native/protection-detection-methodology.md，策略见 native/packer-handling.md。名称、字符串和段名不确认保护器或算法。 *(手册)*
 
 #### 环境与出站
 
@@ -184,7 +184,7 @@
 - [代码混淆与反混淆](native/code-obfuscation-deobfuscation.md) — 控制流、字符串、常量与自修改代码的混淆识别和去混淆流程。 *(参考)*
 - [反调试技术](native/anti-debugging-techniques.md) — 反调试检测与绕过：ptrace/PEB/时序/异常等检测点及对应绕过。 *(手册)*
 - [反调试绕过方法论](native/anti-debug-methodology.md) — 检测与绕过常见反调试技术的系统化流程 *(方法论)*
-- [加壳/混淆二进制处理策略](native/packer-handling.md) — 加壳检测后：定位 OEP、dump、修复与静态兜底策略。 *(参考)*
+- [加壳与运行时变换：任务导向的处理卡](native/packer-handling.md) — 保护目标代码不可见时：静态/动态切换、变换恢复与分级验收。 *(参考)*
 - [卡密/License 验证绕过工作流](native/license-bypass-workflow.md) — 原理：程序读取本地配置文件决定是否跳过验证。 *(方法论)*
 - [模型/数据文件解密密钥运行时捕获](native/model-decryption-key-capture.md) — 目标程序包含加密的模型/数据文件（如 .aes、.enc、.bin），静态分析无法提取密钥时加载本文档。 *(参考)*
 - [商业级加固标准 → ELF 保护适配](native/commercial-hardening-standards.md) — 关键：不同失败原因 → 相同外部行为。攻击者无法区分"解密失败"和"正常运行"。 *(参考)*
@@ -193,7 +193,7 @@
 - [ELF VMP (Virtual Machine Protection) 架构与实现](native/vmp-elf-protection.md) — SHVMP 项目实战经验。项目地址: https://github.com/ADWMC/shvmp *(参考)*
 - [ELVMP 分析工作流](native/elvmp-analysis-workflow.md) — SHVMP v3.0 保护的 .elvmp 文件分析方法论。基于 ADLI.full.noad.elvmp 实战（2026-07）。 *(方法论)*
 - [Memory.patchCode Bypass — When API Hooks Fail](native/memory-patchcode-bypass.md) — API Hook 失效时的 Memory.patchCode 绕过与验证。 *(手册)*
-- [PE/ELF 保护检测方法论](native/protection-detection-methodology.md) — 检测和分析常见二进制保护器：UPX, VMProtect, Themida, OLLVM, TUSI *(方法论)*
+- [PE/ELF 保护迹象：候选识别入口](native/protection-detection-methodology.md) — 本页是分诊入口，不是按产品名自动选工具的指令。先保存样本哈希、格式/架构、入口映射及目标问题；需要恢复代码时再读 packer-handling.md。不运行未经隔离的未知程序。 *(方法论)*
 - [processpatch.py 完整参数参考](native/process-patch-reference.md) — 通用进程 Patch + 值捕获工具。替代手写 ctypes 脚本（OpenProcess/VirtualProtectEx/WriteProcessMemory 等样板代码）。 *(参考)*
 - [VMProtect PE + Frida 动态分析（Windows 桌面）](native/vmp-pe-frida-windows.md) — 适用场景：VMP 加壳的 Windows PE 程序（.winlice + .boot 节），需要在 Windows 桌面机上动态分析。 *(参考)*
 - [VMProtect PE 快速识别与决策](native/vmp-pe-fast-triage.md) — VMProtect PE 快速识别：先处理 Defender，再按 URL/域名/strings 信号决定是否继续静态分析。 *(参考)*
@@ -202,8 +202,8 @@
 
 #### 静态分析、反编译与工具
 
-- [动态分析策略 — Frida 模式（后备）](native/dynamic-analysis-frida.md) — Frida 动态分析后备流程：IDA 调试失败时的 attach/spawn、Hook 与验证。 *(参考)*
-- [动态分析策略 — IDA 调试器（首选）](native/dynamic-analysis.md) — IDA 调试器动态分析首选流程：断点、调用跟踪与内存检查。 *(参考)*
+- [动态分析策略 — Frida 模式](native/dynamic-analysis-frida.md) — Frida 进程插桩：按目标与观测条件选择 attach/spawn、Hook 与验证。 *(参考)*
+- [动态分析策略 — IDA 调试器](native/dynamic-analysis.md) — IDA 调试器动态分析：可断点目标的调用跟踪与内存检查。 *(参考)*
 - [固件/驱动 EEPROM 数据分析方法论](native/firmware-eeprom-analysis.md) — 分析驱动包中的加密 EEPROM 数据、固件 blob、校准文件的通用思路。适用于 WiFi/BT/网卡等外设驱动。 *(参考)*
 - [固件分析方法论](native/firmware-analysis-methodology.md) — IoT/嵌入式固件逆向、提取、分析系统化流程 *(方法论)*
 - [APK 签名验证与完整性校验模式](native/apk-signature-verification.md) — 典型的游戏 SDK APK 渠道签名验证类，位于 IIPS/Source/app/versionmanager/signature/ChannelInfoUtil.cpp。 *(参考)*

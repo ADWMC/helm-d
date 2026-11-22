@@ -25,7 +25,7 @@ export function apply(ctx: Context): void {
   }))
   ctx.tools.register(defineTool({
     name: 'detect_packer',
-    description: 'Detect PE/ELF packers (UPX/VMProtect/Themida/OLLVM).',
+    description: 'Report candidate PE/ELF protection signatures and entropy, not confirmed packer identity or algorithm.',
     parameters: {
       file: { type: 'string', required: true },
     },

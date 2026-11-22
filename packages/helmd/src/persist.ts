@@ -6,8 +6,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import { getCase, saveEvidence, loadHypotheses, loadFindings, listEvidence } from './case.js'
 import { getLevel } from './mode.js'
 import { deriveNextAction } from './autonomy.js'
-import { submitAdvisory } from './advisory.js'
-import { sessionEvents, toolCalls } from './session-log.js'
+import { submitAdvisory, hasLoadedReference } from './advisory.js'
+import { sessionEvents } from './session-log.js'
 import { loadSettings } from './settings.js'
 
 const NO_PERSIST = new Set([
@@ -103,8 +103,7 @@ async function persistHook(
   let refNote = ''
   if (sessionId !== undefined && DOMAIN_TOOLS.has(toolName)) {
     try {
-      const events = sessionEvents(agent as unknown as Parameters<typeof sessionEvents>[0], 'persist')
-      const alreadyRead = toolCalls(events).some((c) => c.name === 'read_reference')
+      const alreadyRead = hasLoadedReference(sessionId)
       if (!alreadyRead) {
         refNote = '\n[ref reminder: this session has not read any reference doc. read_reference("<domain>/index.md") before drawing methodology conclusions; record_finding will reject otherwise.]'
       }

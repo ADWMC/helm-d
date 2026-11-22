@@ -11,7 +11,7 @@ phases:
   - id: triage
     title: 风险面
     suggest:
-      - "壳/熵/导入表 → read_reference('toolbox/patterns.md') 触发表"
+      - "壳/熵/导入表仅为线索 → read_reference('native/protection-detection-methodology.md')；目标代码不可见时再读 native/packer-handling.md"
       - "发现异常 → record_hypothesis"
       - "read_reference('native/index.md') 按需"
   - id: map
@@ -27,5 +27,5 @@ phases:
   - id: report
     title: 报告
     suggest:
-      - "record_finding（confirmed 必须有 repro_cmd + evidence）"
+      - "record_finding：保护器/算法/解包结论仅有签名时保持 candidate；confirmed 需独立复现与对应证据；证据不足可如实未解结束"
       - "end_case 前检查 coverage/unknowns"

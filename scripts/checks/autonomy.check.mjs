@@ -52,6 +52,12 @@ await report.check('resolved state without findings: record one', () => {
   assert.match(next, /record_finding/)
 })
 
+await report.check('blocked/refuted hypotheses do not demand an invented finding', () => {
+  const next = deriveNextAction({ ...base, hypotheses: [hyp({ status: 'blocked' })] })
+  assert.match(next, /inconclusive or blocked/)
+  assert.doesNotMatch(next, /record_finding/)
+})
+
 await report.check('finding without repro: ask for repro_cmd', () => {
   const next = deriveNextAction({
     ...base,

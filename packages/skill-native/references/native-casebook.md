@@ -2,8 +2,6 @@
 
 > 从 secplan methodology 提取的通用逆向流程与实战案例，去掉工具环境配置与框架引用。读完自行判断，非硬性规则。
 
-## General Reverse Engineering Flow
-
 ## 通用逆向流程
 
 ```
@@ -42,8 +40,6 @@
 
 
 
-## Case Study: GH_Loader (netease_future.exe)
-
 ## 实战案例：GH_Loader (netease_future.exe)
 
 **案例背景**: 网易云 AI 自瞄辅助 loader，64MB PE，.rsrc 节占 64.5MB，注入 cloudmusic.exe。
@@ -73,9 +69,9 @@ def decrypt_byte(i):
 
 
 
-## Packer/Protector Decision Tree
-
 ## 加壳二进制分析决策树
+
+以下旧案例路径仅记录当时可用的观察点，不能作为当前样本的通用决策树。实际分流以 `protection-detection-methodology.md` → `packer-handling.md` 为准：先验证目标可见性、结构/写后执行证据与观测器，再选择局部静态或受控动态；本节命令只能在有相应证据且保留原样的副本上使用。
 
 ```
 拿到加壳二进制后:
@@ -95,23 +91,33 @@ def decrypt_byte(i):
      for i in range(n):
          name = data[off+i*40:off+i*40+8].rstrip(b'\x00').decode('ascii','ignore')
          if name in ('.winlice','.boot','.vmp0','.vmp1'):
-             print(f'VMProtect detected: section {name}')
+             print(f'VMProtect candidate: section {name}')
      "
 
-  2. 根据保护器选择策略
+  2. 以下是个案中的旧选项，不能仅凭签名自动选策略
      ┌─ 标准 UPX (签名 "UPX!")
      │  → upx -d target
-     │  → 失败则修改签名重试
+     │  → 失败保留输出并核对布局/版本；不要改签名硬试
      │
      ├─ TUSI-ObfuscatorClang (签名 "UPX_BySpra", 文件末尾有 "TUSI-Obfus")
-     │  → 静态不可解压 (定制 NRV2B)
-     │  → 立即转 Frida 动态脱壳 (hook /dev/shm + write)
+     │  → 此案例静态解包未成功；当前变体需重新验证
+     │  → 若目标代码不可见且证实写后执行，可校准 /dev/shm + write 观察点
      │  → 参考 bypass-case-tusi-netease.md
      │
-     ├─ VMProtect (PE 节含 `.winlice` + `.boot`，或 ELF 含 `.vmp0`/`.vmp1`)\n     │  → **静态分析完全无效** — 字符串/代码/URL 全部加密\n     │  → 立即停止静态分析，不尝试 strings/xrefs/反汇编\n     │  → 2 步内必须做出策略选择，不要在静态分析上反复尝试\n     │  → 策略选择：\n     │    1. 有 GUI 服务器 → Frida spawn + pywinauto UIA 交互（见 vmp-pe-frida-windows.md）\n     │    2. 无 GUI 服务器 → 让用户本地抓包(Fiddler/Charles)或 x64dbg\n     │    3. 判断验证类型：netstat + ipconfig /displaydns → 网络 vs 离线\n     │    4. 离线验证 → Frida 内存扫描找验证字符串 → x64dbg 内存断点追溯\n     │  → **关键**：VMP 用直接系统调用，Frida API hook 全部无效，不要浪费时间换 hook 目标\n     │  → 参考 vmp-pe-frida-windows.md（PE 实战）和 vmp-elf-protection.md（ELF 架构）
+     ├─ VMProtect (PE 节含 `.winlice` + `.boot`，或 ELF 含 `.vmp0`/`.vmp1`)
+     │  → 先确认目标函数是否可静态定位，局部 VM 不意味着所有代码加密
+     │  → 若不可见，记录目标与可判分预测，再评估受控动态
+     │  → 2 步内必须做出策略选择，不要在静态分析上反复尝试
+     │  → 策略选择：
+     │    1. 有 GUI 服务器 → Frida spawn + pywinauto UIA 交互（见 vmp-pe-frida-windows.md）
+     │    2. 无 GUI 服务器 → 让用户本地抓包(Fiddler/Charles)或 x64dbg
+     │    3. 判断验证类型：netstat + ipconfig /displaydns → 网络 vs 离线
+     │    4. 离线验证 → Frida 内存扫描找验证字符串 → x64dbg 内存断点追溯
+     │  → 某些路径可能绕开 API hook；用正对照校准覆盖，不从无事件推出不存在
+     │  → 参考 vmp-pe-frida-windows.md（PE 实战）和 vmp-elf-protection.md（ELF 架构）
      │
      ├─ Themida / Enigma / Obsidium
-     │  → 类似 VMP，转动态分析
+     │  → 先核查目标可见性与实际变换，再选观察手段
      │
      └─ OLLVM (控制流平坦化)
         → IDA/Ghidra + 反混淆脚本
@@ -123,15 +129,13 @@ def decrypt_byte(i):
      → 有则零成本绕过，无则继续分析
 
   4. ADRP+ADD 搜索不到关键字符串？
-     → 字符串存在但代码引用它们的方式不是标准 ADRP+ADD
-     → 常见原因: 验证逻辑在运行时加载的 shellcode 中
+     → 可能并非标准 ADRP+ADD 引用，也可能目标代码尚未加载；需交叉验证
+     → 个案中曾见运行时加载的 shellcode，不可由搜索失败直接断定
      → 特征: dec-v2/dec-v3 前缀字符串、shellcode 指针、/proc/pid/mem
      → 转 Frida 动态分析: hook connect/sendto 拦截验证请求
 ```
 
 
-
-## Large File Analysis (>10MB)
 
 ## 大文件（>10MB）分析
 
@@ -146,8 +150,6 @@ def decrypt_byte(i):
 ```
 
 
-
-## Bypass & Patch Priority
 
 ## 绕过与Patch优先级
 

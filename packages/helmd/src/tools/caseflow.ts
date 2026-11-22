@@ -17,7 +17,7 @@ import {
   type FindingSeverity, type FindingStatus, type FindingConfidence,
 } from '../case.js'
 import { getLevel } from '../mode.js'
-import { renderAdvisoryStats } from '../advisory.js'
+import { renderAdvisoryStats, hasLoadedReference } from '../advisory.js'
 import { getStreamInterceptionStats } from '../llm-stream-hook.js'
 import { renderAutonomyPacket, detectNoPath } from '../autonomy.js'
 import { loadSettings } from '../settings.js'
@@ -27,6 +27,9 @@ import { sessionEvents, toolCalls } from '../session-log.js'
 
 /** Per-session evidence snapshot for the NO_PATH guard. */
 const lastEvidenceCount = new Map<string, number>()
+
+// A protection verifier is not integrated yet; the Case core guards every
+// promotion path including the workbench API, not only this tool.
 
 interface ExecLike {  agent?: {
     id?: string
@@ -326,10 +329,9 @@ export function registerCaseflowTools(ctx: Context): void {
         }
       }
       if (discipline.requireDocRead) {
-        const calls = toolCalls(sessionEvents(exec?.agent as unknown as Parameters<typeof sessionEvents>[0], 'caseflow'))
-        if (!calls.some((call) => call.name === 'read_reference')) {
+        if (!hasLoadedReference(exec?.agent?.id ?? (exec?.agent as { session?: { id?: string } } | undefined)?.session?.id)) {
           return [
-            'REJECTED — no read_reference call found in this session\'s real tool trace.',
+            'REJECTED — no successful read_reference result found in this session.',
             'Call route_task(goal) and then read_reference(<matched refs>) before recording a conclusion;',
             'the claim "I read the docs" is not evidence.',
           ].join('\n')
@@ -456,6 +458,9 @@ export function registerCaseflowTools(ctx: Context): void {
           return `REJECTED — unknown evidence ids: ${check.missing.join(', ')}. Known: ${check.known.join(', ') || '(none)'}.`
         }
       }
+      if (args.status === 'confirmed' && /加壳|脱壳|解壳|壳类型|解密算法|解密完成|unpack|packer|vmprotect|themida|\bupx\b/i.test(`${(await loadHypotheses(active.dir)).find((entry) => entry.id === args.id)?.statement ?? ''} ${args.observation}`)) {
+        return 'REJECTED — protection mechanism cannot be confirmed from an E-id alone; record a bounded observation as blocked with the unresolved validation step.'
+      }
       const h = await updateHypothesis(active.dir, args.id, args.status as any, args.observation, args.evidence_ids ?? [])
       if (!h) return `REJECTED — hypothesis ${args.id} not found.`
       return `hypothesis ${h.id} → ${h.status}. ${h.observation?.slice(0, 120) ?? ''}`
@@ -466,7 +471,7 @@ export function registerCaseflowTools(ctx: Context): void {
     name: 'end_case',
     description:
       'Close the active case: stamps CASE.md completed and unbinds the session. ' +
-      'In deep mode at least one recorded finding is required, and every finding must carry repro_cmd. ' +
+      'In deep mode a finding is required unless summary explicitly says inconclusive / blocked / budget-exhausted; every recorded finding needs repro_cmd. ' +
       'Closing also requires at least one evidence entry on disk, unless the summary states why there is none ' +
       'with "(no-evidence: …)".',
     parameters: { summary: { type: 'string', description: 'One-line closing summary.' } },
@@ -478,7 +483,8 @@ export function registerCaseflowTools(ctx: Context): void {
       if (mode === 'deep') {
         const findings = await loadFindings(active.dir)
         if (findings.length === 0) {
-          return 'DEEP mode requires at least one record_finding before end_case. Evidence chain incomplete.'
+          const honestUnknown = /\b(inconclusive|blocked|budget-exhausted)\b/.test(args.summary ?? '')
+          if (!honestUnknown) return 'DEEP mode needs a finding or an explicit inconclusive / blocked / budget-exhausted summary; never invent a finding to close.'
         }
         const missingRepro = findings.filter((finding) => (finding.repro ?? '').trim() === '')
         if (missingRepro.length > 0) {

@@ -9,7 +9,7 @@
 
 **DeepSeek Harness 的破甲安全分析插件。**
 
-44 个工具 · 353 篇参考正文 + 9 个索引 · 证据链强制入链 · 四档破甲热切换
+45 个工具 · 353 篇参考正文 + 9 个索引 · 证据链强制入链 · 四档破甲热切换
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -56,7 +56,7 @@ Telegram / 推特 / 苹果 / 谷歌 / GPT 账号与会员，支持查单与售�
 
 helm-d 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的插件，不修改宿主二进制，通过 cordis 钩子给模型加四样东西：
 
-- **44 个工具**：Android / Web / Native / Protocol / Malware / AI-Security，加上 Case 生命周期与路由。
+- **45 个工具**：Android / Web / Native / Protocol / Malware / AI-Security，加上 Case 生命周期与路由。
 - **证据链**：工具输出自动落 `evidence/`，结论必须引用 E 编号和可复现的 `repro_cmd`。
 - **按需知识**：353 篇参考正文 + 9 个索引由 `read_reference` 读取，不塞进 system prompt。
 - **四档破甲**：ds4.1f / stealth / redteam-max / gpt-6x，工作台一键热切换，下一次模型调用生效。
@@ -82,7 +82,7 @@ dsh web
 
 1. 新建 DSH 会话，把 Agent 预设切到 **helmd**。
 2. 发送 `helmd` 激活。
-3. 先做一个读文件/列目录动作。首轮只暴露 `shell + read`，下一轮 44 个工具（含 `begin_case`）才会出现——这是宿主晋升机制，不是插件坏了。
+3. 首轮就能调用 `route_task` 与 `read_reference`，先路由并读取对应文档；调用后工具列表晋升，`begin_case` 可用。无需用无关的 shell 调用解锁路由。
 4. 直接下任务，例如：
 
    > 分析 `samples/app.apk` 的加固方式，建 case、收集证据，最后给出带 `repro_cmd` 的结论。
@@ -139,7 +139,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 最常用的入口：`begin_case` / `case_status` / `record_finding` / `update_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode`。
 
 <details>
-<summary><strong>44 个工具（按域展开）</strong></summary>
+<summary><strong>45 个工具（按域展开）</strong></summary>
 
 | 域 | 工具 |
 |----|------|
@@ -148,7 +148,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 | **路由/知识** | `skill_catalog` `read_reference` `route_task` `analysis_mode` |
 | **Android** | `apk_fingerprint` |
 | **Web** | `web_reference` `bot_analyze` |
-| **Native** | `native_reference` `detect_packer` `scan_strings` `xor_bruteforce` `encoding_detect` |
+| **Native** | `native_reference` `detect_packer` `protection_route` `scan_strings` `xor_bruteforce` `encoding_detect` |
 | **Protocol** | `protocol_reference` `pcap_parse` `state_machine` `parse_har` |
 | **Malware** | `malware_reference` `ioc_extract` `yara_gen` |
 | **AI-Security** | `ai_reference` `llm_sim` |
@@ -166,7 +166,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 ## 运行方式
 
 ```text
-请求 → 首轮锚定（shell + read）→ route_task 路由
+请求 → 首轮锚定（shell + read + route_task + read_reference）→ route_task 路由
      → 域工具 / read_reference → evidence/（E 编号）
      → 带置信度与 repro_cmd 的结论
 ```
@@ -174,7 +174,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 <details>
 <summary>架构与运行时钩子（展开）</summary>
 
-- `bootstrap`：首轮只暴露平台 shell + `read`，工具调用或助手消息后晋升。
+- `bootstrap`：首轮暴露平台 shell + `read` + `route_task` + `read_reference`；工具调用或助手消息后晋升。逆向任务自动提供有界首读预览；完整文档仍需成功读取。
 - `gate`：注册 `helm-d:persona` section；Star 面板只是提示层，不 gate 功能。
 - `persist`：所有后注册域工具输出自动落 `evidence/`。
 - `advisory-hook` / `llm-stream-hook` / `ica-context`：交付拒绝检测、流式拦截闭环与行为示范注入。

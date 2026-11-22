@@ -15,8 +15,8 @@
 | 借口 | 为什么错 | 必须做 |
 |------|---------|--------|
 | "先快速看一眼" | 跳过基线 = 漏回归 | 先跑分诊再深挖 |
-| "我知道这个壳" | 自定义/更新版保护器会打破假设 | 先用 `detect_packer` 验证保护类型 |
-| "静态分析够了" | 加壳/混淆代码隐藏行为 | 高熵或无字符串 → 升级动态分析 |
+| "我知道这个壳" | 自定义/更新版保护器会打破假设 | `detect_packer` 仅提供候选，须核查本构建结构和目标链 |
+| "静态分析够了" | 加壳/混淆可能隐藏行为 | 目标静态不可见且有可观测转移时，按 `native/packer-handling.md` 的前置条件考虑动态 |
 | "Frida 能搞定" | 反 Frida 机制会 crash | 2-3 次失败 → 切换 Win32 API / ptrace / 静态提取 |
 | "改一处就行" | 校验点多处存在 | 枚举所有校验点再打补丁 |
 | "口头解释下" | 没有产物 = 结论丢失 | 始终写报告或保存提取的 payload |
@@ -32,10 +32,10 @@
 │
 ├─ Windows PE (.exe/.dll)?
 │  ├─ 加壳/保护？→ detect_packer --file target
-│  │  ├─ UPX → upx -d
-│  │  ├─ VMProtect → 动态分析 only
-│  │  ├─ Themida → 动态 dump
-│  │  └─ OLLVM → IDA + 脚本去混淆
+│  │  ├─ 命中产品签名 → 仅候选；核对入口、映射与目标逻辑
+│  │  ├─ 确认当前构建适配已知解包器 → 在副本上尝试并分级验收
+│  │  ├─ 目标静态不可见且有可检验转移 → 隔离环境、校准观测器后定点跟踪
+│  │  └─ VM/局部混淆 → 定位目标函数的输入/输出，非默认整映像 dump
 │  ├─ License 绕过？→ native_reference --path license-bypass-workflow.md
 │  ├─ DLL 注入？→ native_reference --path pe-loader-dll-injection.md
 │  └─ 恶意样本？→ malware_reference --path index.md + ioc_extract

@@ -464,6 +464,13 @@ export interface FindingInput {
   pocId?: string
 }
 
+/** Until a protection-specific verifier exists, recorded evidence is a
+ *  candidate observation, not proof of unpacking or of a named cipher. */
+export function isProtectionFinding(title: string, detail: string, vulnClass?: string): boolean {
+  return /加壳|脱壳|解壳|壳类型|解密算法|解密完成|dump\s*(?:成功|完成)|unpack(?:ed|ing)?|packer|vmprotect|themida|\bupx\b/i
+    .test(`${title} ${detail} ${vulnClass ?? ''}`)
+}
+
 export interface RecordedFinding {
   finding: Finding
   merged: boolean
@@ -576,6 +583,9 @@ async function saveFindings(caseDir: string, findings: Finding[]): Promise<void>
  *  - identical vuln class + target + normalized title merges into the existing
  *    finding (evidence union, max severity, seen_count). */
 export async function recordFinding(caseDir: string, input: FindingInput): Promise<RecordedFinding> {
+  if (isProtectionFinding(input.title, input.detail, input.vulnClass) && input.status !== 'candidate') {
+    throw new Error('protection finding requires candidate status until an independent verifier exists')
+  }
   const title = input.title.trim()
   const detail = input.detail.trim()
   if (title === '') throw new Error('finding title is required')
@@ -701,6 +711,9 @@ export async function updateFinding(
   if (finding === undefined) return undefined
   if (patch.status !== undefined) {
     if (!isFindingStatus(patch.status)) throw new Error(`unknown finding status: ${String(patch.status)}`)
+    if (patch.status === 'verified' && isProtectionFinding(finding.title, finding.detail, finding.vulnClass)) {
+      throw new Error('protection finding cannot be verified without an independent verifier')
+    }
     finding.status = patch.status
   }
   if (patch.severity !== undefined) {

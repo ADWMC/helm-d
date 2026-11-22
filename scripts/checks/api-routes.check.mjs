@@ -249,6 +249,19 @@ await report.check('POST /case/findings updates triage and rejects invalid statu
   assert.equal(missing.status, 404)
 })
 
+await report.check('workbench API cannot promote a protection candidate through the core registry', async () => {
+  writeFileSync(join(caseDir, 'findings.json'), JSON.stringify([{
+    id: 'F-002', title: 'UPX unpacked image', detail: 'unverified', severity: 'info', status: 'candidate',
+    confidence: 'unverified', vulnClass: 'packer', evidence: 'E-001', evidenceIds: ['E-001'],
+    repro: 'cmd', seenCount: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  }], null, 2))
+  const result = await post(`${ROUTE_BASE}/case/findings`, { sessionId: 'sess-api', id: 'F-002', status: 'verified' })
+  assert.equal(result.status, 400)
+  assert.match(result.payload.error, /independent verifier/)
+  const current = await call(`${ROUTE_BASE}/case/findings`, { url: `${ROUTE_BASE}/case/findings?sessionId=sess-api` })
+  assert.equal(current.payload.data[0].status, 'candidate')
+})
+
 await report.check('GET /case/sarif and /case/report are deterministic projections', async () => {
   const sarif = await call(`${ROUTE_BASE}/case/sarif`, { url: `${ROUTE_BASE}/case/sarif?sessionId=sess-api` })
   assert.equal(sarif.status, 200)

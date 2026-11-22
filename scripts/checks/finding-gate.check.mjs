@@ -17,6 +17,7 @@ process.env.DSH_HOME = home
 const caseApi = await import(pathToFileURL(join(distDir, 'case.js')).href)
 const settingsApi = await import(pathToFileURL(join(distDir, 'settings.js')).href)
 const caseflow = await import(pathToFileURL(entry).href)
+const advisory = await import(pathToFileURL(join(distDir, 'advisory.js')).href)
 const report = createReporter('finding-gate')
 
 const caseDir = join(home, 'helmd-cases', 'gate-case')
@@ -60,10 +61,16 @@ await report.check('rejects a finding whose cited evidence is all self-authored'
 await report.check('rejects when no real read_reference call exists in the session trace', async () => {
   writeFileSync(join(caseDir, 'evidence', 'E-002-scan_strings.txt'), 'real tool output')
   const out = await record(agentWith(['case_status', 'save_evidence']), ['E-002'])
-  assert.match(out, /no read_reference call found/)
+  assert.match(out, /no successful read_reference result found/)
 })
 
-await report.check('accepts real tool evidence + a real read_reference call', async () => {
+await report.check('calling read_reference without a successful result does not satisfy the gate', async () => {
+  const out = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
+  assert.match(out, /no successful read_reference result found/)
+})
+
+await report.check('accepts real tool evidence + a successful reference read', async () => {
+  advisory.markReferenceLoaded('sess-gate', 'toolbox/decision-tree.md')
   const out = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
   assert.match(out, /finding recorded: F-\d+/)
   assert.match(readFileSync(join(caseDir, 'findings.md'), 'utf8'), /E-002/)
@@ -93,6 +100,7 @@ await report.check('evidence metas form a chain and tampering marks the finding 
   const metas = await caseApi.listEvidenceMeta(dir)
   assert.equal(metas.length, 2)
   assert.equal(metas[1].prevHash, first.sha256)
+  advisory.markReferenceLoaded('sess-chain', 'toolbox/decision-tree.md')
   const recorded = await finding.execute(
     { title: 'chain finding', detail: `hash ${hash}`, evidence_ids: [first.id], repro_cmd: 'cmd', severity: 'medium' },
     { agent: { id: 'sess-chain', session: { snapshotEvents: () => [{ type: 'tool/call', data: { name: 'read_reference' } }] } } },
@@ -112,6 +120,7 @@ await report.check('finding detail must cite hashes verbatim from cited evidence
   writeFileSync(join(dir, 'CASE.md'), 'status: open\ngoal: cite\nmode: full\nroute: reverse\n')
   caseApi.bindCase('sess-cite', { dir, name: 'cite-case', goal: 'cite', mode: 'full', route: 'reverse' })
   const evidence = await caseApi.saveEvidence(dir, 'strings', 'observed ' + 'b'.repeat(64), 'strings')
+  advisory.markReferenceLoaded('sess-cite', 'toolbox/decision-tree.md')
   const agent = { id: 'sess-cite', session: { snapshotEvents: () => [{ type: 'tool/call', data: { name: 'read_reference' } }] } }
   const bad = await finding.execute(
     { title: 'invented hash', detail: 'hash ' + 'c'.repeat(64), evidence_ids: [evidence.id], repro_cmd: 'cmd', severity: 'medium' },
@@ -132,6 +141,7 @@ await report.check('negative control must be independent evidence', async () => 
   caseApi.bindCase('sess-negative', { dir, name: 'negative-case', goal: 'negative', mode: 'full', route: 'reverse' })
   const positive = await caseApi.saveEvidence(dir, 'http', 'vulnerable response', 'positive')
   const negative = await caseApi.saveEvidence(dir, 'http', 'benign response', 'negative')
+  advisory.markReferenceLoaded('sess-negative', 'toolbox/decision-tree.md')
   const agent = { id: 'sess-negative', session: { snapshotEvents: () => [{ type: 'tool/call', data: { name: 'read_reference' } }] } }
   const overlap = await finding.execute(
     { title: 'overlap', detail: 'observed', evidence_ids: [positive.id], repro_cmd: 'cmd', severity: 'medium', negative_evidence_ids: [positive.id], negative_control: 'same' },
