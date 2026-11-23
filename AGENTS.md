@@ -118,7 +118,7 @@
 - **开工前**：读 `CONTRIBUTING.md` 与 `docs/development.md`；开发环境用 Node >=22.19、pnpm 11.7.0。
 - **完成门禁**：`pnpm build` → `pnpm typecheck` → `pnpm test:checks`。没有安装 dsh 宿主时，host 相关检查会 SKIP；报告时写"SKIP/未验证"，不要写成 PASS。
 - **禁止手改生成物**：`packages/helmd/preset.generated.patch.yml`、`dist/`、`.real/`、`payload.dat`、`references.dat`、`profiles.dat`。改源后重新生成。
-- **单一事实源**：运行时 persona 在 `packages/helmd/presets/profiles/core.md`；`persona.txt` 只做 preset sanity；preset 平台行由 `gen-preset.mjs` 从宿主 standard 派生。
+- **单一事实源**：运行时 persona 在 `packages/helmd/presets/profiles/ds4.1f.md`；`persona.txt` 只做 preset sanity；preset 平台行由 `gen-preset.mjs` 从宿主 standard 派生。
 - **路径安全**：模型/用户参数拼出的路径必须经 `assertWithinRoot()` 或等价围栏；case 域新增文件操作时尤其注意。
 - **打包/发布**：发布前跑 `.\scripts\repack.ps1` 与 `node scripts/verify-pack.mjs --require-sealed`；版本必须是合法 SemVer，tag 等于 `v<version>`；当前 release 资产是 3 个 tgz，不包含 installer。
 - **文档同步**：工具数、版本、files 白名单、命令、检查集变化时，同一变更内更新 README / README.en / MAINTENANCE / CHANGELOG / docs/development。

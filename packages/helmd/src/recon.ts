@@ -95,17 +95,44 @@ export function isPrivateHost(host: string): boolean {
   const value = host.toLowerCase().replace(/^\[|\]$/g, '')
   if (value === 'localhost' || value.endsWith('.localhost') || value === 'metadata.google.internal') return true
   if (isIP(value) === 0) return false
+  const bits = ipBits(value)
+  if (bits?.width === 128 && (bits.value >> 32n) === 0xffffn) {
+    const ipv4 = Number(bits.value & 0xffffffffn)
+    return isPrivateHost([24, 16, 8, 0].map((shift) => (ipv4 >>> shift) & 255).join('.'))
+  }
   return PRIVATE_PREFIXES.some((prefix) => value.startsWith(prefix))
 }
 
-/** Exact host or a parent-domain suffix match; CIDR is intentionally not
- *  expanded here (recon tools take hostnames, not arbitrary IP ranges). */
+function ipBits(input: string): { value: bigint; width: number } | undefined {
+  const address = input.replace(/^\[|\]$/g, '')
+  if (isIP(address) === 4) {
+    return { value: address.split('.').reduce((acc, part) => (acc << 8n) | BigInt(part), 0n), width: 32 }
+  }
+  if (isIP(address) !== 6) return undefined
+  const canonical = new URL(`http://[${address}]/`).hostname.slice(1, -1)
+  const parts = canonical.split('::')
+  const left = parts[0] ? parts[0].split(':') : []
+  const right = parts[1] ? parts[1].split(':') : []
+  const groups = parts.length === 2 ? [...left, ...Array(8 - left.length - right.length).fill('0'), ...right] : left
+  return { value: BigInt('0x' + groups.map((part) => part.padStart(4, '0')).join('')), width: 128 }
+}
+
+/** Exact host, domain suffix, or an IP address in an explicitly listed CIDR. */
 export function hostInScope(host: string, scope: readonly string[]): boolean {
   const value = host.toLowerCase().replace(/^\[|\]$/g, '')
   return scope.some((entry) => {
     const allowed = entry.toLowerCase().trim()
     if (allowed === '') return false
-    if (allowed.includes('/')) return false
+    if (allowed.includes('/')) {
+      const [network, length, ...extra] = allowed.split('/')
+      const addressBits = ipBits(value)
+      const networkBits = ipBits(network)
+      const prefix = Number(length)
+      if (extra.length || !/^\d+$/.test(length) || !addressBits || !networkBits
+        || addressBits.width !== networkBits.width || prefix > addressBits.width) return false
+      const shift = BigInt(addressBits.width - prefix)
+      return (addressBits.value >> shift) === (networkBits.value >> shift)
+    }
     return value === allowed || value.endsWith(`.${allowed}`)
   })
 }

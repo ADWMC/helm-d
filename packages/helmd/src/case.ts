@@ -3,10 +3,11 @@
 // a session (exec.agent.id) to its active case dir for convenience.
 
 import { createHash } from 'node:crypto'
-import { createReadStream, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs'
 import { mkdir, copyFile, writeFile, appendFile, readFile, readdir, rename } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, dirname, join, resolve } from 'node:path'
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
+import { assertWithinRoot } from './seam.js'
 
 export interface CaseInfo {
   dir: string
@@ -836,21 +837,17 @@ export async function findOpenCaseOnDisk(root?: string): Promise<CaseInfo | unde
   const all = await listCasesOnDisk(root)
   const open = all.find((c) => c.status === 'open')
   if (!open) return undefined
-  return {
-    dir: open.dir,
-    name: open.name,
-    goal: open.goal,
-    mode: open.mode,
-    route: open.route,
-  }
+  return loadCaseInfoFromDisk(open.name, root)
 }
 
 /** Load a specific case by directory or folder name. */
 export async function loadCaseInfoFromDisk(caseDirOrName: string, root?: string): Promise<CaseInfo | undefined> {
   const base = casesRoot(root)
-  const dirPath = caseDirOrName.includes('/') || caseDirOrName.includes('\\')
-    ? resolve(caseDirOrName)
-    : join(base, caseDirOrName)
+  const dirPath = isAbsolute(caseDirOrName) ? resolve(caseDirOrName) : resolve(base, caseDirOrName)
+  try {
+    assertWithinRoot(dirPath, base)
+    if (existsSync(dirPath)) assertWithinRoot(realpathSync(dirPath), realpathSync(base))
+  } catch { return undefined }
   const caseMdPath = join(dirPath, 'CASE.md')
   if (!existsSync(caseMdPath)) return undefined
   try {

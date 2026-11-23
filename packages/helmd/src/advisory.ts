@@ -8,6 +8,7 @@
 // submit, and the same ledger answers "did the agent act on what we told it?".
 
 import { appendFileSync, copyFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { runtimeStateDir } from './runtime-paths.js'
 import { ASSISTANT_MESSAGE, eventCount, eventTexts, toolCalls, type ToolCall } from './session-log.js'
@@ -80,14 +81,69 @@ const MAX_PENDING_SESSIONS = 64
 
 const pending = new Map<string, Pending[]>()
 const loadedReferences = new Map<string, Map<string, number>>()
+const routedReferences = new Map<string, string>()
+const pageReads = new Map<string, Set<number>>()
+
+function receiptPath(sessionId: string): string {
+  return join(runtimeStateDir(), 'reference-receipts', createHash('sha256').update(sessionId).digest('hex') + '.json')
+}
+
+function referenceState(sessionId: string): Map<string, number> {
+  const cached = loadedReferences.get(sessionId)
+  if (cached) return cached
+  let paths = new Map<string, number>()
+  try {
+    const saved = JSON.parse(readFileSync(receiptPath(sessionId), 'utf8')) as { paths?: Record<string, number>; route?: string }
+    if (saved.paths && typeof saved.paths === 'object') {
+      paths = new Map(Object.entries(saved.paths).filter(([key, count]) =>
+        typeof key === 'string' && typeof count === 'number' && Number.isFinite(count) && count > 0))
+    }
+    if (typeof saved.route === 'string') routedReferences.set(sessionId, saved.route)
+  } catch { /* no saved receipt in this session */ }
+  loadedReferences.set(sessionId, paths)
+  return paths
+}
+
+function saveReferenceState(sessionId: string): void {
+  const path = receiptPath(sessionId)
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, JSON.stringify({ paths: Object.fromEntries(referenceState(sessionId)), route: routedReferences.get(sessionId) }), 'utf8')
+}
+
+export function markRoutedReference(sessionId: string | undefined, path: string): void {
+  if (!sessionId) return
+  referenceState(sessionId)
+  routedReferences.set(sessionId, path)
+  saveReferenceState(sessionId)
+}
+
+export function routedReference(sessionId: string | undefined): string | undefined {
+  if (!sessionId) return undefined
+  referenceState(sessionId)
+  return routedReferences.get(sessionId)
+}
+
+/** A paginated reference earns a receipt only after every page was delivered. */
+export function markReferencePage(sessionId: string | undefined, path: string, offset: number, total: number, pageSize: number): void {
+  if (!sessionId || offset >= total || offset < 0 || offset % pageSize !== 0) return
+  const key = `${sessionId}\u0000${path}`
+  const pages = pageReads.get(key) ?? new Set<number>()
+  pages.add(offset)
+  pageReads.set(key, pages)
+  if (pages.size >= Math.ceil(total / pageSize)) {
+    pageReads.delete(key)
+    markReferenceLoaded(sessionId, path)
+  }
+}
 
 /** Receipts are issued only after a reference tool has returned real content. */
 export function markReferenceLoaded(sessionId: string | undefined, path: string): void {
   if (!sessionId) return
-  const paths = loadedReferences.get(sessionId) ?? new Map<string, number>()
+  const paths = referenceState(sessionId)
   paths.set(path, (paths.get(path) ?? 0) + 1)
   loadedReferences.delete(sessionId)
   loadedReferences.set(sessionId, paths)
+  saveReferenceState(sessionId)
   if (loadedReferences.size > MAX_PENDING_SESSIONS) {
     const oldest = loadedReferences.keys().next().value
     if (oldest !== undefined) loadedReferences.delete(oldest)
@@ -95,7 +151,7 @@ export function markReferenceLoaded(sessionId: string | undefined, path: string)
 }
 
 export function hasLoadedReference(sessionId: string | undefined): boolean {
-  return !!sessionId && (loadedReferences.get(sessionId)?.size ?? 0) > 0
+  return !!sessionId && referenceState(sessionId).size > 0
 }
 
 /** The current route needs its own document, not an arbitrary older read. */
@@ -104,8 +160,7 @@ export function hasLoadedPath(sessionId: string | undefined, path: string): bool
 }
 
 function loadCount(sessionId: string, path?: string): number {
-  const paths = loadedReferences.get(sessionId)
-  if (!paths) return 0
+  const paths = referenceState(sessionId)
   if (path !== undefined) return paths.get(path) ?? 0
   return [...paths.values()].reduce((a, b) => a + b, 0)
 }

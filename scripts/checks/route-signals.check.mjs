@@ -31,4 +31,12 @@ await report.check('native sample names and generic reverse tasks reach native g
   assert.equal(primary('APK classes.dex'), 'apk')
 })
 
+await report.check('negated tasks do not override the requested target; short English signals match words', () => {
+  assert.equal(primary('不要分析 APK，只看 ELF'), 'native')
+  assert.equal(primary('请不要解密，仅检查 ELF'), 'native')
+  assert.notEqual(primary('design review'), 'jvm')
+  assert.equal(primary('检查 .so 的 Frida hook'), 'hook')
+  assert.equal(seam.router.firstReference('检查 .so 的 Frida hook'), 'native/dynamic-analysis-frida.md')
+})
+
 report.finish()

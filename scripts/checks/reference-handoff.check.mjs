@@ -52,6 +52,30 @@ try {
     assert.equal(advisory.hasLoadedReference(second.id), false)
   })
 
+  await report.check('long references require all pages and completed receipts survive a restart', async () => {
+    const reader = { id: 'paged', session: { snapshotEvents: () => [] } }
+    const path = 'native/code-obfuscation-deobfuscation.md'
+    const first = await tools.get('read_reference').execute({ path }, { agent: reader })
+    assert.match(first, /truncated/)
+    assert.equal(advisory.hasLoadedPath(reader.id, path), false)
+    const last = await tools.get('read_reference').execute({ path, offset: 200 }, { agent: reader })
+    assert.match(last, /continued/)
+    assert.equal(advisory.hasLoadedPath(reader.id, path), true)
+    const restarted = await import(pathToFileURL(join(distDir, 'advisory.js')).href + '?restart=receipt')
+    assert.equal(restarted.hasLoadedPath(reader.id, path), true)
+    assert.equal(restarted.routedReference(agent.id), 'native/protection-detection-methodology.md')
+  })
+
+  await report.check('JVM and Frida hints receive the same preview as ELF hints', async () => {
+    let listener
+    preview.registerReferencePreview({ on: (name, callback) => { if (name === 'system-prompt/assemble') listener = callback } })
+    for (const hint of ['jar 字符串解密', 'Frida hook', '分析 ELF']) {
+      const agent = { id: `preview-${hint}`, session: { snapshotEvents: () => [{ type: 'user/message', data: { message: { content: hint } } }] } }
+      const assembled = await listener({}, { agent }, async () => ({ sections: [] }))
+      assert.ok(assembled.sections.some((section) => section.name === 'helmd:reference-preview'), hint)
+    }
+  })
+
   await report.check('prompt assembly previews a new reverse task but not unrelated chat', async () => {
     let listener
     preview.registerReferencePreview({ on: (_event, callback) => { listener = callback } })

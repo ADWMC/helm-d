@@ -8,7 +8,7 @@ import { readTextSeam, assertWithinRoot } from './seam.js'
 import { readSealedReference } from './sealed-refs.js'
 import { getLevel, setLevel, normalizeLevel, renderContract } from './mode.js'
 import { playbookFor } from './autonomy.js'
-import { submitAdvisory, renderAdvisoryStats, markReferenceLoaded } from './advisory.js'
+import { submitAdvisory, renderAdvisoryStats, markReferencePage, markRoutedReference } from './advisory.js'
 import { sessionEvents, type AgentLike } from './session-log.js'
 
 // 目录：领域 -> 触发信号与去向（可发现性元数据，不下结论）
@@ -78,7 +78,7 @@ const ROUTE_TOOL: Record<string, string> = {
   apk: 'apk_fingerprint', shell: 'detect_packer', strings: 'scan_strings', crypto: 'encoding_detect',
   pcap: 'pcap_parse', har: 'parse_har', ioc: 'ioc_extract', malware: 'yara_gen',
   llm: 'llm_sim', tree: 'triage_artifact', evidence: 'begin_case',
-  tools: 'skill_catalog', status: 'case_status',
+  tools: 'skill_catalog', status: 'case_status', native: 'triage_artifact', web: 'bot_analyze',
 }
 
 /** PRIMARY route -> the reference doc to read BEFORE running the route tool.
@@ -104,12 +104,17 @@ export interface RouteHit {
 
 // 纯函数，导出以便离线测试
 export function matchRoute(hint: string): RouteHit[] {
-  const text = hint.toLowerCase()
+  const text = hint.toLowerCase().replace(/(?:不要|不用|无需|不必|别)[^，,。；;]{0,36}(?:[，,。；;]|$)/g, ' ')
+  const matches = (keyword: string): boolean => {
+    const word = keyword.toLowerCase()
+    if (!/^[a-z0-9]+$/.test(word)) return text.includes(word)
+    return new RegExp(`(?<![a-z0-9])${word}(?![a-z0-9])`).test(text)
+  }
   return ROUTE_TABLE
     .map((r) => ({
       key: r.key,
       why: r.why,
-      score: r.kw.reduce((n, k) => (text.includes(k.toLowerCase()) ? n + 1 : n), 0),
+      score: r.kw.reduce((n, k) => (matches(k) ? n + 1 : n), 0),
     }))
     .filter((h) => h.score > 0)
     .sort((a, b) => b.score - a.score)
@@ -117,6 +122,7 @@ export function matchRoute(hint: string): RouteHit[] {
 
 export function firstReference(hint: string): string {
   const primary = matchRoute(hint)[0]?.key ?? 'tree'
+  if (primary === 'hook' && /\.so\b|\.dll\b|\.exe\b|\belf\b/i.test(hint)) return 'native/dynamic-analysis-frida.md'
   return ROUTE_REF[primary] ?? 'toolbox/decision-tree.md'
 }
 
@@ -132,7 +138,7 @@ export function renderRoute(hint: string): string {
     ].join('\n')
   } else {
     const primary = hits[0]
-    const ref = ROUTE_REF[primary.key]
+    const ref = firstReference(hint)
     const lines = [
       `PRIMARY: ${primary.key} — ${catalog[primary.key] ?? ''}`,
       `依据: 命中关键词 ${hits.filter((_, i) => i < 3).length ? `"${hint.trim().slice(0, 40)}" → ${primary.why}` : primary.why}`,
@@ -140,6 +146,7 @@ export function renderRoute(hint: string): string {
     if (ref !== undefined) {
       lines.push(`FIRST: read_reference("${ref}") — 读方法论再动手；本会话没读过参考时 record_finding 会拒绝结论`)
     }
+    if (ROUTE_TOOL[primary.key]) lines.push(`NEXT: ${ROUTE_TOOL[primary.key]} — 取得第一条可核查证据`)
     if (hits.length > 1) {
       lines.push(`备选: ${hits.slice(1, 4).map((h) => h.key).join(', ')}`)
     }
@@ -249,14 +256,21 @@ export function registerRouterTools(ctx: Context): void {
     async execute(args: { path: string; offset?: number }, exec?: { agent?: AgentLike }) {
       const MVI_MAX = 200
       const sessionId = exec?.agent?.id ?? exec?.agent?.session?.id
-      const offset = Math.max(0, args.offset ?? 0)
+      const offset = args.offset ?? 0
+      if (!Number.isSafeInteger(offset) || offset < 0) return 'REJECTED — offset must be a non-negative integer.'
       const mvi = (text: string): string => {
         const lines = text.split('\n')
-        if (lines.length <= MVI_MAX) return text
+        if (offset >= lines.length) return `[offset ${offset} is beyond ${lines.length} lines]`
+        if (lines.length <= MVI_MAX && offset === 0) return text
         const slice = lines.slice(offset, offset + MVI_MAX)
         const header = offset > 0 ? `[… continued from line ${offset + 1}]\n` : ''
-        const footer = `\n[truncated: ${lines.length} total lines, showing ${offset + 1}–${offset + slice.length}. read_reference(path, offset=${offset + MVI_MAX}) to continue]`
+        const footer = offset + slice.length < lines.length
+          ? `\n[truncated: ${lines.length} total lines, showing ${offset + 1}–${offset + slice.length}. read_reference(path, offset=${offset + MVI_MAX}) to continue]`
+          : ''
         return header + slice.join('\n') + footer
+      }
+      const receipt = (path: string, text: string): void => {
+        if (text.trim()) markReferencePage(sessionId, path, offset, text.split('\n').length, MVI_MAX)
       }
       const rel = (args.path ?? '').replace(/\\/g, '/').replace(/^\//, '').replace(/^references\//, '')
       if (rel.split('/').includes('..')) return 'REJECTED — reference path out of scope.'
@@ -266,24 +280,24 @@ export function registerRouterTools(ctx: Context): void {
       const local = resolveReferenceFile(refRoot, args.path)
       const sealed = local && existsSync(local) ? undefined : readSealedReference(rel)
       if (sealed !== undefined) {
-        if (sealed.trim() && offset < sealed.split('\n').length) markReferenceLoaded(sessionId, rel)
+        receipt(rel, sealed)
         return mvi(sealed)
       }
       const sealedIndex = local ? undefined : readSealedReference(rel ? rel.replace(/\/?$/, '/index.md') : 'index.md')
       if (sealedIndex !== undefined) {
-        if (sealedIndex.trim() && offset < sealedIndex.split('\n').length) markReferenceLoaded(sessionId, rel.replace(/\/?$/, '/index.md'))
+        receipt(rel.replace(/\/?$/, '/index.md'), sealedIndex)
         return mvi(sealedIndex)
       }
       const target = local
       if (target) {
         assertWithinRoot(target, refRoot)
         const text = await readTextSeam(ctx, target)
-        if (text.trim() && offset < text.split('\n').length) markReferenceLoaded(sessionId, target.slice(refRoot.length + 1).replace(/\\/g, '/'))
+        receipt(target.slice(refRoot.length + 1).replace(/\\/g, '/'), text)
         return mvi(text)
       }
       try {
         const text = await readTextSeam(ctx, raw)
-        if (text.trim() && offset < text.split('\n').length) markReferenceLoaded(sessionId, raw.slice(refRoot.length + 1).replace(/\\/g, '/'))
+        receipt(raw.slice(refRoot.length + 1).replace(/\\/g, '/'), text)
         return mvi(text)
       } catch {
         return [
@@ -321,6 +335,7 @@ export function registerRouterTools(ctx: Context): void {
       const ref = firstReference(args.hint ?? '')
       const sessionId = exec?.agent?.id ?? exec?.agent?.session?.id
       if (sessionId && primary) {
+        markRoutedReference(sessionId, ref)
         submitAdvisory(sessionId, {
           key: `route-read:${primary}`,
           tier: 'recommended',

@@ -18,7 +18,8 @@ const NO_PERSIST = new Set([
   'tool_recommend',
   // case lifecycle / ledger bookkeeping itself
   'begin_case', 'case_status', 'record_finding', 'end_case', 'save_evidence',
-  'record_hypothesis', 'update_hypothesis',
+  'record_hypothesis', 'update_hypothesis', 'update_finding',
+  'toolbox', 'protection_route',
   // recon tools persist raw output and the asset/evidence link themselves
   'recon_passive', 'recon_ports', 'recon_http', 'recon_crawl', 'recon_import',
   'run_poc',
@@ -28,6 +29,20 @@ const NO_PERSIST = new Set([
 
 export function isNoPersist(toolName: string): boolean {
   return NO_PERSIST.has(toolName)
+}
+
+/** Only observations produced by analysis tools qualify as finding evidence. */
+const ANALYSIS_EVIDENCE = new Set([
+  'sha256', 'strings', 'http', 'apk_fingerprint', 'detect_packer', 'scan_strings',
+  'xor_bruteforce', 'encoding_detect', 'pcap_parse', 'parse_har', 'ioc_extract',
+  'yara_gen', 'llm_sim', 'bot_analyze', 'triage_artifact', 'hash_artifact',
+  'state_machine', 'poc_positive', 'poc_negative', 'mine_candidates',
+  'recon_dns', 'recon_ports', 'recon_http', 'recon_crawl', 'recon_import',
+])
+
+export function isAnalysisEvidenceFile(file: string): boolean {
+  const label = /^E-\d+-([a-z0-9_-]+)\.(?:txt|json|md)$/.exec(file)?.[1]
+  return label !== undefined && ANALYSIS_EVIDENCE.has(label)
 }
 
 /** Domain tools whose output feeds methodology conclusions — reading the domain's
@@ -87,6 +102,9 @@ async function persistHook(
   const active = getCase(sessionId)
   if (!active) {
     return result + '\n[no active case — output NOT persisted. begin_case(goal, samples) keeps evidence.]'
+  }
+  if (!result.trim() || /^\s*(?:REJECTED\b|ERROR\b|failed\b|失败|异常|not found\b)/i.test(result)) {
+    return result + '\n[tool did not produce analysis evidence — output NOT persisted]'
   }
   const firstLine = result.split('\n').find((l) => l.trim()) ?? ''
   const large = result.length > 256 * 1024

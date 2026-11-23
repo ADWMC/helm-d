@@ -3,6 +3,7 @@
 // local lab HTTP server in the PoC case.
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
+import { connect } from 'node:net'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -26,6 +27,10 @@ await report.check('scope fence rejects out-of-scope and private targets unless 
   assert.equal(recon.checkReconTarget('127.0.0.1', ['127.0.0.1']).ok, false)
   assert.equal(recon.checkReconTarget('127.0.0.1', ['127.0.0.1'], true).ok, true)
   assert.equal(recon.checkReconTarget('example.com', []).ok, false)
+  assert.equal(recon.checkReconTarget('203.0.113.10', ['203.0.113.0/24']).ok, true)
+  assert.equal(recon.checkReconTarget('203.0.114.10', ['203.0.113.0/24']).ok, false)
+  assert.equal(recon.checkReconTarget('[2001:db8::1]', ['2001:db8::/32']).ok, true)
+  assert.equal(recon.checkReconTarget('::ffff:127.0.0.1', ['::ffff:127.0.0.1']).ok, false)
 })
 
 await report.check('asset ledger dedupes kind|value|parent and coverage counts dimensions', () => {
@@ -74,6 +79,11 @@ await report.check('HAR/OpenAPI/text extractors dedupe and rank candidates', () 
 
 await report.check('local lab PoC sends positive and negative requests and records evidence', async () => {
   const server = createServer((req, res) => {
+    if (String(req.url).startsWith('/escape')) {
+      res.writeHead(302, { location: 'http://example.invalid/outside-scope' })
+      res.end()
+      return
+    }
     res.writeHead(200, { 'content-type': 'text/html' })
     res.end(String(req.url).includes('payload=1') ? '<svg/onload=alert(1)>' : 'benign page')
   })
@@ -100,8 +110,76 @@ await report.check('local lab PoC sends positive and negative requests and recor
     assert.match(out, /positive_evidence_ids=\[E-001\]/)
     assert.match(out, /negative_evidence_ids=\[E-002\]/)
     assert.equal(getCase('sess-lab').scope[0], '127.0.0.1')
+    await assert.rejects(tool.execute({
+      recipe: 'xss-canary', url: `http://127.0.0.1:${address.port}/escape`, lab: true,
+    }, { agent: { id: 'sess-lab' } }), /redirect target rejected/)
+    const { registerReconTools } = await import(pathToFileURL(join(distDir, 'tools', 'recon.js')).href)
+    let httpTool
+    registerReconTools({ tools: { register: (def) => { if (def.name === 'recon_http') httpTool = def } } })
+    await assert.rejects(httpTool.execute({ url: `http://127.0.0.1:${address.port}/escape`, lab: true },
+      { agent: { id: 'sess-lab' } }), /redirect target rejected/)
   } finally {
     await new Promise((resolve) => server.close(resolve))
+  }
+})
+
+await report.check('cross-origin redirects strip credentials, same-origin redirects keep them', async () => {
+  const { requestText } = await import(pathToFileURL(join(distDir, 'star-gate.js')).href)
+  let forwarded = {}
+  const destination = createServer((req, res) => {
+    forwarded = { auth: req.headers.authorization, cookie: req.headers.cookie }
+    res.end('done')
+  })
+  const origin = createServer((req, res) => {
+    if (req.url === '/within') { res.end(req.headers.authorization ?? 'missing'); return }
+    res.writeHead(302, { location: req.url === '/cross'
+      ? `http://127.0.0.1:${destination.address().port}/target`
+      : '/within' })
+    res.end()
+  })
+  await new Promise((resolve) => destination.listen(0, '127.0.0.1', resolve))
+  await new Promise((resolve) => origin.listen(0, 'localhost', resolve))
+  try {
+    const url = `http://localhost:${origin.address().port}`
+    const init = { method: 'GET', headers: { Authorization: 'test-token', Cookie: 'test-cookie' } }
+    assert.equal((await requestText(url + '/same', init)).text, 'test-token')
+    assert.equal((await requestText(url + '/cross', init)).status, 200)
+    assert.equal(forwarded.auth, undefined)
+    assert.equal(forwarded.cookie, undefined)
+  } finally {
+    await new Promise((resolve) => origin.close(resolve))
+    await new Promise((resolve) => destination.close(resolve))
+  }
+})
+
+await report.check('HTTP through a CONNECT proxy uses an HTTP-compatible agent', async () => {
+  const { requestText } = await import(pathToFileURL(join(distDir, 'star-gate.js')).href)
+  const target = createServer((_req, res) => res.end('proxied HTTP'))
+  const proxy = createServer()
+  proxy.on('connect', (_req, downstream) => {
+    const upstream = connect(target.address().port, '127.0.0.1', () => {
+      downstream.write('HTTP/1.1 200 Connection Established\r\n\r\n')
+      upstream.pipe(downstream)
+      downstream.pipe(upstream)
+    })
+    upstream.on('error', () => downstream.destroy())
+  })
+  await new Promise((resolve) => target.listen(0, '127.0.0.1', resolve))
+  await new Promise((resolve) => proxy.listen(0, '127.0.0.1', resolve))
+  const old = { https: process.env.HTTPS_PROXY, no: process.env.NO_PROXY, lower: process.env.no_proxy }
+  process.env.HTTPS_PROXY = `http://127.0.0.1:${proxy.address().port}`
+  process.env.NO_PROXY = ''
+  process.env.no_proxy = ''
+  try {
+    const result = await requestText(`http://example.invalid:${target.address().port}/`, { method: 'GET', headers: {} })
+    assert.equal(result.text, 'proxied HTTP')
+  } finally {
+    for (const [name, value] of [['HTTPS_PROXY', old.https], ['NO_PROXY', old.no], ['no_proxy', old.lower]]) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+    await new Promise((resolve) => proxy.close(resolve))
+    await new Promise((resolve) => target.close(resolve))
   }
 })
 

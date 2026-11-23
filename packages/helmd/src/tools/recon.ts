@@ -33,8 +33,11 @@ async function saveRaw(dir: string, tool: string, content: string): Promise<stri
   return result.id
 }
 
-async function httpGet(url: string): Promise<{ status: number; headers: Record<string, string>; body: string }> {
-  const response = await requestText(url, { method: 'GET', headers: { accept: 'text/html,application/json;q=0.9,*/*;q=0.8' } })
+async function httpGet(url: string, scope: string[], lab: boolean): Promise<{ status: number; headers: Record<string, string>; body: string }> {
+  const response = await requestText(url, {
+    method: 'GET', headers: { accept: 'text/html,application/json;q=0.9,*/*;q=0.8' },
+    redirectGuard: (next) => checkReconTarget(next.hostname, scope, lab).ok,
+  })
   return { status: response.status, headers: {}, body: response.text.slice(0, 512 * 1024) }
 }
 
@@ -113,10 +116,10 @@ export function registerReconTools(ctx: Context): void {
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: { url: string; lab?: boolean }, exec?: ExecLike) {
       const url = args.url.trim()
-      const { dir } = requireScope(exec, url, args.lab === true)
+      const { dir, scope } = requireScope(exec, url, args.lab === true)
       await limiter.acquire(hostOf(url))
       let response: { status: number; body: string }
-      try { response = await httpGet(url) } finally { limiter.release() }
+      try { response = await httpGet(url, scope, args.lab === true) } finally { limiter.release() }
       const tech: string[] = []
       const body = response.body
       if (/wp-content|wordpress/i.test(body)) tech.push('wordpress')
@@ -144,7 +147,7 @@ export function registerReconTools(ctx: Context): void {
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(args: { url: string; depth?: number; maxPages?: number; lab?: boolean }, exec?: ExecLike) {
       const start = new URL(args.url.trim())
-      const { dir } = requireScope(exec, start.href, args.lab === true)
+      const { dir, scope } = requireScope(exec, start.href, args.lab === true)
       const depth = Math.max(0, Math.min(2, Math.trunc(args.depth ?? 1)))
       const maxPages = Math.max(1, Math.min(10, Math.trunc(args.maxPages ?? 5)))
       const seen = new Set<string>([start.href])
@@ -156,7 +159,7 @@ export function registerReconTools(ctx: Context): void {
           if (found.length >= maxPages) break
           await limiter.acquire(start.hostname)
           try {
-            const response = await httpGet(page)
+            const response = await httpGet(page, scope, args.lab === true)
             for (const match of response.body.matchAll(/href=["']([^"'#]+)["']/gi)) {
               let link: URL
               try { link = new URL(match[1], page) } catch { continue }

@@ -34,7 +34,7 @@ export function registerReferencePreview(ctx: Context): void {
       // No automatic preview for general conversation: only recognized task hints.
       if (events.at(-1) && (events.at(-1) as { type?: string }).type !== USER_MESSAGE) return assembled
       const hint = latestEventText(events, USER_MESSAGE) ?? ''
-      if (!/apk|安卓|android|elf|\.so\b|\bpe\b|\.exe\b|壳|packer|upx|vmp|逆向|reverse|脱壳|样本|二进制/i.test(hint)) return assembled
+      if (!/apk|安卓|android|elf|\.so\b|\bpe\b|\.exe\b|壳|packer|upx|vmp|逆向|reverse|脱壳|样本|二进制|\bjar\b|forge|fabric|frida|hook|插桩/i.test(hint)) return assembled
       if (hasLoadedPath(id, firstReference(hint))) return assembled
       const text = referencePreview(hint)
       if (!text) return assembled

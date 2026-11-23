@@ -34,7 +34,7 @@ node scripts/verify-pack.mjs --require-sealed
 ## 3. 代码规则
 
 - **最小改动**：只改完成任务所需的内容；不顺手重构无关代码、格式、命名、依赖。
-- **单一事实源**：运行时 persona 在 `packages/helmd/presets/profiles/core.md`；`persona.txt` 只做 preset sanity；preset 平台行由 `gen-preset.mjs` 从宿主 standard 派生。
+- **单一事实源**：运行时 persona 在 `packages/helmd/presets/profiles/ds4.1f.md`；`persona.txt` 只做 preset sanity；preset 平台行由 `gen-preset.mjs` 从宿主 standard 派生。
 - **禁止手改生成物**：`preset.generated.patch.yml`、`dist/`、`.real/`、`payload.dat`、`references.dat`、`profiles.dat`。改源，然后重新生成。
 - **路径安全**：所有由模型/用户参数拼出的文件路径必须经过 `assertWithinRoot()` 或等价围栏；新增 case 工具时尤其注意。
 - **错误处理**：不要用空 `catch` 吞掉会影响结论的错误；可降级的地方返回原结果 + 明确警告，不把成功工具调用变成异常。
@@ -58,7 +58,7 @@ node scripts/verify-pack.mjs --require-sealed
 |---|---|
 | 工具增删/改名 | README 工具表、`tool-catalog` check、商店描述 |
 | 版本号 | `packages/helmd/package.json`、README 徽章、CHANGELOG、tag |
-| persona / preset | `profiles/core.md`、`persona.txt`（仅 sanity）、生成物、README 多破甲表 |
+| persona / preset | `profiles/ds4.1f.md`、`persona.txt`（仅 sanity）、生成物、README 多破甲表 |
 | 打包白名单 | `README.en.md` Publishing、`MAINTENANCE.md` §8、`verify-pack.mjs` |
 | 开发命令 | `docs/development.md`、本文件、CI workflow |
 

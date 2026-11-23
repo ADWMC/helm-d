@@ -35,7 +35,9 @@ pnpm test:checks
 
 ## 参考索引
 
-首次请求可见 `route_task` / `read_reference`；逆向任务由 prompt assembly 提供有限首读预览。预览不计成功读取，只有 `read_reference` 返回内容才给会话阅读回执；`route-read:*` 账本按路由指定路径计数，不能靠任意领域工具刷采纳率。主包打包 `references.dat`；独立 `skill-native` 是历史包，不参与当前 release。
+首次请求可见 `route_task` / `read_reference`；逆向任务由 prompt assembly 提供有限首读预览。预览不计成功读取，`read_reference` 读完所有分页后才发放会话阅读回执，回执随会话持久化；`record_finding` 对当前路由指定文档和分析工具证据分别校验。`route-read:*` 账本按路由指定路径计数。主包打包 `references.dat`；独立 `skill-native` 是历史包，不参与当前 release。
+
+网络调查的 `scope` 支持单主机、父域名与 IPv4/IPv6 CIDR；`recon_http`、`recon_crawl` 和 `run_poc` 每次重定向都重新检查目标 scope，跨来源跳转不转发认证头。自动重定向到非 HTTP(S) 或从 HTTPS 降为 HTTP 会拒绝。本机回环 HTTP 请求不走系统代理。
 
 保护分流的纯函数位于 `packages/helmd/src/protection-route.ts`，`protection_route` 仅返回基于调用方信号的建议，不执行程序，也不验证 E-id 的语义关联；必须结合 `native/protection-detection-methodology.md` 与 `native/packer-handling.md` 的条件核查。
 

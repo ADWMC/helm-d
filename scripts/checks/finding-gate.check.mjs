@@ -55,18 +55,18 @@ async function record(agent, ids) {
 await report.check('rejects a finding whose cited evidence is all self-authored', async () => {
   writeFileSync(join(caseDir, 'evidence', 'E-001-manual_scan_strings.txt'), 'invented claim with a spoofed label')
   const out = await record(agentWith(['save_evidence', 'read_reference']), ['E-001'])
-  assert.match(out, /REJECTED — every cited evidence id is self-authored/)
+  assert.match(out, /REJECTED — no cited evidence is from a successful analysis tool/)
 })
 
 await report.check('rejects when no real read_reference call exists in the session trace', async () => {
   writeFileSync(join(caseDir, 'evidence', 'E-002-scan_strings.txt'), 'real tool output')
   const out = await record(agentWith(['case_status', 'save_evidence']), ['E-002'])
-  assert.match(out, /no successful read_reference result found/)
+  assert.match(out, /no complete read_reference result/)
 })
 
 await report.check('calling read_reference without a successful result does not satisfy the gate', async () => {
   const out = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
-  assert.match(out, /no successful read_reference result found/)
+  assert.match(out, /no complete read_reference result/)
 })
 
 await report.check('accepts real tool evidence + a successful reference read', async () => {
@@ -74,6 +74,24 @@ await report.check('accepts real tool evidence + a successful reference read', a
   const out = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
   assert.match(out, /finding recorded: F-\d+/)
   assert.match(readFileSync(join(caseDir, 'findings.md'), 'utf8'), /E-002/)
+})
+
+await report.check('a routed finding requires its specific document, not an unrelated read', async () => {
+  advisory.markRoutedReference('sess-gate', 'native/protection-detection-methodology.md')
+  const wrong = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
+  assert.match(wrong, /no complete read_reference result for native\/protection-detection-methodology.md/)
+  advisory.markReferenceLoaded('sess-gate', 'native/protection-detection-methodology.md')
+  const good = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
+  assert.match(good, /finding merged: F-\d+/)
+})
+
+await report.check('administrative and rejected outputs do not count as analysis evidence', async () => {
+  writeFileSync(join(caseDir, 'evidence', 'E-004-update_finding.txt'), 'finding updated: F-001')
+  writeFileSync(join(caseDir, 'evidence', 'E-005-protection_route.txt'), 'REJECTED — no E-id')
+  for (const id of ['E-004', 'E-005']) {
+    const out = await record(agentWith(['read_reference', 'update_finding']), [id])
+    assert.match(out, /no cited evidence is from a successful analysis tool/)
+  }
 })
 
 await report.check('both gates can be switched off in settings', async () => {

@@ -27,10 +27,11 @@ writeFileSync(join(caseDir, 'CASE.md'), [
   'goal: prove the case is session-bound',
   'mode: full',
   'route: reverse',
+  'scope: example.com',
   '',
 ].join('\n'))
 
-const { bindCase, getCase, unbindCase } = await import(pathToFileURL(caseEntry).href)
+const { bindCase, getCase, unbindCase, findOpenCaseOnDisk, loadCaseInfoFromDisk } = await import(pathToFileURL(caseEntry).href)
 const { renderCaseContext } = await import(pathToFileURL(contextEntry).href)
 const info = { dir: caseDir, name: '2026-10-27-binding', goal: 'prove the case is session-bound', mode: 'full', route: 'reverse' }
 const report = createReporter('case-session')
@@ -45,6 +46,13 @@ await report.check('binding a case writes a session-keyed file and resolves for 
 
 await report.check('another session never sees the binding', () => {
   assert.equal(getCase('sess-B'), undefined)
+})
+
+await report.check('open-case recovery restores scope and named recovery stays inside the case root', async () => {
+  assert.deepEqual((await findOpenCaseOnDisk(home))?.scope, ['example.com'])
+  assert.deepEqual((await loadCaseInfoFromDisk('2026-10-27-binding', home))?.scope, ['example.com'])
+  assert.equal(await loadCaseInfoFromDisk(caseDir, join(home, 'other-workspace')), undefined)
+  assert.equal(await loadCaseInfoFromDisk('../2026-10-27-binding', home), undefined)
 })
 
 await report.check('a fresh module (host restart) reloads the binding from disk', async () => {

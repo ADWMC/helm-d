@@ -10,7 +10,7 @@
 // ALL_PROXY / NO_PROXY and, on Windows, the system proxy from the registry.
 
 import { execFileSync } from 'node:child_process'
-import { request as httpRequest, type IncomingMessage } from 'node:http'
+import { request as httpRequest, Agent as HttpAgent, type IncomingMessage } from 'node:http'
 import { request as httpsRequest, Agent } from 'node:https'
 import type { Socket } from 'node:net'
 import { connect as tlsConnect, type TLSSocket } from 'node:tls'
@@ -100,6 +100,7 @@ function windowsSystemProxy(): string | undefined {
 }
 
 function resolveProxy(targetHost: string): URL | undefined {
+  if (targetHost === 'localhost' || targetHost.endsWith('.localhost') || /^127\./.test(targetHost) || targetHost === '[::1]') return undefined
   if (bypassed(targetHost, process.env.NO_PROXY ?? process.env.no_proxy)) return undefined
   for (const key of PROXY_ENV_KEYS) {
     const proxy = parseProxy(process.env[key])
@@ -155,9 +156,9 @@ function wrapTls(socket: Socket, host: string): Promise<TLSSocket> {
 }
 
 /** Single-use agent that hands the request the already-established tunnel. */
-function tunnelAgent(socket: TLSSocket): Agent {
-  const agent = new Agent({ keepAlive: false, maxSockets: 1 })
-  ;(agent as unknown as { createConnection: () => TLSSocket }).createConnection = () => socket
+function tunnelAgent(socket: Socket, secure: boolean): HttpAgent {
+  const agent = secure ? new Agent({ keepAlive: false, maxSockets: 1 }) : new HttpAgent({ keepAlive: false, maxSockets: 1 })
+  ;(agent as unknown as { createConnection: () => Socket }).createConnection = () => socket
   return agent
 }
 
@@ -166,24 +167,33 @@ export interface RawBufferResponse {
   buffer: Buffer
 }
 
+export interface RequestInit {
+  method: string
+  headers: Record<string, string>
+  body?: string
+  /** Called on every redirect before any connection to the new destination. */
+  redirectGuard?: (next: URL) => boolean
+}
+
 /** Proxy-aware binary fetch; requestText is the UTF-8 view of this. Follows a
  *  bounded redirect chain (GitHub release downloads 302 to a signed asset URL)
  *  and never forwards Authorization across hosts. */
 export async function requestBuffer(
   url: string,
-  init: { method: string; headers: Record<string, string>; body?: string },
+  init: RequestInit,
   hops = 0,
 ): Promise<RawBufferResponse> {
   const target = new URL(url)
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') throw new Error('unsupported HTTP target protocol')
   const secure = target.protocol === 'https:'
   const port = Number(target.port || (secure ? 443 : 80))
   const path = `${target.pathname}${target.search}`
-  const headers: Record<string, string> = { 'user-agent': 'helm-d', host: target.host, ...init.headers }
+  const headers: Record<string, string> = { 'user-agent': 'helm-d', ...init.headers, host: target.host }
   const proxy = resolveProxy(target.hostname)
-  let agent: Agent | undefined
+  let agent: HttpAgent | undefined
   if (proxy !== undefined) {
     const raw = await connectViaProxy(proxy, target.hostname, port)
-    agent = tunnelAgent(secure ? await wrapTls(raw, target.hostname) : (raw as unknown as TLSSocket))
+    agent = tunnelAgent(secure ? await wrapTls(raw, target.hostname) : raw, secure)
   }
   return await new Promise<RawBufferResponse>((resolve, reject) => {
     const requestFn = secure ? httpsRequest : httpRequest
@@ -209,8 +219,18 @@ export async function requestBuffer(
           }
           let next: URL
           try { next = new URL(location, target) } catch { reject(new Error(`invalid redirect from ${target.hostname}`)); return }
-          const nextHeaders = { ...init.headers }
-          if (next.hostname !== target.hostname) delete nextHeaders.authorization
+          if (!['http:', 'https:'].includes(next.protocol) || (init.redirectGuard && !init.redirectGuard(next))) {
+            reject(new Error(`redirect target rejected: ${next.hostname}`))
+            return
+          }
+          const crossOrigin = next.origin !== target.origin
+          const nextHeaders = crossOrigin
+            ? Object.fromEntries(Object.entries(init.headers).filter(([name]) => /^(accept|content-type|user-agent)$/i.test(name)))
+            : { ...init.headers }
+          if (target.protocol === 'https:' && next.protocol === 'http:') {
+            reject(new Error('refusing HTTPS to HTTP redirect'))
+            return
+          }
           resolve(requestBuffer(next.href, { ...init, headers: nextHeaders }, hops + 1))
           return
         }
@@ -227,7 +247,7 @@ export async function requestBuffer(
 
 export async function requestText(
   url: string,
-  init: { method: string; headers: Record<string, string>; body?: string },
+  init: RequestInit,
 ): Promise<RawResponse> {
   const response = await requestBuffer(url, init)
   return { status: response.status, text: response.buffer.toString('utf8') }

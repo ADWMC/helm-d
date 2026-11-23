@@ -17,7 +17,9 @@ import {
   type FindingSeverity, type FindingStatus, type FindingConfidence,
 } from '../case.js'
 import { getLevel } from '../mode.js'
-import { renderAdvisoryStats, hasLoadedReference } from '../advisory.js'
+import { renderAdvisoryStats, hasLoadedReference, hasLoadedPath, routedReference } from '../advisory.js'
+import { firstReference, matchRoute } from '../router.js'
+import { isAnalysisEvidenceFile } from '../persist.js'
 import { getStreamInterceptionStats } from '../llm-stream-hook.js'
 import { renderAutonomyPacket, detectNoPath } from '../autonomy.js'
 import { loadSettings } from '../settings.js'
@@ -319,19 +321,20 @@ export function registerCaseflowTools(ctx: Context): void {
         const citedFiles = (args.evidence_ids ?? []).map((id) => byId.get(id)).filter((file): file is string => file !== undefined)
         // `manual_` is the reserved prefix save_evidence stamps on every
         // model-authored capture, so a spoofed label can never pass as tool output.
-        const selfAuthored = /^E-\d+-(manual_|save_evidence)/
-        if (!citedFiles.some((file) => !selfAuthored.test(file))) {
+        if (!citedFiles.some(isAnalysisEvidenceFile)) {
           return [
-            'REJECTED — every cited evidence id is self-authored (save_evidence).',
+            'REJECTED — no cited evidence is from a successful analysis tool.',
             `cited: ${citedFiles.join(', ') || '(none)'}`,
             'Run a real analysis tool first; its output is auto-captured as evidence with the tool name in the filename.',
           ].join('\n')
         }
       }
       if (discipline.requireDocRead) {
-        if (!hasLoadedReference(exec?.agent?.id ?? (exec?.agent as { session?: { id?: string } } | undefined)?.session?.id)) {
+        const sessionId = exec?.agent?.id ?? (exec?.agent as { session?: { id?: string } } | undefined)?.session?.id
+        const expected = routedReference(sessionId) ?? (matchRoute(active.goal).length > 0 ? firstReference(active.goal) : undefined)
+        if (expected ? !hasLoadedPath(sessionId, expected) : !hasLoadedReference(sessionId)) {
           return [
-            'REJECTED — no successful read_reference result found in this session.',
+            `REJECTED — no complete read_reference result for ${expected ?? 'this session'}.`,
             'Call route_task(goal) and then read_reference(<matched refs>) before recording a conclusion;',
             'the claim "I read the docs" is not evidence.',
           ].join('\n')

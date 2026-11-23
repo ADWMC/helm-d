@@ -27,13 +27,14 @@ function parseHeaders(raw?: string): Record<string, string> | undefined {
   return Object.fromEntries(Object.entries(parsed as Record<string, unknown>).map(([key, value]) => [key, String(value)]))
 }
 
-async function send(url: string, request: PocRequest): Promise<{ status: number; text: string }> {
+async function send(url: string, request: PocRequest, scope: string[], lab: boolean): Promise<{ status: number; text: string }> {
   await limiter.acquire(new URL(url).hostname)
   try {
     const response = await requestText(url, {
       method: request.method,
       headers: request.headers ?? {},
       ...(request.body !== undefined ? { body: request.body } : {}),
+      redirectGuard: (next) => checkReconTarget(next.hostname, scope, lab).ok,
     })
     return { status: response.status, text: response.text.slice(0, 256 * 1024) }
   } finally {
@@ -93,8 +94,8 @@ export function registerPocTools(ctx: Context): void {
         ...(args.negative_headers !== undefined ? { headers: parseHeaders(args.negative_headers) } : {}),
         ...(args.negative_body !== undefined ? { body: args.negative_body } : {}),
       })
-      const positive = await send(withSuffix(url, args.positive_suffix), positiveRequest)
-      const negative = await send(withSuffix(url, args.negative_suffix), negativeRequest)
+      const positive = await send(withSuffix(url, args.positive_suffix), positiveRequest, active.scope ?? [], args.lab === true)
+      const negative = await send(withSuffix(url, args.negative_suffix), negativeRequest, active.scope ?? [], args.lab === true)
       const positiveHit = marker.test(positive.text)
       const negativeHit = marker.test(negative.text)
       const verdict = classifyPoc(positiveHit, negativeHit)
