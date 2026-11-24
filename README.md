@@ -9,7 +9,7 @@
 
 **DeepSeek Harness 的破甲安全分析插件。**
 
-45 个工具 · 353 篇参考正文 + 9 个索引 · 证据链强制入链 · 四档破甲热切换
+14 个编排工具 · 353 篇参考正文 + 9 个索引 · 证据链入链 · 四档破甲热切换
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -56,7 +56,7 @@ Telegram / 推特 / 苹果 / 谷歌 / GPT 账号与会员，支持查单与售�
 
 helm-d 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的插件，不修改宿主二进制，通过 cordis 钩子给模型加四样东西：
 
-- **45 个工具**：Android / Web / Native / Protocol / Malware / AI-Security，加上 Case 生命周期与路由。
+- **14 个编排工具**：Case 生命周期、路由/参考和外部专业工具目录；不内置领域分析或主动探测执行器。
 - **证据链**：工具输出自动落 `evidence/`，结论必须引用 E 编号和可复现的 `repro_cmd`。
 - **按需知识**：353 篇参考正文 + 9 个索引由 `read_reference` 读取，不塞进 system prompt。
 - **四档破甲**：ds4.1f / stealth / redteam-max / gpt-6x，工作台一键热切换，下一次模型调用生效。
@@ -68,7 +68,7 @@ helm-d 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) �
 **前提**：Node >= 22.19，已安装 [`dsh`](https://github.com/deepseek-ai/deepseek-harness) CLI。
 
 ```bash
-dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.6.0/helm-d.tgz
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.7.0/helm-d.tgz
 dsh web
 ```
 
@@ -102,7 +102,7 @@ begin_case(goal, samples)
 
 | 能力 | 说明 |
 |---|---|
-| **六域工具** | Android 脱壳/Frida、Web 漏洞、Native 壳与反逆向、Protocol 抓包、Malware IOC/YARA、AI-Security |
+| **六域参考与外部工具** | Android、Web、Native、Protocol、Malware、AI-Security 的方法文档与外部专业工具发现；插件不内置专业分析器 |
 | **Case 与证据链** | 磁盘工作区 + 自动入链 + E 编号校验 + `repro_cmd` 门禁；压缩上下文后 `case_status` 能从磁盘恢复 |
 | **四档破甲** | ds4.1f / stealth / redteam-max / gpt-6x，`POST /api/helmd/profile` 原地重注册 persona section，无需重启 |
 | **按需参考** | 353 篇正文 + 9 个索引，`skill_catalog` 路由、`read_reference` 按需读取，不占 system prompt |
@@ -139,25 +139,18 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 最常用的入口：`begin_case` / `case_status` / `record_finding` / `update_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode`。
 
 <details>
-<summary><strong>45 个工具（按域展开）</strong></summary>
+<summary><strong>14 个编排工具</strong></summary>
 
 | 域 | 工具 |
 |----|------|
 | **Case** | `begin_case` `case_status` `record_finding` `update_finding` `save_evidence` `end_case` |
 | **Case / 假设** | `record_hypothesis` `update_hypothesis` |
 | **路由/知识** | `skill_catalog` `read_reference` `route_task` `analysis_mode` |
-| **Android** | `apk_fingerprint` |
-| **Web** | `web_reference` `bot_analyze` |
-| **Native** | `native_reference` `detect_packer` `protection_route` `scan_strings` `xor_bruteforce` `encoding_detect` |
-| **Protocol** | `protocol_reference` `pcap_parse` `state_machine` `parse_har` |
-| **Malware** | `malware_reference` `ioc_extract` `yara_gen` |
-| **AI-Security** | `ai_reference` `llm_sim` |
-| **Evidence** | `evidence_reference` `triage_artifact` `hash_artifact` |
-| **Recon** | `recon_passive` `recon_ports` `recon_http` `recon_crawl` `recon_import` |
-| **PoC / Mining / OOB** | `run_poc` `mine_candidates` `oob_start` `oob_poll` `oob_stop` |
 | **Toolbox** | `tool_recommend` `toolbox` |
 
 </details>
+
+领域分析用经过核查的外部专业工具（可由 `toolbox` 查询/探测）和宿主 shell 执行，再用 `save_evidence` 保存原始输出。手工导入内容默认只能形成候选结论；Case 中的 `verified` 是分诊状态，不等于机器独立验证。
 
 ## 参考资料
 
@@ -167,7 +160,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 
 ```text
 请求 → 首轮锚定（shell + read + route_task + read_reference）→ route_task 路由
-     → 域工具 / read_reference → evidence/（E 编号）
+     → read_reference + 宿主 shell 调外部专业工具 → save_evidence（E 编号）
      → 带置信度与 repro_cmd 的结论
 ```
 
@@ -176,7 +169,7 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 
 - `bootstrap`：首轮暴露平台 shell + `read` + `route_task` + `read_reference`；工具调用或助手消息后晋升。逆向任务自动提供有界首读预览；完整文档仍需成功读取。
 - `gate`：注册 `helm-d:persona` section；Star 面板只是提示层，不 gate 功能。
-- `persist`：所有后注册域工具输出自动落 `evidence/`。
+- `persist`：注册工具的非管理类输出按 Case 状态存证；外部 shell 输出需显式调用 `save_evidence`。
 - `advisory-hook` / `llm-stream-hook` / `ica-context`：交付拒绝检测、流式拦截闭环与行为示范注入。
 - `router` + `case`：领域路由、Case 生命周期与 `[autonomy]` 状态包。
 
@@ -211,20 +204,20 @@ DSH 会话头部点 `helmd 工作台`，优先打开右侧栏（sidebar 不可�
 
 | 项 | 要求 |
 |---|---|
-| DSH | `0.2.0-rc.1` – `0.2.2-rc.5` 区间内全部已发布版本（preset 生成/自愈与工作台 UI token 经区间全版本回归；运行时冷启动未在 19 个宿主上一一执行） |
-| Node | `>= 22.19.0` |
+| DSH | `0.2.0-rc.1` – `0.2.2-rc.5` 区间内全部已发布版本，另适配 `0.2.3-alpha.1` / `.2`（peer 范围、preset 生成/自愈、UI token 经测试；新版宿主真实冷启动未验证） |
+| Node | 插件 `>= 22.19.0`；DSH `0.2.3-alpha.1` 要求 `>= 24.9.0`，`.2` 要求 `^24.22.3 || >= 26.13.1` |
 | 平台 | Windows 用 `pwsh`；Linux / macOS 用 `bash`；WSL 通过 `wsl.exe` |
 
 ```bash
 # 更新：先卸载，再装目标版本（不要用 latest/download）
 dsh plugin --profile web remove @adwmc/helm-d
-dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.6.0/helm-d.tgz
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.7.0/helm-d.tgz
 
 # 卸载
 dsh plugin --profile web remove @adwmc/helm-d
 ```
 
-把 `v0.6.0` 换成目标 Release 的 tag；不要用 `releases/latest/download/*` 作为 profile 依赖。
+把 `v0.7.0` 换成目标 Release 的 tag；不要用 `releases/latest/download/*` 作为 profile 依赖。
 
 ## 文档
 

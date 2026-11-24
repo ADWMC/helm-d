@@ -6,7 +6,6 @@
   "files": [
     "dist",
     "references",
-    "scripts",
     "cordis.patch.yml"
   ],
   "scripts": {

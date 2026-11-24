@@ -35,7 +35,10 @@ const { readAsarEntry, evaluateHealth } = await import(pathToFileURL(join(distDi
 const archive = join(fixtures, 'desktop-app.asar')
 const ENTRY = 'dsh/node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml'
 const oldest = manifest.hosts[0]
-const newest = manifest.hosts[manifest.hosts.length - 1]
+// This archive is a captured desktop 0.2.2-rc.5 install. Newer npm hosts
+// have their own published-standard fixtures in the manifest.
+const newest = manifest.hosts.find((host) => host.version === '0.2.2-rc.5')
+assert.ok(newest, 'the captured desktop version must remain in the manifest')
 
 await report.check('the committed desktop archive yields the newest host standard', () => {
   const text = readAsarEntry(archive, ENTRY)

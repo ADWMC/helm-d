@@ -11,7 +11,7 @@ if (!existsSync(entry)) skip('persistence-guard', 'need packages/helmd/dist (run
 const home = mkdtempSync(join(tmpdir(), 'helmd-persist-guard-'))
 process.env.DSH_HOME = home
 const { bindCase, listEvidence } = await import(pathToFileURL(join(distDir, 'case.js')).href)
-const { applyPersistenceWrap, isAnalysisEvidenceFile, isNoPersist } = await import(pathToFileURL(entry).href)
+const { applyPersistenceWrap, isNoPersist } = await import(pathToFileURL(entry).href)
 const report = createReporter('persistence-guard')
 const caseDir = join(home, 'helmd-cases', 'case')
 mkdirSync(join(caseDir, 'evidence'), { recursive: true })
@@ -37,14 +37,13 @@ try {
     assert.match(out, /evidence: E-001 saved/)
     const evidence = await listEvidence(caseDir)
     assert.equal(evidence.length, 1)
-    assert.equal(isAnalysisEvidenceFile(evidence[0].file), true)
+    assert.match(evidence[0].file, /^E-001-hash_artifact\.txt$/)
   })
   await report.check('administrative and advisory tools cannot create analysis evidence', async () => {
     for (const name of ['update_finding', 'toolbox', 'protection_route']) assert.equal(isNoPersist(name), true)
     assert.equal(await registered.get('update_finding').execute({}, exec), 'REJECTED — unknown finding')
     assert.equal((await listEvidence(caseDir)).length, 1)
-    assert.equal(isAnalysisEvidenceFile('E-002-update_finding.txt'), false)
-    assert.equal(isAnalysisEvidenceFile('E-003-manual_scan_strings.txt'), false)
+    assert.ok(!(await listEvidence(caseDir)).some((entry) => entry.file.includes('update_finding')))
   })
 } finally {
   rmSync(home, { recursive: true, force: true })

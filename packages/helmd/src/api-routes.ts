@@ -17,7 +17,7 @@ import fs from 'node:fs'
 import { gateStatus, retryFlow, skipThisLaunch, switchProfile } from './gate.js'
 import { profileStatus } from './profile.js'
 import { checkForUpdate } from './update-check.js'
-import { listCasesOnDisk, loadHypotheses, countEvidence, loadFindings, listEvidence, getCase, updateFinding, renderSarif, findingTrend, renderCaseReport } from './case.js'
+import { listCasesOnDisk, loadHypotheses, countEvidence, loadFindings, assessFindings, listEvidence, getCase, updateFinding, renderSarif, findingTrend, renderCaseReport } from './case.js'
 import { loadSettings, saveSettings } from './settings.js'
 import { TOOL_CATALOG, catalogEntry } from './toolbox/catalog.js'
 import { installCatalogTool, installCatalogMirror, latestRelease, toolHealth, uninstallCatalogTool, updateCatalogTool } from './toolbox/installer.js'
@@ -356,7 +356,7 @@ export function registerHelmdApi(ctx: Context, getHealth?: () => unknown): void 
     }
     const sessionId = queryParam(req, 'sessionId')
     const active = sessionId ? getCase(sessionId) : undefined
-    return active ? loadFindings(active.dir) : []
+    return active ? assessFindings(active.dir) : []
   })
 
   // Deterministic SARIF 2.1.0 export for the session-bound case.

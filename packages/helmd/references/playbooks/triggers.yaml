@@ -2,7 +2,7 @@ schema: 1
 triggers:
   - observe: "entropy > 7.0, imports < 5"
     hypothesis: "可能存在压缩/加密资源或加载期变换；未确认壳"
-    test: "detect_packer 仅取候选信号；检查入口与实际加载映射，确认本构建匹配后才在副本测试对应工具"
+    test: "使用专业分析器取候选信号并保存原始输出；检查入口与实际加载映射，确认本构建匹配后才在副本测试对应工具"
     ref: "native/protection-detection-methodology.md"
   - observe: "section names UPX0/UPX1"
     hypothesis: "UPX 候选，节名可能伪造"
@@ -14,7 +14,7 @@ triggers:
     ref: "native/pe-loader-dll-injection.md"
   - observe: "DEX 调用 native .so"
     hypothesis: "Android + JNI"
-    test: "apk_fingerprint"
+    test: "使用 jadx/apktool 检查 DEX/JNI 边界并保存原始输出"
     ref: "android/index.md"
   - observe: "API 返回对象 ID 可遍历"
     hypothesis: "IDOR"

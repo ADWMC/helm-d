@@ -662,6 +662,17 @@ exports.apply = function apply(ctx) {
 									}, expandedDetails[f.id] ? "收起" : "展开全部（" + f.detail.length + " 字）") : null
 								) : null,
 								f.evidence ? h("div", { style: { marginTop: 3, fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, f.evidence) : null,
+								h("div", { style: { marginTop: 6, padding: "7px 8px", borderRadius: 4, background: "var(--dsw-alias-bg-layer-1)", border: "0.5px solid var(--dsw-alias-border-l3)", fontSize: 11, lineHeight: "17px", overflowWrap: "anywhere" } },
+									h("div", { style: { color: TONE.info, fontWeight: 600 } }, "漏洞研判 · " + (f.assessment ? ({ matched: "引文已核对", not_assessed: "待核对", mismatch: "证据不匹配", stale: "证据已变化" }[f.assessment.evidenceCheck] || "待核对") : "待核对")),
+									h("div", { style: { color: "var(--dsw-alias-label-secondary)" } }, "分诊状态：" + (f.status || "未知") + " · 置信度：" + (f.confidence || "未标注")),
+									h("div", { style: { color: f.assessment && (f.assessment.evidenceCheck === "stale" || f.assessment.evidenceCheck === "mismatch") ? TONE.warn : TONE.muted } }, f.assessment ? f.assessment.reason : "尚无机器核对结果"),
+									f.confidenceRationale ? h("div", { style: { marginTop: 3, whiteSpace: "pre-wrap" } }, "判断依据：" + f.confidenceRationale) : h("div", { style: { color: TONE.muted } }, "判断依据：未记录"),
+									f.negativeControl ? h("div", { style: { marginTop: 3, whiteSpace: "pre-wrap" } }, "反证 / 对照：" + f.negativeControl) : h("div", { style: { color: TONE.muted } }, "反证 / 对照：未记录"),
+									(f.negativeEvidenceIds || []).map(function (id) { return h("a", { key: "negative-" + id, href: "#case-evidence-" + id, style: { color: TONE.info, marginRight: 8 } }, "反证 " + id); }),
+									(f.assessment && f.assessment.quotes || []).map(function (item, qi) { return h("div", { key: item.evidenceId + "-" + qi, style: { marginTop: 4, color: item.matched ? "var(--dsw-alias-label-secondary)" : TONE.warn, whiteSpace: "pre-wrap" } },
+										h("a", { href: "#case-evidence-" + item.evidenceId, style: { color: TONE.info } }, item.evidenceId), " · " + (item.matched ? "逐字匹配" : "无法匹配") + " · “" + item.quote + "”"); }),
+									(f.evidenceIds || []).length ? h("div", { style: { marginTop: 4 } }, "正向证据：", (f.evidenceIds || []).map(function (id) { return h("a", { key: "positive-" + id, href: "#case-evidence-" + id, style: { color: TONE.info, marginRight: 8 } }, id); })) : null
+								),
 								f.repro
 									? h("div", { style: { marginTop: 2, fontFamily: CODE, fontSize: 10.5, color: TONE.muted } }, "repro: " + f.repro)
 									: h("div", { style: { marginTop: 2, fontSize: 10.5, color: TONE.warn } }, "repro: MISSING"),
@@ -695,9 +706,9 @@ exports.apply = function apply(ctx) {
 				),
 				evidence.length > 0
 					? h("div", { style: { display: "flex", flexDirection: "column", gap: 1 } },
-						evidence.map(function (entry) {
+							evidence.map(function (entry) {
 							return h("div", {
-								key: entry.id, className: "hm-row",
+								key: entry.id, id: "case-evidence-" + entry.id, className: "hm-row",
 								style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 6px", borderRadius: 4 },
 							},
 								h("span", { style: { fontFamily: CODE, fontSize: 10.5, color: TONE.info, minWidth: 44, flex: "none" } }, entry.id),
@@ -972,7 +983,7 @@ exports.apply = function apply(ctx) {
 					h(SettingsRow, { label: "结论前必读文档", hint: "record_finding 要求真实调用过 read_reference（防假装）" },
 						h(SettingsToggle, { checked: !!form.advisory.requireDocRead, onChange: function (v) { setIn("advisory.requireDocRead", v); } })
 					),
-					h(SettingsRow, { label: "证据须来自工具", hint: "引用证据至少一条为真实工具输出（save_evidence 自编不算）" },
+					h(SettingsRow, { label: "结论须有分析证据", hint: "引用已入 Case 的观察；手工导入输出不等于认证执行，默认候选" },
 						h(SettingsToggle, { checked: !!form.advisory.requireToolEvidence, onChange: function (v) { setIn("advisory.requireToolEvidence", v); } })
 					),
 					h(SettingsRow, { label: "允许模型安装工具", hint: "只允许 catalog 内的 GitHub release；默认仅 WebUI 操作者安装" },

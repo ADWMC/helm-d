@@ -11,22 +11,33 @@
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-11-24（工具清洗、双域自主与新版 DSH 兼容）
+
+### 升级前必读
+
+- 主插件运行时精简至 14 个编排工具；内置逆向分析、Web 侦察、PoC、候选挖掘、OOB 与分域参考重复入口均不再注册，独立 `skill-*` 包的专业分析入口也已撤下。领域操作改由外部专业工具通过宿主执行，再用 `save_evidence` 保存原始输出；手工导入是模型提供的数据，不是独立认证的执行记录。旧模块/脚本源码仍在仓库，不随主包发布。
+- Case 工作台展示 finding 的证据摘录核对、置信依据及缺失/过期状态；引文匹配仅证明已保存材料的出处，不能证明漏洞可利用。逆向与渗透分别有下一步建议，建议不是后台自治执行器。
+
+### 新版 dsh 宿主兼容
+
+- 补齐 0.2.2-rc.5 与 0.2.3-alpha.1/.2 的 Cordis、Schemastery、settings/tools peer 范围；从发布包补入新版宿主 preset 与 UI token 契约，回归 preset 生成/修复。alpha.2 需 Node 24.22.3+ 或 26.13.1+；真实宿主冷启动尚未验证。
+
 ### 路由、证据与网络边界修复
 
 - `route_task` 过滤否定任务信号并给出实际首步工具；JVM/Frida 任务进入首读预览。文档分页全部返回后才签发可恢复的阅读回执，finding 校验当前路由文档。
-- 失败工具输出及管理/建议回执不再成为分析证据；finding 只接受分析工具产物。Case 按最近打开恢复时保留 scope，按名称恢复时限制在 Case 根目录。
-- recon/PoC 每次重定向重新核对 scope，跨来源不转发认证头；支持 IPv4/IPv6 CIDR，识别映射的回环地址，本机 HTTP 不再误走系统代理，HTTP CONNECT 使用匹配协议的代理 agent。
+- 失败输出及管理/建议回执不再成为分析证据；Case 按最近打开恢复时保留 scope，按名称恢复时限制在 Case 根目录。手工导入的原始外部输出可作为候选结论的材料，但不被当成已认证的分析执行。
+- 历史 recon/PoC 模块曾补全重定向后的 scope 核对、跨来源认证头隔离及 IPv4/IPv6 CIDR 支持；这些入口现已撤下，不属于本版可调用工具。
 
 ### 保护样本分流（开发中）
 
-- 修复知识主动调用链：首轮暴露路由和阅读工具，逆向任务提示层给有限首读预览；成功读取回执与路由指定文档的采纳统计分离，报告门禁不再接受只调用未成功的文档工具。独立 legacy skill-native 保留兼容入口但同步保护卡，当前 release 仍只打主包。
+- 修复知识主动调用链：首轮暴露路由和阅读工具，逆向任务提示层给有限首读预览；成功读取回执与路由指定文档的采纳统计分离，报告门禁不再接受只调用未成功的文档工具。独立 legacy skill-native 只保留资料读取入口；当前 release 仍只打主包。
 
-- `protection_route` 仅对已有 Case 的 E-id 和明确的信号进行保守分流；`detect_packer` 不再把签名说成确认的壳。重写保护识别和加壳入口以区分静态目标、局部 VM、写后执行与观测器故障；Case 核心限制保护 finding 晋升并允许 deep 模式如实未解结束。不包含自动解密或已验证的动态执行闭环。
+- `protection_route` / `detect_packer` 的历史逻辑仅供仓库回归，运行时入口已撤下；逆向参考强调区分静态目标、局部 VM、写后执行与观测器故障。Case 核心限制保护 finding 晋升并允许 deep 模式如实未解结束；不包含自动解密或已验证的动态执行闭环。
 - 同步逆向 playbook、保护器速查、IDA/Frida 动态卡、Android DEX 卡及 TUSI 案例边界：移除签名即操作、工具固定优先级与单次 hook 绝对可靠的指导；修正旧 `create_case` 引用并重建参考索引。
 
 ### 兼容性
 
-- **DSH 区间上界 0.2.2-rc.1 → 0.2.2-rc.5**：补齐 0.2.2-rc.2/rc.3/rc.4/rc.5 四个版本（吸收远端 0c3a387 的 rc.2/rc.3 适配与 token fixture 提取方法）。npm 实测四版本同元组（cordis ~4.1.0 / schemastery ~3.19.0）、standard.patch.yml 字节一致（sha256 e40bb192ed3b…）、token 契约一致；peer 范围经双语义实测无缺口。落地：manifest 19 hosts、standard/token fixture、desktop-app.asar 重建、preset 快照重锚 e40bb1…。0.2.3+ 仍显式排除。
+- **DSH 0.2.2-rc.2–rc.5**：npm 实测四版本同元组（cordis ~4.1.0 / schemastery ~3.19.0）、standard.patch.yml 字节一致（sha256 e40bb192ed3b…）、token 契约一致；原有 manifest 的 19 个宿主样本现扩至 21 个，另含 0.2.3-alpha.1/.2；更高版本未纳入。
 - **桌面宿主定位修复**（来自远端 0c3a387）：desktopAsarCandidates()（health.ts 与两份 gen-preset.mjs 镜像）新增 process.execPath / process.resourcesPath 自锚定候选，修复自定义安装路径下 status UNKNOWN、preset 自愈从不发生。
 
 ### 移除
@@ -46,7 +57,7 @@
 - **asset select 反模式**：choice.assets[0].name 直接变异对象且 select 不受控；改为独立 pickedAsset state。
 - **Star gate retryAt 渲染**：后端返回退避时间但前端只显示稍后自动重试；现渲染将于 m:ss 后自动重试。
 - **中英混杂清理**：空态英文残留（Adjusted filter / Open hypotheses / Open right sidebar）改为中文。
-- **run_poc 描述**：移除已失效的 team.riskApproval 引用（状态变更类 recipe 一律拒绝）。
+- **历史 run_poc 描述**：移除已失效的 team.riskApproval 引用；该工具随后从注册目录下线。
 
 ### 修复（references 引导链）
 

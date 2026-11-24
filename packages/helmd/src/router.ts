@@ -21,27 +21,27 @@ const catalog: Record<string, string> = {
   report: '报告模板 -> references/evidence/reporting.md — 标准化输出模板',
   install: '工具安装 -> references/toolbox/tool-install.md — 下载、安装、验证',
   network: '出站通道 -> references/toolbox/network-egress.md — 先探本机可用代理，探不到或连不上就直连+换源',
-  tools: '工具货架 -> 19+ 内置逆向与安全分析工具，输入 /tools 或查看右侧栏工作台',
+  tools: '外部专业工具目录 -> toolbox(action=catalog/probe)；输出用 save_evidence 入链',
   status: '状态看板 -> 输入 /status 查看引擎健康与流式拦截审计日志',
-  jvm: 'JVM/Java mod 常量加密 -> references/native/jvm-mod-deobf-workflow.md — Forge mod、jar 混淆、DES 解密器模板、oracle 重放；脚本 scripts/native/jvm/',
+  jvm: 'JVM/Java mod 常量加密 -> references/native/jvm-mod-deobf-workflow.md — Forge mod、jar 混淆、oracle 重放方法；选外部专业工具保存原始输出',
   // 领域路由
-  android: 'APK/AAB/DEX/smali -> apk_fingerprint + references/android/',
+  android: 'APK/AAB/DEX/smali -> references/android/ + 外部反编译器',
   web: 'JS/fetch/XHR/WebSocket/sign -> web_reference + references/web/',
   native: 'PE/ELF/Mach-O/shellcode -> native_reference + references/native/',
-  protocol: 'PCAP/TCP/UDP/gRPC/Protobuf -> pcap_parse + references/protocol/',
-  malware: 'C2/persistence/IOC/sample -> ioc_extract/yara_gen + references/malware/',
-  ai: 'prompt/model security -> llm_sim + references/ai-security/',
+  protocol: 'PCAP/TCP/UDP/gRPC/Protobuf -> references/protocol/ + 外部协议分析器',
+  malware: 'C2/persistence/IOC/sample -> references/malware/ + 外部分析器',
+  ai: 'prompt/model security -> references/ai-security/ + 外部评测器',
   evidence: 'case 工作区/报告/存证 -> begin_case + case_status + references/evidence/',
   // 信号级路由 (signal -> tool -> reference)
-  apk: 'APK/AAB/DEX -> apk_fingerprint -> android',
-  shell: 'packer/UPX/VMP/Themida/OLLVM -> detect_packer -> native',
-  strings: 'signature/URL/error-string -> scan_strings -> native',
-  crypto: 'XOR/Base64/Hex/AES -> xor_bruteforce/encoding_detect -> native',
+  apk: 'APK/AAB/DEX -> android 参考 + 专业反编译器',
+  shell: 'packer/UPX/VMP/Themida/OLLVM -> native 保护方法 + 专业分析器',
+  strings: 'signature/URL/error-string -> native 参考 + 专业字符串工具',
+  crypto: 'XOR/Base64/Hex/AES -> native 加密方法 + 专业分析器',
   hook: 'Frida/Interceptor/hook -> native dynamic-analysis-frida',
-  pcap: 'PCAP/TCP/UDP -> pcap_parse -> protocol',
-  har: 'HAR/request -> parse_har -> protocol',
-  ioc: 'IOC/hash/domain -> ioc_extract/yara_gen -> malware',
-  llm: 'model security / prompt injection -> llm_sim -> ai',
+  pcap: 'PCAP/TCP/UDP -> protocol 参考 + 外部协议分析器',
+  har: 'HAR/request -> protocol 参考 + 外部协议分析器',
+  ioc: 'IOC/hash/domain -> malware 参考 + 外部分析器',
+  llm: 'model security / prompt injection -> ai 参考 + 外部评测器',
 }
 
 // 确定性路由表（dhicoc master-route 契约：先路由后动手，PRIMARY + 一句依据）
@@ -73,12 +73,9 @@ const ROUTE_TABLE: Route[] = [
   { key: 'tree', kw: ['分析', 'analyze', '看看', '这个文件', 'unknown', '分诊'], why: '未定型样本走决策树' },
 ]
 
-/** PRIMARY route -> the first tool that would produce its opening evidence. */
+/** PRIMARY route -> first evidence action, not a bundled domain analyzer. */
 const ROUTE_TOOL: Record<string, string> = {
-  apk: 'apk_fingerprint', shell: 'detect_packer', strings: 'scan_strings', crypto: 'encoding_detect',
-  pcap: 'pcap_parse', har: 'parse_har', ioc: 'ioc_extract', malware: 'yara_gen',
-  llm: 'llm_sim', tree: 'triage_artifact', evidence: 'begin_case',
-  tools: 'skill_catalog', status: 'case_status', native: 'triage_artifact', web: 'bot_analyze',
+  evidence: 'begin_case', tools: 'toolbox(action=catalog/probe)', status: 'case_status',
 }
 
 /** PRIMARY route -> the reference doc to read BEFORE running the route tool.
@@ -146,7 +143,7 @@ export function renderRoute(hint: string): string {
     if (ref !== undefined) {
       lines.push(`FIRST: read_reference("${ref}") — 读方法论再动手；本会话没读过参考时 record_finding 会拒绝结论`)
     }
-    if (ROUTE_TOOL[primary.key]) lines.push(`NEXT: ${ROUTE_TOOL[primary.key]} — 取得第一条可核查证据`)
+    lines.push(`NEXT: ${ROUTE_TOOL[primary.key] ?? 'toolbox(action=catalog/probe) → 外部专业工具 → save_evidence'} — 取得第一条可核查证据`)
     if (hits.length > 1) {
       lines.push(`备选: ${hits.slice(1, 4).map((h) => h.key).join(', ')}`)
     }
@@ -339,7 +336,7 @@ export function registerRouterTools(ctx: Context): void {
         submitAdvisory(sessionId, {
           key: `route-read:${primary}`,
           tier: 'recommended',
-          content: `PRIMARY=${primary} — 先 read_reference(${ref ?? 'index.md'})，再用 ${tool ?? '领域工具'} 取得第一条证据。`,
+          content: `PRIMARY=${primary} — 先 read_reference(${ref ?? 'index.md'})，再用 ${tool ?? 'toolbox 查找专业工具，保存原始输出到 Case'} 取得第一条证据。`,
           proof: { kind: 'reference_loaded', path: ref },
           withinTurns: 2,
           trackOnly: true,

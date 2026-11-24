@@ -3,10 +3,10 @@
 // without an active case tools behave exactly as before (plus a footer).
 
 import type { Context } from '@deepseek-ai/cordis'
-import { getCase, saveEvidence, loadHypotheses, loadFindings, listEvidence } from './case.js'
+import { getCase, saveEvidence, loadHypotheses, assessFindings, listEvidence } from './case.js'
 import { getLevel } from './mode.js'
 import { deriveNextAction } from './autonomy.js'
-import { submitAdvisory, hasLoadedReference } from './advisory.js'
+import { submitAdvisory } from './advisory.js'
 import { sessionEvents } from './session-log.js'
 import { loadSettings } from './settings.js'
 
@@ -31,28 +31,6 @@ export function isNoPersist(toolName: string): boolean {
   return NO_PERSIST.has(toolName)
 }
 
-/** Only observations produced by analysis tools qualify as finding evidence. */
-const ANALYSIS_EVIDENCE = new Set([
-  'sha256', 'strings', 'http', 'apk_fingerprint', 'detect_packer', 'scan_strings',
-  'xor_bruteforce', 'encoding_detect', 'pcap_parse', 'parse_har', 'ioc_extract',
-  'yara_gen', 'llm_sim', 'bot_analyze', 'triage_artifact', 'hash_artifact',
-  'state_machine', 'poc_positive', 'poc_negative', 'mine_candidates',
-  'recon_dns', 'recon_ports', 'recon_http', 'recon_crawl', 'recon_import',
-])
-
-export function isAnalysisEvidenceFile(file: string): boolean {
-  const label = /^E-\d+-([a-z0-9_-]+)\.(?:txt|json|md)$/.exec(file)?.[1]
-  return label !== undefined && ANALYSIS_EVIDENCE.has(label)
-}
-
-/** Domain tools whose output feeds methodology conclusions — reading the domain's
- *  reference before/around them is the discipline the reminder enforces. */
-const DOMAIN_TOOLS = new Set([
-  'apk_fingerprint', 'detect_packer', 'scan_strings', 'xor_bruteforce', 'encoding_detect',
-  'pcap_parse', 'parse_har', 'ioc_extract', 'yara_gen', 'llm_sim', 'bot_analyze',
-  'triage_artifact', 'state_machine',
-])
-
 const lastNudge = new Map<string, { at: number; next: string }>()
 
 /** L4-lite scheduler: after a tool result, push the current next action into the
@@ -60,7 +38,7 @@ const lastNudge = new Map<string, { at: number; next: string }>()
 async function nudgeCaseState(
   sessionId: string | undefined,
   agent: unknown,
-  active: { dir: string; goal: string },
+  active: { dir: string; goal: string; scope?: string[] },
 ): Promise<void> {
   if (sessionId === undefined) return
   if (!loadSettings().advisory.nextActionNudge) return
@@ -68,11 +46,12 @@ async function nudgeCaseState(
   const last = lastNudge.get(sessionId)
   if (last !== undefined && now - last.at < 3000) return
   const hypotheses = await loadHypotheses(active.dir)
-  const findings = await loadFindings(active.dir)
+  const findings = await assessFindings(active.dir)
   const evidence = await listEvidence(active.dir)
   const next = deriveNextAction({
     mode: getLevel(sessionId),
     goal: active.goal,
+    scope: active.scope,
     hypotheses,
     findings,
     evidence,
@@ -114,19 +93,6 @@ async function persistHook(
   } catch {
     // The nudge is best-effort; a case/ledger read failure must not break the tool result.
   }
-  // Reference-read reminder: a domain tool ran but this session never read a
-  // reference doc (guidance chain audit 2026-11-19: the model skips the reading
-  // step unless reminded at the point of use; record_finding will reject
-  // conclusions from such a session anyway — say it before, not after).
-  let refNote = ''
-  if (sessionId !== undefined && DOMAIN_TOOLS.has(toolName)) {
-    try {
-      const alreadyRead = hasLoadedReference(sessionId)
-      if (!alreadyRead) {
-        refNote = '\n[ref reminder: this session has not read any reference doc. read_reference("<domain>/index.md") before drawing methodology conclusions; record_finding will reject otherwise.]'
-      }
-    } catch { /* session log unavailable — skip the reminder */ }
-  }
   if (large) {
     return [
       `[evidence: ${id} saved to ${active.name} — full output is ${result.length} bytes at ${path}]`,
@@ -135,9 +101,9 @@ async function persistHook(
       result.slice(0, 4096),
       '--- tail ---',
       result.slice(-4096),
-    ].join('\n') + refNote
+    ].join('\n')
   }
-  return result + `\n[evidence: ${id} saved to ${active.name}]` + refNote
+  return result + `\n[evidence: ${id} saved to ${active.name}]`
 }
 
 /**

@@ -260,6 +260,7 @@ await report.check('workbench API cannot promote a protection candidate through 
   assert.match(result.payload.error, /independent verifier/)
   const current = await call(`${ROUTE_BASE}/case/findings`, { url: `${ROUTE_BASE}/case/findings?sessionId=sess-api` })
   assert.equal(current.payload.data[0].status, 'candidate')
+  assert.equal(current.payload.data[0].assessment.evidenceCheck, 'mismatch', 'API exposes missing evidence instead of claiming verification')
 })
 
 await report.check('GET /case/sarif and /case/report are deterministic projections', async () => {

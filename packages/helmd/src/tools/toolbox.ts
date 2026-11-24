@@ -38,8 +38,8 @@ const rules: Record<string, string> = {
   fernflower: 'fernflower https://github.com/jetBrains/fernflower — Java 字节码 → Java | 下载: Releases 选 `fernflower.jar`',
   jar: 'JAR → garlic https://github.com/neocanable/garlic/releases (首选) | 替代: fernflower/CFR',
   bytecode: '字节码 → fernflower https://github.com/jetBrains/fernflower/releases',
-  jvm: 'JVM mod 常量加密 → scripts/native/jvm/ 全管线 (scan_jar/extract/flatten/Oracle/decrypt) + references/native/jvm-mod-deobf-workflow.md | headless JVM oracle 重放，不逆向 PRNG',
-  forge: 'Forge/Fabric mod 常量加密 → references/native/jvm-mod-deobf-workflow.md + scripts/native/jvm/ | 特征: MixinConfigs manifest + emoji/iI 类名 + DESKeySpec 共现',
+  jvm: 'JVM mod 常量加密 → references/native/jvm-mod-deobf-workflow.md + 外部专业工具 | 独立校验 JVM oracle 输出',
+  forge: 'Forge/Fabric mod 常量加密 → references/native/jvm-mod-deobf-workflow.md + 外部专业工具 | 核实 MixinConfigs、DESKeySpec 等观察',
   mixin: 'mixin 混淆类 → references/native/jvm-mod-deobf-workflow.md §1 特征速查 + scan_jar.py 分类',
   des: 'DES 常量解密 (DESKeySpec+IvParameterSpec+DES/CBC/NoPadding 同类共现) → references/native/jvm-mod-deobf-workflow.md + decrypt_sites.py | key = ret ^ xor, 大端 8B, 零 IV',
   indy: 'indy bootstrap 惰性解密 (Lookup/MutableCallSite 签名) → 静态不可解, 保留运行时原解密器 | 判定依据: references/native/jvm-mod-deobf-workflow.md §6',
@@ -88,7 +88,7 @@ const rules: Record<string, string> = {
   // 5. Windows
   vmp: 'VMP → VMPStaticUnpacker https://github.com/YuroGod/VMPStaticUnpacker/releases | 下载: Releases 选 `VMPStaticUnpacker.exe`',
   vmprotect: 'VMProtect → VMPStaticUnpacker https://github.com/YuroGod/VMPStaticUnpacker/releases',
-  unpack: '脱壳 → VMPStaticUnpacker https://github.com/YuroGod/VMPStaticUnpacker/releases / detect_packer',
+  unpack: '脱壳 → 按 references/native/packer-handling.md 核实本构建后选匹配的专业工具；候选 VMPStaticUnpacker https://github.com/YuroGod/VMPStaticUnpacker/releases',
   x64dbg: 'x64dbg https://github.com/x64dbg/x64dbg/releases — Windows 用户态调试器 | 下载: Releases 选 `snapshot_*.zip`',
   debug: 'Windows 调试 → x64dbg https://github.com/x64dbg/x64dbg/releases',
   'x64dbg-mcp': 'x64dbg-mcp https://github.com/SetsunaYukiOvO/x64dbg-mcp/releases — AI 控制调试 | 下载: Releases 选 `dp32/dp64`',
@@ -108,7 +108,7 @@ const rules: Record<string, string> = {
   pe_inspector: 'PE 恶意检测 → pe-inspector https://github.com/la-1314/pe-inspector/releases | 下载: Releases 选平台二进制',
   malware: '恶意样本检测 → pe-inspector https://github.com/la-1314/pe-inspector/releases',
   yara: 'YARA https://github.com/VirusTotal/yara — 规则匹配/样本分类 | UI 工具页装 Windows 包 | yara rule.yar sample.exe',
-  ember: 'EMBER/PE 特征 → pe-inspector https://github.com/la-1314/pe-inspector/releases / yara_gen',
+  ember: 'EMBER/PE 特征 → pe-inspector https://github.com/la-1314/pe-inspector/releases / YARA https://github.com/VirusTotal/yara',
   volatility: 'Volatility 3 https://github.com/volatilityfoundation/volatility3 — 内存取证 | pip install volatility3 | vol -f memory.raw windows.pslist',
   oletools: 'oletools https://github.com/decalage2/oletools — Office/OLE 宏分析 | pip install oletools | olevba sample.doc',
   pesieve: 'PE-sieve https://github.com/hasherezade/pe-sieve — 进程注入/内存 implant 检测 | UI 工具页装 Windows 包 | pe-sieve64.exe /pid <pid>',
@@ -117,7 +117,7 @@ const rules: Record<string, string> = {
   // 9. AI / LLM 安全
   garak: 'garak https://github.com/NVIDIA/garak — LLM 漏洞/越狱扫描 | pip install "garak==0.17.0"（0.17.1 wheel 缺 probe 模块）| garak --target_type openai --target_name <model> --spec probes.encoding.InjectBase64 -g 1',
   jailbreak: '模型安全评测 -> references/ai-security/{model-security-analysis-guide,bypass-framework-matrix}.md；在自有测试样本上比较响应分类、拒答一致性和审计记录',
-  llm: 'LLM 应用安全评测 -> garak + references/ai-security/ + llm_sim 工具',
+  llm: 'LLM 应用安全评测 -> garak + references/ai-security/；保存专业工具原始输出到 Case',
 }
 
 export function registerToolboxTools(ctx: Context): void {
@@ -160,7 +160,7 @@ export function registerToolboxTools(ctx: Context): void {
       if (unique.length > 0) return [...unique, ...tail].join('\n')
       return tail.length > 0
         ? tail.join('\n')
-        : 'triage-and-route: begin_case + detect_packer + scan_strings + hash_artifact'
+        : 'triage-and-route: begin_case + read_reference + toolbox(action=probe/catalog); use a specialist CLI and save_evidence for its raw output'
     },
   }))
   ctx.tools.register(defineTool({

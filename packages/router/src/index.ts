@@ -16,16 +16,16 @@ const catalog: Record<string, string> = {
   malware: 'C2/persistence/IOC/sample -> @helm-d/skill-malware',
   ai: 'prompt/model/injection -> @helm-d/skill-ai-security',
   evidence: 'case/report/hash/triage -> @helm-d/skill-evidence',
-  // 信号级路由 (signal -> tool -> bundle)
-  apk: 'APK/AAB/DEX -> apk_fingerprint -> skill-android',
-  shell: 'packer/UPX/VMP/Themida/OLLVM -> detect_packer -> skill-native',
-  strings: 'signature/URL/error-string -> scan_strings -> skill-native',
-  crypto: 'XOR/Base64/Hex/AES -> xor_bruteforce/encoding_detect -> skill-native',
+  // 信号级路由指向参考资料；专业操作由外部工具承担。
+  apk: 'APK/AAB/DEX -> skill-android reference + external specialist tools',
+  shell: 'packer/UPX/VMP/Themida/OLLVM -> skill-native reference + external specialist tools',
+  strings: 'signature/URL/error-string -> skill-native reference + external specialist tools',
+  crypto: 'XOR/Base64/Hex/AES -> skill-native reference + external specialist tools',
   hook: 'Frida/Interceptor/hook -> skill-native dynamic-analysis-frida',
-  pcap: 'PCAP/TCP/UDP -> pcap_parse -> skill-protocol',
-  har: 'HAR/request -> parse_har -> skill-protocol',
-  ioc: 'IOC/hash/domain -> ioc_extract/yara_gen -> skill-malware',
-  llm: 'prompt/injection -> llm_sim -> skill-ai-security',
+  pcap: 'PCAP/TCP/UDP -> skill-protocol reference + external specialist tools',
+  har: 'HAR/request -> skill-protocol reference + external specialist tools',
+  ioc: 'IOC/hash/domain -> skill-malware reference + external specialist tools',
+  llm: 'prompt/injection -> skill-ai-security reference + external specialist tools',
 }
 
 import { existsSync, statSync } from 'node:fs'

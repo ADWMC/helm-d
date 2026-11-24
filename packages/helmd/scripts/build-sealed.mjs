@@ -8,7 +8,7 @@
 //      import, then re-export the real module's named exports. The published
 //      tarball carries no flaggable plaintext — npm's supply-chain scan sees
 //      only the sealed blob.
-//   2. scripts/** seals too (extracted to true paths on first activation).
+//   2. Only runtime preset/install scripts seal too (extracted on activation).
 //   3. references/** seals into references.dat (read_reference decrypts in
 //      memory per request). The source references/ dir stays in the repo —
 //      npm pack excludes it via files negation.
@@ -38,6 +38,31 @@ function seal(plain) {
 
 // Type entries stay plaintext at dist root (exports map "types" resolution).
 const KEEP_PLAIN = new Set(['health.d.ts', 'index.d.ts'])
+const RUNTIME_SCRIPTS = new Set(['gen-preset.mjs', 'setup-preset.ps1', 'setup-preset.sh'])
+const RUNTIME_TOOLS = new Set(['caseflow', 'toolbox'])
+
+// tsc emits every src module, including retired analyzers. Package only the
+// static dependency closure of the two public entry points. Relative dynamic
+// imports must be reviewed explicitly; silently dropping one breaks installs.
+function runtimeModules(dir) {
+  const pending = ['health.js', 'index.js']
+  const included = new Set()
+  while (pending.length) {
+    const rel = pending.pop()
+    if (included.has(rel)) continue
+    const abs = join(dir, rel)
+    if (!existsSync(abs)) throw new Error(`runtime dependency is missing: ${rel}`)
+    included.add(rel)
+    const text = readFileSync(abs, 'utf8')
+    if (/\bimport\s*\(\s*[^'"\s]/.test(text)) throw new Error(`review dynamic import in ${rel}`)
+    for (const match of text.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)['"](\.[^'"]+\.js)['"]/g)) {
+      const next = join(dirname(rel), match[1]).replace(/\\/g, '/')
+      if (!next.startsWith('../') && !next.startsWith('/')) pending.push(next)
+      else throw new Error(`runtime import escapes package: ${rel} → ${match[1]}`)
+    }
+  }
+  return included
+}
 
 async function exportNames(file) {
   const mod = await import(pathToFileURL(file).href)
@@ -53,6 +78,22 @@ function walk(dir, prefix = '') {
     else out.push(rel)
   }
   return out
+}
+
+function sealReferences() {
+  const refManifest = { files: {} }
+  for (const rel of walk(refDir)) {
+    refManifest.files[rel.replace(/\\/g, '/')] = readFileSync(join(refDir, rel), 'utf8')
+  }
+  writeFileSync(join(pkgRoot, 'references.dat'), seal(JSON.stringify(refManifest)), 'utf8')
+  return Object.keys(refManifest.files).length
+}
+
+// Updating reference text does not require destroying an existing .real tree
+// or overwriting a previously packed release in dist-tgz/.
+if (process.argv.includes('--references-only')) {
+  console.log(`sealed: references.dat (${sealReferences()} files)`)
+  process.exit(0)
 }
 
 // ── 1. dist → .real/ + payload.dat ──────────────────────────────────────────
@@ -71,9 +112,18 @@ for (const entry of ['health.js', 'index.js']) {
   }
 }
 const distFiles = walk(sourceDir)
+const runtime = runtimeModules(sourceDir)
 const manifest = { hash: '', files: {} }
 const realMove = []
+const excluded = []
 for (const rel of distFiles) {
+  const module = rel.replace(/(?:\.js\.map|\.d\.ts|\.js)$/, '.js')
+  if (!runtime.has(module)) {
+    excluded.push(rel)
+    continue
+  }
+  const toolMatch = /^tools\/([^/.]+)\.(?:js|js\.map|d\.ts)$/.exec(rel)
+  if (toolMatch && !RUNTIME_TOOLS.has(toolMatch[1])) throw new Error(`retired domain tool reachable: ${rel}`)
   const base = rel.split('/').pop()
   // Only the two root entry declarations stay plaintext; nested .d.ts files
   // belong to sealed modules (e.g. toolbox/health.d.ts).
@@ -84,14 +134,10 @@ for (const rel of distFiles) {
   realMove.push([src, target])
 }
 
-// scripts/** seals into the same payload (extracted to real package paths on
-// first import). The source directory stays in the repo for development; npm
-// pack excludes it via the package files whitelist, so the tarball has no
-// plaintext scripts while installed tools still find their interpreters next
-// to package.json. Without this, every domain tool that shells out to
-// scripts/<domain>/ and health.autoHeal fail in a sealed install (audit P0-1).
+// Only runtime preset scripts ship. Domain scripts remain in the repository as
+// historical source, not as tools available to the installed plugin.
 const scriptDir = join(pkgRoot, 'scripts')
-const scriptFiles = existsSync(scriptDir) ? walk(scriptDir) : []
+const scriptFiles = existsSync(scriptDir) ? walk(scriptDir).filter((rel) => RUNTIME_SCRIPTS.has(rel)) : []
 for (const rel of scriptFiles) {
   manifest.files[`scripts/${rel}`] = readFileSync(join(scriptDir, rel), 'utf8')
 }
@@ -107,6 +153,9 @@ for (const [src, target] of realMove) {
   writeFileSync(abs, readFileSync(src), 'utf8')
   rmSync(src)
 }
+// npm's files allowlist includes dist/ wholesale. Remove tsc outputs outside
+// the runtime closure, otherwise retired analyzers leak as plaintext files.
+for (const rel of excluded) rmSync(join(sourceDir, rel))
 writeFileSync(join(pkgRoot, 'payload.dat'), seal(JSON.stringify(manifest)), 'utf8')
 
 // ── 2. generate the two entry stubs ─────────────────────────────────────────
@@ -159,16 +208,12 @@ for (const [base, names] of Object.entries(stubNames)) {
 }
 
 // ── 3. references → references.dat ──────────────────────────────────────────
-const refManifest = { files: {} }
-for (const rel of walk(refDir)) {
-  refManifest.files[rel.replace(/\\/g, '/')] = readFileSync(join(refDir, rel), 'utf8')
-}
-writeFileSync(join(pkgRoot, 'references.dat'), seal(JSON.stringify(refManifest)), 'utf8')
+const referenceCount = sealReferences()
 
 console.log(
   `sealed: payload.dat (${Object.keys(manifest.files).length} files, ` +
   `${Math.round(statSync(join(pkgRoot, 'payload.dat')).size / 1024)} KB) + ` +
-  `references.dat (${Object.keys(refManifest.files).length} files, ` +
+  `references.dat (${referenceCount} files, ` +
   `${Math.round(statSync(join(pkgRoot, 'references.dat')).size / 1024)} KB) + ` +
   `stubs [${Object.keys(stubNames).join(', ')}]`,
 )

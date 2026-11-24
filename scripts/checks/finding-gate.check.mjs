@@ -34,6 +34,7 @@ caseflow.registerCaseflowTools({
 })
 const finding = tools.get('record_finding')
 assert.ok(finding, 'record_finding must register')
+let importedId = ''
 
 /** Fake live agent whose session log carries the given tool names. */
 function agentWith(calls) {
@@ -52,36 +53,48 @@ async function record(agent, ids) {
   )
 }
 
-await report.check('rejects a finding whose cited evidence is all self-authored', async () => {
+await report.check('manually imported output without matching metadata is not trusted as a tool result', async () => {
   writeFileSync(join(caseDir, 'evidence', 'E-001-manual_scan_strings.txt'), 'invented claim with a spoofed label')
   const out = await record(agentWith(['save_evidence', 'read_reference']), ['E-001'])
-  assert.match(out, /REJECTED — no cited evidence is from a successful analysis tool/)
+  assert.match(out, /REJECTED — no cited evidence contains an analysis observation/)
+})
+
+await report.check('external CLI output saved in Case can support a candidate but not an automatic verification', async () => {
+  const candidateDir = join(home, 'helmd-cases', 'import-case')
+  mkdirSync(join(candidateDir, 'evidence'), { recursive: true })
+  writeFileSync(join(candidateDir, 'CASE.md'), 'status: open\ngoal: imported\nmode: full\nroute: reverse\n')
+  caseApi.bindCase('sess-import', { dir: candidateDir, name: 'import-case', goal: 'imported', mode: 'full', route: 'reverse' })
+  advisory.markReferenceLoaded('sess-import', 'toolbox/decision-tree.md')
+  const imported = await caseApi.saveEvidence(candidateDir, 'manual_external-cli', 'tool stdout: observed on sample', 'imported output')
+  const out = await finding.execute({ title: 'imported observation', detail: 'tool stdout: observed on sample', evidence_ids: [imported.id], repro_cmd: 'external-cli sample', severity: 'medium' }, { agent: { id: 'sess-import' } })
+  assert.match(out, /candidate/)
 })
 
 await report.check('rejects when no real read_reference call exists in the session trace', async () => {
-  writeFileSync(join(caseDir, 'evidence', 'E-002-scan_strings.txt'), 'real tool output')
-  const out = await record(agentWith(['case_status', 'save_evidence']), ['E-002'])
+  const imported = await caseApi.saveEvidence(caseDir, 'manual_external-cli', 'real external tool output', 'imported output')
+  importedId = imported.id
+  const out = await record(agentWith(['case_status', 'save_evidence']), [importedId])
   assert.match(out, /no complete read_reference result/)
 })
 
 await report.check('calling read_reference without a successful result does not satisfy the gate', async () => {
-  const out = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
+  const out = await record(agentWith(['read_reference', 'save_evidence']), [importedId])
   assert.match(out, /no complete read_reference result/)
 })
 
 await report.check('accepts real tool evidence + a successful reference read', async () => {
   advisory.markReferenceLoaded('sess-gate', 'toolbox/decision-tree.md')
-  const out = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
+  const out = await record(agentWith(['read_reference', 'save_evidence']), [importedId])
   assert.match(out, /finding recorded: F-\d+/)
-  assert.match(readFileSync(join(caseDir, 'findings.md'), 'utf8'), /E-002/)
+  assert.match(readFileSync(join(caseDir, 'findings.md'), 'utf8'), new RegExp(importedId))
 })
 
 await report.check('a routed finding requires its specific document, not an unrelated read', async () => {
   advisory.markRoutedReference('sess-gate', 'native/protection-detection-methodology.md')
-  const wrong = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
+  const wrong = await record(agentWith(['read_reference', 'save_evidence']), [importedId])
   assert.match(wrong, /no complete read_reference result for native\/protection-detection-methodology.md/)
   advisory.markReferenceLoaded('sess-gate', 'native/protection-detection-methodology.md')
-  const good = await record(agentWith(['read_reference', 'scan_strings']), ['E-002'])
+  const good = await record(agentWith(['read_reference', 'save_evidence']), [importedId])
   assert.match(good, /finding merged: F-\d+/)
 })
 
@@ -90,7 +103,7 @@ await report.check('administrative and rejected outputs do not count as analysis
   writeFileSync(join(caseDir, 'evidence', 'E-005-protection_route.txt'), 'REJECTED — no E-id')
   for (const id of ['E-004', 'E-005']) {
     const out = await record(agentWith(['read_reference', 'update_finding']), [id])
-    assert.match(out, /no cited evidence is from a successful analysis tool/)
+    assert.match(out, /no cited evidence contains an analysis observation/)
   }
 })
 
@@ -105,6 +118,18 @@ await report.check('both gates can be switched off in settings', async () => {
   } finally {
     settingsApi.saveSettings({ advisory: { requireDocRead: true, requireToolEvidence: true } })
   }
+})
+
+await report.check('pentest tool defaults to candidate even when evidence and reference gates pass', async () => {
+  const webDir = join(home, 'helmd-cases', 'web-gate')
+  mkdirSync(join(webDir, 'evidence'), { recursive: true })
+  writeFileSync(join(webDir, 'CASE.md'), 'status: open\ngoal: web pentest\nmode: full\nroute: web\nscope: example.test\n')
+  const importedWeb = await caseApi.saveEvidence(webDir, 'manual_external-http', 'HTTP 200 baseline', 'imported HTTP output')
+  caseApi.bindCase('sess-web', { dir: webDir, name: 'web-gate', goal: 'web pentest', mode: 'full', route: 'web', scope: ['example.test'] })
+  advisory.markReferenceLoaded('sess-web', 'web/index.md')
+  const out = await finding.execute({ title: 'suspected access issue', detail: 'observed response', evidence_ids: [importedWeb.id], repro_cmd: 'compare baseline', severity: 'medium' }, { agent: { id: 'sess-web' } })
+  assert.match(out, /finding recorded: F-001 \[medium\/candidate\]/)
+  assert.equal((await caseApi.loadFindings(webDir))[0].status, 'candidate')
 })
 
 await report.check('evidence metas form a chain and tampering marks the finding stale', async () => {

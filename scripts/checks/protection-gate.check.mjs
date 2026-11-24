@@ -35,8 +35,8 @@ try {
     }
     assert.match(await call('protection_route', { ...signals, evidence_ids: [] }), /REJECTED/)
     assert.match(await call('protection_route', { ...signals, evidence_ids: ['E-999'] }), /REJECTED/)
-    writeFileSync(join(dir, 'evidence', 'E-001-scan_strings.txt'), 'UPX! (unverified signature)')
-    const result = await call('protection_route', { ...signals, evidence_ids: ['E-001'] })
+    const imported = await api.saveEvidence(dir, 'manual_external-cli', 'UPX! (unverified signature)', 'external observation')
+    const result = await call('protection_route', { ...signals, evidence_ids: [imported.id] })
     assert.match(result, /ADVISORY.*self-reported/)
     assert.match(result, /algorithm: unknown/)
   })
@@ -52,9 +52,9 @@ try {
 
   await report.check('candidate allowed but verified protection finding and promotion rejected', async () => {
     const finding = { title: 'UPX unpacked image', detail: 'candidate only', evidence_ids: ['E-001'], repro_cmd: 'check', severity: 'medium' }
-    assert.match(await call('record_finding', finding), /REJECTED/)
+    assert.match(await call('record_finding', finding), /\[medium\/candidate\]/)
     const accepted = await call('record_finding', { ...finding, status: 'candidate' })
-    assert.match(accepted, /finding recorded/)
+    assert.match(accepted, /finding (?:recorded|merged)/)
     const id = (await api.loadFindings(dir))[0].id
     assert.match(await call('update_finding', { finding_id: id, status: 'verified' }), /REJECTED/)
     assert.equal((await api.loadFindings(dir))[0].status, 'candidate')

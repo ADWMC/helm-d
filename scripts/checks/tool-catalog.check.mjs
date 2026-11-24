@@ -52,14 +52,36 @@ await report.check('no tool is registered twice', () => {
 })
 
 await report.check('the load-bearing tool names are all present', () => {
-  for (const name of ['begin_case', 'case_status', 'record_finding', 'save_evidence', 'end_case', 'route_task', 'update_finding', 'protection_route', 'toolbox', 'recon_passive', 'recon_ports', 'recon_http', 'recon_crawl', 'recon_import', 'run_poc', 'mine_candidates']) {
+  for (const name of ['begin_case', 'case_status', 'record_finding', 'save_evidence', 'end_case', 'route_task', 'update_finding', 'toolbox', 'tool_recommend', 'read_reference']) {
     assert.ok(names.includes(name), `missing tool: ${name}`)
+  }
+})
+
+await report.check('home-grown domain execution and duplicate reference tools are absent', () => {
+  for (const name of ['apk_fingerprint', 'bot_analyze', 'detect_packer', 'protection_route', 'scan_strings', 'xor_bruteforce', 'encoding_detect', 'pcap_parse', 'state_machine', 'parse_har', 'ioc_extract', 'yara_gen', 'llm_sim', 'triage_artifact', 'hash_artifact', 'recon_passive', 'recon_ports', 'recon_http', 'recon_crawl', 'recon_import', 'run_poc', 'mine_candidates', 'oob_start', 'oob_poll', 'oob_stop', 'native_reference', 'web_reference', 'protocol_reference', 'malware_reference', 'ai_reference', 'evidence_reference']) {
+    assert.ok(!names.includes(name), `domain executor still registered: ${name}`)
   }
 })
 
 await report.check('the removed team tools are not registered', () => {
   for (const name of ['team_create', 'team_dispatch', 'team_status', 'team_report', 'team_steer']) {
     assert.ok(!names.includes(name), `removed tool still registered: ${name}`)
+  }
+})
+
+await report.check('standalone legacy skill packages register only reference readers', async () => {
+  const allowed = new Map([
+    ['native', 'native_reference'], ['web', 'web_reference'],
+    ['protocol', 'protocol_reference'], ['malware', 'malware_reference'],
+    ['ai-security', 'ai_reference'], ['evidence', 'evidence_reference'],
+    ['android', null],
+  ])
+  for (const [domain, expected] of allowed) {
+    const entry = join(repoRoot, 'packages', `skill-${domain}`, 'dist', 'index.js')
+    const plugin = await import(pathToFileURL(entry).href)
+    const registered = []
+    plugin.apply({ tools: { register: (def) => registered.push(def.name) } })
+    assert.deepEqual(registered, expected === null ? [] : [expected], `skill-${domain} registered a domain executor`)
   }
 })
 

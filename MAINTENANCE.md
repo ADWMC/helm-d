@@ -33,13 +33,13 @@
 
 > ⚠️ **禁止手改 `packages/helmd/preset.generated.patch.yml`**。平台行必须从当前宿主 `standard` 生成，否则 `pwsh`、`read` 等工具会缺失或在升级后漂移。两面的归属是分开的：host 面 `cordis.patch.yml` 挂**裸包名** `helm-d`（导出解析到 `dist/health.js`，只注册设置命名空间），agent 面主插件由 preset 末行的 `@adwmc/helm-d/agent` 声明（2026-09-11 起如此。此前 host 行写深路径 `helm-d/dist/health.js`，宿主 `client-modules` 的 `exactPackageSpecifier` 只认 `@scope/name` 两段，于是包的 `dsh.client` 从未被发现、设置卡片永远不出现——浏览器半边不是没跑，是没进模块图）。生成器内建断言：输出行集合 = 宿主 standard 行 + `helmd`、无重复 id、组合行已改写为 `preset-helmd` / `id: helmd`、声明 `@deepseek-ai/dsh-agent-preset`、persona 含激活词 `helmd online`、且 `helm-d` 恰好出现一次，违者构建即红。
 
-### 1.1 受支持宿主区间（`0.2.0-rc.1` – `0.2.2-rc.5` 全部已发布版本）
+### 1.1 宿主兼容样本（`0.2.0-rc.1` – `0.2.2-rc.5` 全部已发布版本，另含 `0.2.3-alpha.1/.2`）
 
-- **事实源**：`scripts/checks/fixtures/dsh-host-manifest.json`——区间内 19 个已发布版本逐一记录兄弟包钉版（dsh-web-app / dsh-settings / dsh-tools 与宿主锁步）、cordis/schemastery 的 pin 与 floor/resolved、`standard` 内容哈希与 fixture、前端 token 契约 fixture。新增 0.2.x 版本：追加 host 条目及其 fixture，检查无需改。fixture 取法：`standard` = 该版 `@deepseek-ai/dsh-web-app` 的 `presets/standard.patch.yml`（按 LF 文本 sha256 命名）；token 契约 = 该版 `dsh-web-frontend` 的 `dist/assets/*.css` 与 `dsh-client-ui-theme` 的 `lib/client.js` 里提取的 `--dsw-*: value` 去重排序，`tokens.sha256` 记的是这些源文本的哈希。
-- **验证深度（如实）**：peer 准入（两种 semver 语义）、preset 生成与跨宿主自愈（8 份唯一 standard）、UI token（6 份唯一契约）、`defineTool` API 面均经区间全版本回归；运行时冷启动未在 19 个宿主上一一执行。
+- **事实源**：`scripts/checks/fixtures/dsh-host-manifest.json`——21 个宿主样本逐一记录兄弟包钉版（dsh-web-app / dsh-settings / dsh-tools 与宿主锁步）、cordis/schemastery 的 pin 与 floor/resolved、`standard` 内容哈希与 fixture、前端 token 契约 fixture。新增宿主版本：追加 host 条目及其 fixture，检查无需改。fixture 取法：`standard` = 该版 `@deepseek-ai/dsh-web-app` 的 `presets/standard.patch.yml`（按 LF 文本 sha256 命名）；token 契约 = 该版 `dsh-web-frontend` 的 `dist/assets/*.css` 与 `dsh-client-ui-theme` 的 `lib/client.js` 里提取的 `--dsw-*: value` 去重排序，`tokens.sha256` 记的是这些源文本的哈希。
+- **验证深度（如实）**：peer 准入（两种 semver 语义）、preset 生成与跨宿主自愈（9 份唯一 standard）、UI token（7 份唯一契约）经样本回归；新版宿主真实冷启动未验证，不能把旧编译期 API 测试当作新版 API 实测。
 - **编译期 cohort 保持 `0.2.1-rc.2`**：区间内插件 API 面（`defineTool` / cordis `Context` / schemastery）跨代稳定，编译期与运行时解耦；cohort 只影响类型与 lockfile，不构成运行时兼容面。
 - **桌面版（Electron）**：宿主树打包在 `resources/app.asar` 的 `dsh/node_modules/…` 内（asarUnpack 只解原生模块），npm/PATH 探测看不到。`locateHostStandard()` 先探桌面安装根：宿主自身可执行文件旁（`<dirname(process.execPath)>/resources/app.asar`，`ELECTRON_RUN_AS_NODE` 下 `process.execPath` 仍是打包后的 exe）与 Electron 的 `process.resourcesPath/app.asar` 优先，其后才是 `%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\app.asar` 等默认根与 bundled CLI 所在 PATH 条目上溯三级；命中后以 `archive!entry` 形式返回并由零依赖 asar 读取器读取；`DSH_DESKTOP_APP_ASAR` 可显式钉一个归档。失败不抛，按未定位处理。自定义安装根（如 `D:\…`）靠自锚定即可命中，不需要手工 pin。
-- **区间外**：`0.2.3-rc.1` / `0.3.0` 起显式排除（peer 上界 `<0.2.3-0`）；纳入新区间按同一流程扩 manifest 与 peer 分段。
+- **新区间边界**：`0.2.3-alpha.3`、`0.2.3-rc.1` / `0.3.0` 起仍显式排除；alpha.2 要求宿主 Node `^24.22.3 || >=26.13.1`。新标准从发布包取得并校验 hash，独立桌面 asar 快照仍固定在 0.2.2-rc.5；新区间真实冷启动未验证。
 
 ## 2. 发布流程（checklist 式）
 
@@ -48,7 +48,7 @@
 git status --porcelain            # 必须干净
 
 # 0.5 检查（必须在封包前跑：build-sealed 会把 dist 移进 .real，检查只认明文 dist）
-pnpm test:checks                  # 必须 37 PASS
+pnpm test:checks                  # 当前基线 42 PASS；任何 SKIP 单独记录
 
 # 1. bump 版本号（唯一位置）
 node -e "const fs=require('fs');const p='packages/helmd/package.json';const pkg=JSON.parse(fs.readFileSync(p,'utf8'));pkg.version='X.Y.Z';fs.writeFileSync(p,JSON.stringify(pkg,null,2)+'\n')"
@@ -120,7 +120,7 @@ Invoke-WebRequest -Method Head "https://github.com/ADWMC/helm-d/releases/downloa
 - 描述里的**数字声明会被 reviewer 和 decay scan 对照代码核验**（工具数、版本号）。改了工具集必须同步：
   - README.md / README.en.md 的徽章行和目录树行
   - registry yml 的 en/zh description（需向上游提 PR）
-- 当前计数基准：45 个工具（router 4 + 案件生命周期 6（含 save_evidence、update_finding）+ 领域 24（含只给建议的 protection_route）+ toolbox 1 + recon 5 + run_poc 1 + oob 3 + mine_candidates 1；team 5 个工具已随 team 功能整体移除；create_case 已废弃）。核对方法：`pnpm test:checks` 里的 `tool-catalog` 检查——它读本行声明的数字与 mock-ctx 实际注册名比对，不一致即红（改工具集而忘了改文档会当场失败）。
+- 当前计数基准：14 个工具（路由/知识 4 + Case 生命周期/假设 8 + toolbox 2）。自写的领域执行器、主动侦察/PoC/OOB 和重复参考读取入口不再注册；专业分析通过外部工具执行，原始输出入 Case。`tool-catalog` 检查将本行数字与实际注册名核对。
 - fork `ADWMC/awesome-dsh-plugin`：PR 合并后即可删（`gh repo delete --yes`）；再提 PR 时重新 fork 即可
 
 ### 4.1 各商店收录台账（2026-09-14/15，v0.3.1）
@@ -197,7 +197,7 @@ PR #2708        已合并 (2026-08-23)
 - [ ] `pnpm test:checks` 全部绿（自动跑 `scripts/checks/*.check.mjs`；host seam 那几份直接跑在宿主真实 `dsh-session` 包上，宿主换访问器即红，不必等真机会话才暴露）
 - [ ] 手工验收脚本（不进 run-all，按需跑）：`node scripts/checks/session-timing.mjs`（解压 session.v3.jsonl.zstd 做 step/turn 耗时归因）
 - [ ] mock-ctx 工具数与 README/registry 一致（由 `pnpm test:checks` 的 `tool-catalog` 机械核对，无需手数）
-- [ ] `repack` 后 tgz 为 12 文件封印形态：`payload.dat` 内含 `.real/` 模块与 `scripts/**`（首次导入解压到包内 `scripts/`），不含 `presets/persona.txt`、`presets/profiles/`、明文 `scripts/`；含 `preset.generated.patch.yml` + `presets/preset.yml` + `presets/profiles.dat`，且**不再**含任何 `agent.cordis.yml`
+- [ ] `repack` 后 tgz 为 12 文件封印形态：`payload.dat` 仅含运行时 `.real/` 模块与预设/安装脚本（不含旧领域工具或领域脚本），不含 `presets/persona.txt`、`presets/profiles/`、明文 `scripts/`；含 `preset.generated.patch.yml` + `presets/preset.yml` + `presets/profiles.dat`，且**不再**含任何 `agent.cordis.yml`
 - [ ] `verify-pack --require-sealed` 解封 `payload.dat`，确认 `scripts/gen-preset.mjs` / `setup-preset.{ps1,sh}` 与两个真实入口都在（缺失即红）
 - [ ] setup-preset 从安装位置跑通，输出 `unchanged:`（即与仓库产物逐字节一致）
 - [ ] `dsh web --dump-config` 里出现 `- id: preset-helmd` / `config: id: helmd` / 末行 `@adwmc/helm-d/agent`，且 preset 的 plugins 行集合 = 宿主 standard 行 + `helmd`（0.1.7 的挂载证明，不需要开真机会话）

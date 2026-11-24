@@ -80,5 +80,22 @@ await report.check('a sample hashed at begin_case already counts as evidence', a
   assert.match(verdict, /case closed/)
 })
 
+await report.check('pentest keeps distinct routes but bounds open portfolio and does not auto-verify findings', async () => {
+  await T.begin_case.execute({ goal: 'web pentest', scope: ['example.test'] }, agent)
+  const first = { statement: 'Test the login boundary', expected: 'different result by identity', test_cmd: 'compare identity A and B' }
+  assert.match(await T.record_hypothesis.execute(first, agent), /H-001 recorded/)
+  assert.match(await T.record_hypothesis.execute({ ...first, statement: 'Test file upload boundary' }, agent), /H-002 recorded/)
+  assert.match(await T.record_hypothesis.execute(first, agent), /REJECTED — same route/)
+  assert.match(await T.record_hypothesis.execute({ ...first, statement: 'Test object authorization' }, agent), /H-003 recorded/)
+  assert.match(await T.record_hypothesis.execute({ ...first, statement: 'Test password reset' }, agent), /REJECTED — at most 3/)
+  const packet = await T.case_status.execute({}, agent)
+  assert.match(packet, /pentest routes: open 3\/3/)
+  assert.match(packet, /scope example.test/)
+  // Model-authored evidence cannot pass the normal record_finding gate;
+  // the pentest default is covered by finding-gate.
+  assert.match(await T.update_hypothesis.execute({ id: 'H-001', status: 'blocked', observation: 'no account', evidence_ids: [] }, agent), /blocked/)
+  assert.match(await T.record_hypothesis.execute({ ...first, statement: 'Test password reset' }, agent), /H-004 recorded/)
+})
+
 rmSync(home, { recursive: true, force: true })
 report.finish()

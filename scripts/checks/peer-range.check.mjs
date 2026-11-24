@@ -1,5 +1,5 @@
 // Subject: the plugin's peer ranges must admit every published dsh host in the
-// supported interval [0.2.0-rc.1, 0.2.2-rc.3] — under BOTH semver semantics,
+// supported hosts through 0.2.2-rc.5 and 0.2.3-alpha.1/.2 — under BOTH semver semantics,
 // because the host's compatibility verdict (dsh-app-boot's
 // evaluatePluginCompatibility) could not be read locally: node-semver's default
 // refuses a prerelease unless a comparator shares its [major,minor,patch]
@@ -9,6 +9,7 @@
 // versions a host tree can carry (pin floor = historical install, resolved =
 // today's max-satisfying build).
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import semver from 'semver'
@@ -59,12 +60,22 @@ await report.check('cordis / schemastery peers admit every version a host tree c
 
 await report.check('versions beyond the interval stay excluded under both semantics', () => {
   const range = pkg.peerDependencies['@deepseek-ai/dsh-settings']
-  for (const version of ['0.2.3-rc.1', '0.2.3-0', '0.2.3', '0.3.0']) {
+  for (const version of ['0.2.3-alpha.3', '0.2.3-rc.1', '0.2.3-0', '0.2.3', '0.3.0']) {
     for (const [label, loose] of SEMANTICS) {
       assert.equal(semver.satisfies(version, range, { includePrerelease: loose }), false,
         `${version} must not be admitted under ${label}: ${range}`)
     }
   }
+})
+
+await report.check('newer host standards are sourced from published bytes and have distinct fingerprints', () => {
+  const alpha = manifest.hosts.filter((host) => host.version.startsWith('0.2.3-alpha.'))
+  assert.deepEqual(alpha.map((host) => host.version), ['0.2.3-alpha.1', '0.2.3-alpha.2'])
+  for (const host of alpha) {
+    const text = readFileSync(join(import.meta.dirname, 'fixtures', host.standard.fixture), 'utf8')
+    assert.equal(createHash('sha256').update(text).digest('hex'), host.standard.sha256)
+  }
+  assert.notEqual(alpha[0].standard.sha256, manifest.hosts.find((host) => host.version === '0.2.2-rc.5').standard.sha256)
 })
 
 await report.check('devDependencies mirror the peer ranges', () => {

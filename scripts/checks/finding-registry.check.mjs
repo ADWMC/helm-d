@@ -102,5 +102,37 @@ await report.check('legacy findings.md is still readable with safe defaults', as
   assert.equal(severity.info, 1)
 })
 
+await report.check('quotes are bound to real evidence and remain separate from triage', async () => {
+  const dir = freshCase('quote-assessment')
+  const proof = await caseApi.saveEvidence(dir, 'recon_http', 'HTTP/1.1 200 OK\nuser=admin; role=owner', 'response')
+  const negative = await caseApi.saveEvidence(dir, 'recon_http', 'HTTP/1.1 403 Forbidden\nrole=guest', 'control')
+  const quote = 'user=admin; role=owner'
+  await assert.rejects(() => caseApi.recordFinding(dir, {
+    title: 'bad quote', detail: 'd', evidenceIds: [proof.id], severity: 'medium',
+    proofQuotes: [{ evidenceId: proof.id, quote: 'user=admin; role=another' }],
+  }), /quote not found/)
+  const { finding } = await caseApi.recordFinding(dir, {
+    title: 'privilege response', detail: 'd', evidenceIds: [proof.id], severity: 'medium', status: 'candidate',
+    negativeEvidenceIds: [negative.id], negativeControl: 'Guest response is 403',
+    confidenceRationale: 'Admin response is observed; authorization scope is unknown',
+    proofQuotes: [{ evidenceId: proof.id, quote }], repro: 'request admin and guest',
+  })
+  let [row] = await caseApi.assessFindings(dir)
+  assert.equal(row.status, 'candidate', 'a matched quote cannot promote vulnerability status')
+  assert.equal(row.assessment.evidenceCheck, 'matched')
+  assert.equal(row.assessment.quotes[0].matched, true)
+  assert.equal(row.confidenceRationale, 'Admin response is observed; authorization scope is unknown')
+  assert.deepEqual(row.negativeEvidenceIds, [negative.id])
+  const legacy = await caseApi.recordFinding(dir, {
+    title: 'old observation', detail: 'd', evidenceIds: [proof.id], severity: 'low', repro: 'cmd',
+  })
+  assert.equal((await caseApi.assessFindings(dir)).find((item) => item.id === legacy.finding.id).assessment.evidenceCheck, 'not_assessed')
+  writeFileSync(proof.path, 'HTTP/1.1 200 OK\nuser=guest; role=reader')
+  ;[row] = await caseApi.assessFindings(dir)
+  assert.equal(row.assessment.evidenceCheck, 'stale', 'tampering must invalidate a matching verdict')
+  assert.equal(row.assessment.quotes[0].matched, false)
+  assert.equal(row.status, 'candidate')
+})
+
 rmSync(home, { recursive: true, force: true })
 report.finish()

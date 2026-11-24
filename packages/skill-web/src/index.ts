@@ -2,14 +2,12 @@ import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readTextSeam, runSeam } from './seam.js'
+import { readTextSeam } from './seam.js'
 
 export const name = 'skill-web'
 export const inject = ['tools']
 
 const refRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../references')
-const scriptRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../scripts')
-const packageRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
 
 export function apply(ctx: Context): void {
   ctx.tools.register(defineTool({
@@ -21,17 +19,6 @@ export function apply(ctx: Context): void {
       const abs = resolve(refRoot, args.path)
       if (abs !== refRoot && !abs.startsWith(refRoot + sep)) throw new Error('path out of scope')
       return await readTextSeam(ctx, abs)
-    },
-  }))
-  ctx.tools.register(defineTool({
-    name: 'bot_analyze',
-    description: 'Analyze a Puppeteer Bot server.js: extract params, classify mode, build attack timeline.',
-    parameters: {
-      file: { type: 'string', required: true },
-    },
-    output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
-    async execute(args: any) {
-      return await runSeam(ctx, ['python', resolve(scriptRoot, 'web-analysis_bot_analyze.py'), args.file], packageRoot)
     },
   }))
 }

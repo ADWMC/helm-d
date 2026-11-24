@@ -184,6 +184,13 @@ function verify(pkg, source) {
     for (const rel of ['.real/health.js', '.real/index.js', ...SEALED_SCRIPTS]) {
       if (!sealed.has(rel)) fail(`${source}: payload.dat is missing ${rel}`)
     }
+    for (const rel of sealed) {
+      if ((rel.startsWith('scripts/') && !SEALED_SCRIPTS.includes(rel))
+        || /^\.real\/tools\/(?!caseflow\.|toolbox\.)/.test(rel)
+        || /^\.real\/(?:recon|mining|poc|oob|protection-route)\.(?:js|js\.map|d\.ts)$/.test(rel)) {
+        fail(`${source}: retired domain tool ships in payload: ${rel}`)
+      }
+    }
   }
 
   if (got.has('preset.generated.patch.yml')) {

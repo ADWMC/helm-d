@@ -1,6 +1,15 @@
 schema: 1
 id: reverse
 title: 逆向分析
+# Reverse autonomy is about validating a goal-specific interpretation or
+# recovered artifact. It does not inherit pentest's asset portfolio or impact gate.
+autonomy:
+  state_source: "case_status: sample identity, hypotheses, observations, evidence and candidate conclusions"
+  loop: "Triage original → locate goal-linked slice → predict competing outcomes → static or bounded dynamic test → verify semantics/artifact → replan"
+  route: "One open goal-linked hypothesis at a time. A packer signature or high entropy never alone authorizes a dump or confirms an algorithm."
+  dynamic: "Use native/protection-detection-methodology.md and observed signals; choose an isolated dynamic experiment when target code is hidden and a calibrated observer can discriminate two predictions; otherwise inspect a bounded static transform."
+  proof: "Offsets and mappings tie conclusions to this sample; independent behavior or offline recomputation validates meaning. Captured bytes, structural validity and replayed behavior are separate artifact grades."
+  settle: "Answer the actual reverse question with reproducible evidence or name the exact unresolved boundary; no vulnerability finding is required merely because a hypothesis was confirmed."
 phases:
   - id: intake
     title: 目标入库
@@ -19,6 +28,7 @@ phases:
     suggest:
       - "关键函数/符号/调用链"
       - "read_reference 对应子域（license-bypass / anti-debug / crypto / ...）"
+      - "目标代码可见 → 沿输入/输出静态切片；不可见 → 按 native/protection-detection-methodology.md 判断是否转动态，不能凭高熵或壳名跳步"
   - id: hypothesize
     title: 假设形成
     suggest:
@@ -29,3 +39,4 @@ phases:
     suggest:
       - "record_finding：保护器/算法/解包结论仅有签名时保持 candidate；confirmed 需独立复现与对应证据；证据不足可如实未解结束"
       - "end_case 前检查 coverage/unknowns"
+      - "采集到字节、结构有效、可分析、可加载、行为复现逐级验收；仅目标语义可回答时不强迫完整脱壳"

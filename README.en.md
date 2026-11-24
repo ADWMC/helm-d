@@ -9,7 +9,7 @@
 
 **A security-analysis plugin for DeepSeek Harness.**
 
-45 tools · 353 reference docs + 9 indexes · enforced evidence chain · four hot-swappable persona profiles
+14 orchestration tools · 353 reference docs + 9 indexes · case evidence chain · four hot-swappable persona profiles
 
 [![Release](https://img.shields.io/github/v/release/ADWMC/helm-d?style=flat-square&label=release)](https://github.com/ADWMC/helm-d/releases)
 [![Stars](https://img.shields.io/github/stars/ADWMC/helm-d?style=flat-square&logo=github&label=stars)](https://github.com/ADWMC/helm-d/stargazers)
@@ -56,7 +56,7 @@ Telegram / X / Apple / Google / GPT accounts and memberships, with order lookup 
 
 helm-d is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin. It does not modify the host binary; it adds four things through cordis hooks:
 
-- **45 tools** across Android / Web / Native / Protocol / Malware / AI-Security, plus the case lifecycle and routing.
+- **14 orchestration tools** for Case lifecycle, routing/references and external-tool discovery; no bundled domain analyzers or active probes.
 - **An evidence chain**: tool output lands in `evidence/`; conclusions must cite E ids and a reproducible `repro_cmd`.
 - **On-demand knowledge**: 353 reference docs plus 9 indexes read through `read_reference`, never stuffed into the system prompt.
 - **Four persona tiers**: ds4.1f / stealth / redteam-max / gpt-6x, switched from the workbench without restarting the host.
@@ -68,7 +68,7 @@ It is **not** an engine patch: no on-disk changes to approvals or the sandbox, a
 **Requirements**: Node >= 22.19 and the [`dsh`](https://github.com/deepseek-ai/deepseek-harness) CLI.
 
 ```bash
-dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.6.0/helm-d.tgz
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.7.0/helm-d.tgz
 dsh web
 ```
 
@@ -102,7 +102,7 @@ Citing an E id that does not exist is rejected. `repro_cmd` is required: a concl
 
 | Capability | What you get |
 |---|---|
-| **Six domains** | Android unpacking/Frida, Web exploitation, Native packers and anti-reversing, Protocol capture, Malware IOC/YARA, AI-Security |
+| **Six domains, external specialists** | Android, Web, Native, Protocol, Malware and AI-Security references and tool discovery; no built-in domain analyzers |
 | **Case & evidence** | On-disk workspace, automatic evidence capture, E-id validation, `repro_cmd` gate; `case_status` restores context after compaction |
 | **Persona profiles** | ds4.1f / stealth / redteam-max / gpt-6x; `POST /api/helmd/profile` disposes and re-registers the persona section in place — no host restart |
 | **On-demand references** | 353 docs plus 9 indexes routed by `skill_catalog` and read by `read_reference`, not injected into the system prompt |
@@ -139,25 +139,18 @@ Click the `helmd` workbench button in the DSH session header. It opens the right
 Most-used entry points: `begin_case` / `case_status` / `record_finding` / `update_finding` / `end_case` / `route_task` / `read_reference` / `analysis_mode`.
 
 <details>
-<summary><strong>All 45 tools (expand by domain)</strong></summary>
+<summary><strong>All 14 orchestration tools</strong></summary>
 
 | Domain | Tools |
 |---|---|
 | **Case** | `begin_case` `case_status` `record_finding` `update_finding` `save_evidence` `end_case` |
 | **Case / hypothesis** | `record_hypothesis` `update_hypothesis` |
 | **Routing / knowledge** | `skill_catalog` `read_reference` `route_task` `analysis_mode` |
-| **Android** | `apk_fingerprint` |
-| **Web** | `web_reference` `bot_analyze` |
-| **Native** | `native_reference` `detect_packer` `protection_route` `scan_strings` `xor_bruteforce` `encoding_detect` |
-| **Protocol** | `protocol_reference` `pcap_parse` `state_machine` `parse_har` |
-| **Malware** | `malware_reference` `ioc_extract` `yara_gen` |
-| **AI-Security** | `ai_reference` `llm_sim` |
-| **Evidence** | `evidence_reference` `triage_artifact` `hash_artifact` |
-| **Recon** | `recon_passive` `recon_ports` `recon_http` `recon_crawl` `recon_import` |
-| **PoC / Mining / OOB** | `run_poc` `mine_candidates` `oob_start` `oob_poll` `oob_stop` |
 | **Toolbox** | `tool_recommend` `toolbox` |
 
 </details>
+
+Use reviewed specialist tools through the host shell (`toolbox` can discover/probe them), then preserve raw output with `save_evidence`. Manually imported output defaults to a candidate finding; Case `verified` is a triage assertion, not independent machine verification.
 
 ## References
 
@@ -167,7 +160,7 @@ The 353 reference docs plus 9 indexes live in [`references/`](packages/helmd/ref
 
 ```text
 request → first-turn anchor (shell + read + route_task + read_reference) → route_task
-        → domain tools / read_reference → evidence/ (E ids)
+        → external specialist tools / read_reference → save_evidence → evidence/ (E ids)
         → conclusion with confidence and repro_cmd
 ```
 
@@ -211,20 +204,20 @@ See [architecture](docs/architecture.md) and [design principles](docs/principles
 
 | Item | Requirement |
 |---|---|
-| DSH | every published version in `0.2.0-rc.1` – `0.2.2-rc.5` (preset generation/repair and workbench UI tokens regression-tested across the whole interval; runtime cold-start not executed on each of the 19 hosts) |
-| Node | `>= 22.19.0` |
+| DSH | published versions `0.2.0-rc.1` – `0.2.2-rc.5`, plus `0.2.3-alpha.1` / `.2` (peer admission, preset generation/repair and UI tokens tested; real cold start on newer hosts not verified) |
+| Node | plugin `>= 22.19.0`; DSH `0.2.3-alpha.1` needs `>= 24.9.0`, `.2` needs `^24.22.3 || >= 26.13.1` |
 | Platform | Windows uses `pwsh`; Linux / macOS use `bash`; WSL via `wsl.exe` |
 
 ```bash
 # Update: remove first, then install the target version (never latest/download)
 dsh plugin --profile web remove @adwmc/helm-d
-dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.6.0/helm-d.tgz
+dsh plugin --profile web add https://github.com/ADWMC/helm-d/releases/download/v0.7.0/helm-d.tgz
 
 # Uninstall
 dsh plugin --profile web remove @adwmc/helm-d
 ```
 
-Replace `v0.6.0` with the target Release tag; do not use `releases/latest/download/*` as a profile dependency.
+Replace `v0.7.0` with the target Release tag; do not use `releases/latest/download/*` as a profile dependency.
 
 ## Docs
 

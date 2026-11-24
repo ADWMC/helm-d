@@ -25,7 +25,7 @@ export interface HelmdSettings {
     nextActionNudge: boolean
     /** record_finding 前必须真实调用过 read_reference（防“假装读过文档”）。 */
     requireDocRead: boolean
-    /** 引用证据至少一条来自真实工具捕获，save_evidence 自编文本不算。 */
+    /** 引用证据至少一条是 Case 中带元数据的分析观察；不认证导入内容。 */
     requireToolEvidence: boolean
   }
   star: {

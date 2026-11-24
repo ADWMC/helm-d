@@ -5,7 +5,7 @@
       name: '@deepseek-ai/dsh-agent-preset'
       config:
         id: helmd
-        description: "helmd: anchored bootstrap plus all helmd security domain bundles."
+        description: "helmd: case evidence, reference routing and external-tool orchestration."
         order: 10
         plugins:
           - id: persona

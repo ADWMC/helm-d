@@ -4,6 +4,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import {
   bindCase, getCase, unbindCase, createCaseDir, loadCaseMd, closeCase,
@@ -12,19 +13,16 @@ import {
   casesRoot, findOpenCaseOnDisk, loadCaseInfoFromDisk, auditCasesRoot,
   listLooseFilesInCase,
   recordHypothesis, updateHypothesis, loadHypotheses, getOpenHypothesisCount,
-  listEvidence, loadFindings,
+  listEvidence, loadFindings, assessFindings,
   FINDING_SEVERITIES, FINDING_STATUSES, FINDING_CONFIDENCES,
   type FindingSeverity, type FindingStatus, type FindingConfidence,
 } from '../case.js'
 import { getLevel } from '../mode.js'
 import { renderAdvisoryStats, hasLoadedReference, hasLoadedPath, routedReference } from '../advisory.js'
 import { firstReference, matchRoute } from '../router.js'
-import { isAnalysisEvidenceFile } from '../persist.js'
 import { getStreamInterceptionStats } from '../llm-stream-hook.js'
-import { renderAutonomyPacket, detectNoPath } from '../autonomy.js'
+import { renderAutonomyPacket, detectNoPath, isPentestGoal, pentestRouteAdmission } from '../autonomy.js'
 import { loadSettings } from '../settings.js'
-import { loadAssets, coverageLine } from '../recon.js'
-import { miningLine } from '../mining.js'
 import { sessionEvents, toolCalls } from '../session-log.js'
 
 /** Per-session evidence snapshot for the NO_PATH guard. */
@@ -50,8 +48,8 @@ function resolveWorkspaceRoot(root?: string, exec?: ExecLike): string | undefine
 }
 
 const RULES = [
-  '1. Built-in tools first; missing capability → use shell (gh/curl) to find and install it; custom scripts LAST, only in <case>/scripts/.',
-  '2. External CLI output → save_evidence(label, ...) before citing it.',
+  '1. Built-in tools handle Case/routing only. Domain analysis uses a reviewed external specialist tool through the host shell; toolbox(action=catalog/probe) can locate it.',
+  '2. External CLI output → save_evidence(label, ...) before citing it; imported output is model-supplied data, not authenticated execution proof.',
   '3. Parameters come from prior tool output in evidence/. Findings cite E ids via record_finding.',
   '4. Resume after compaction → case_status(); before compaction, bring the CASE.md `## resume` block up to date.',
   '5. A tactic failing 3 times in a row on the same target (no new evidence) → stop, record the dead end in the case, and never retry it without new evidence.',
@@ -181,9 +179,8 @@ export function registerCaseflowTools(ctx: Context): void {
         ? `\n\n[Warning] ${loose.length} loose unorganized file(s) in case root (will auto-archive to evidence/ on end_case): ${loose.join(', ')}`
         : ''
       const hypotheses = await loadHypotheses(active.dir)
-      const findings = await loadFindings(active.dir)
+      const findings = await assessFindings(active.dir)
       const evidence = await listEvidence(active.dir)
-      const reconAssets = await loadAssets(active.dir)
       const bySeverity = severityCounts(findings)
       const byStatus = findingStatusCounts(findings)
       const findingStats = findings.length === 0
@@ -196,8 +193,9 @@ export function registerCaseflowTools(ctx: Context): void {
         ? undefined
         : detectNoPath(toolCalls(sessionEvents(exec?.agent as unknown as Parameters<typeof sessionEvents>[0], 'caseflow')), evidence.length > previousEvidence)
       const packet = loadSettings().advisory.autonomyPacket
-        ? renderAutonomyPacket({          mode: getLevel(exec?.agent?.id),
+        ? renderAutonomyPacket({ mode: getLevel(exec?.agent?.id),
           goal: active.goal,
+          scope: active.scope,
           hypotheses,
           findings,
           evidence,
@@ -218,8 +216,6 @@ export function registerCaseflowTools(ctx: Context): void {
         ...(packet !== '' ? ['', packet] : []),
         '',
         findingStats,
-        coverageLine(reconAssets),
-        miningLine(active.dir, reconAssets.length),
         '',
         RULES,
         ...(renderAdvisoryStats() ? ['', renderAdvisoryStats()] : []),
@@ -252,10 +248,15 @@ export function registerCaseflowTools(ctx: Context): void {
       confidence: { type: 'string', description: `One of: ${FINDING_CONFIDENCES.join(' | ')} (default probable). unverified caps severity at medium.` },
       cvss: { type: 'number', description: 'CVSS v3 score 0-10; when supplied it overrides severity by the standard bands.' },
       cvss_vector: { type: 'string', description: 'CVSS v3.1 base vector, e.g. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H. Overrides cvss.' },
-      status: { type: 'string', description: `Initial triage state: ${FINDING_STATUSES.join(' | ')} (default verified after the gates).` },
+      status: { type: 'string', description: `Initial triage state: ${FINDING_STATUSES.join(' | ')} (pentest or imported external output defaults candidate; verified is a human/model assertion, not machine proof).` },
       negative_evidence_ids: { type: 'array', items: { type: 'string' }, description: 'Independent negative-control evidence ids; must not overlap evidence_ids.' },
       negative_control: { type: 'string', description: 'What the negative control was and why it must not reproduce the finding.' },
-      poc_id: { type: 'string', description: 'PoC recipe/run id from run_poc (e.g. "sqli-boolean"); links the finding to the positive/negative evidence.' },
+      confidence_rationale: { type: 'string', description: 'Explain why the observations support the conclusion and what remains uncertain; displayed in the Case UI.' },
+      proof_quotes: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
+        evidence_id: { type: 'string', description: 'Cited E id containing the quote.' },
+        quote: { type: 'string', description: 'Verbatim excerpt (at least 12 characters) from that evidence file.' },
+      } }, description: 'Optional exact excerpts linked to cited evidence ids. A match establishes provenance, not exploit verification.' },
+      poc_id: { type: 'string', description: 'External specialist PoC run identifier, if one exists; links positive and negative evidence but does not verify the outcome.' },
     },
     output: { schema: { type: 'string' }, render: (_a: unknown, v: string) => [{ type: 'text', text: v }] },
     async execute(
@@ -273,6 +274,8 @@ export function registerCaseflowTools(ctx: Context): void {
         status?: string
         negative_evidence_ids?: string[]
         negative_control?: string
+        confidence_rationale?: string
+        proof_quotes?: { evidence_id: string; quote: string }[]
         poc_id?: string
       },
       exec?: ExecLike,
@@ -311,24 +314,39 @@ export function registerCaseflowTools(ctx: Context): void {
           'Copy the hash/E-id from the evidence file, or cite the evidence that contains it. Do not paraphrase or invent it.',
         ].join('\n')
       }
-      // Anti-pretence gates. The model can CLAIM it read references or ran a
-      // tool; these checks read the actual evidence filenames (produced by the
-      // persisting wrapper) and the session's real tool/call trace instead.
+      // Imported external output is model-supplied data, not an independently
+      // authenticated tool result. Keep the provenance distinction in triage.
       const discipline = loadSettings().advisory
+      const onDisk = await listEvidence(active.dir)
+      const byId = new Map(onDisk.map((entry) => [entry.id, entry.file]))
+      const citedFiles = (args.evidence_ids ?? []).map((id) => byId.get(id)).filter((file): file is string => file !== undefined)
+      const manualOnly = citedFiles.length > 0 && citedFiles.every((file) => /^E-\d+-manual_/.test(file))
+      const metas = new Map((await listEvidenceMeta(active.dir)).map((item) => [item.id, item]))
+      const isObservation = (id: string): boolean => {
+        const meta = metas.get(id)
+        if (!meta || meta.file !== byId.get(id)) return false
+        if (meta.tool.startsWith('manual_')) return true // imported output: candidate, never independent proof
+        if (/^(?:update_finding|record_finding|case_status|toolbox|route_task|read_reference|protection_route|sha256|hash_artifact)$/.test(meta.tool)) return false
+        return true
+      }
       if (discipline.requireToolEvidence) {
-        const onDisk = await listEvidence(active.dir)
-        const byId = new Map(onDisk.map((entry) => [entry.id, entry.file]))
-        const citedFiles = (args.evidence_ids ?? []).map((id) => byId.get(id)).filter((file): file is string => file !== undefined)
-        // `manual_` is the reserved prefix save_evidence stamps on every
-        // model-authored capture, so a spoofed label can never pass as tool output.
-        if (!citedFiles.some(isAnalysisEvidenceFile)) {
+        let observed = false
+        for (const id of args.evidence_ids ?? []) {
+          if (!isObservation(id)) continue
+          const file = byId.get(id)
+          const text = file ? await readFile(join(active.dir, 'evidence', file), 'utf8').catch(() => '') : ''
+          if (text.trim() && !/^\s*(?:REJECTED|ERROR|failed\b|失败|异常)/i.test(text)) observed = true
+        }
+        if (!observed) {
           return [
-            'REJECTED — no cited evidence is from a successful analysis tool.',
+            'REJECTED — no cited evidence contains an analysis observation (sample hash alone is not enough).',
             `cited: ${citedFiles.join(', ') || '(none)'}`,
-            'Run a real analysis tool first; its output is auto-captured as evidence with the tool name in the filename.',
+            'Save the raw external analysis output with save_evidence; a sample hash or administrative message alone is insufficient.',
           ].join('\n')
         }
       }
+      // `verified` remains a triage assertion, never a machine proof. Even a
+      // complete transcript pasted through save_evidence is not authenticated.
       if (discipline.requireDocRead) {
         const sessionId = exec?.agent?.id ?? (exec?.agent as { session?: { id?: string } } | undefined)?.session?.id
         const expected = routedReference(sessionId) ?? (matchRoute(active.goal).length > 0 ? firstReference(active.goal) : undefined)
@@ -351,10 +369,12 @@ export function registerCaseflowTools(ctx: Context): void {
           confidence: args.confidence as FindingConfidence | undefined,
           cvss: typeof args.cvss === 'number' ? args.cvss : undefined,
           ...(args.cvss_vector !== undefined ? { cvssVector: args.cvss_vector } : {}),
-          status: args.status as FindingStatus | undefined,
+          status: (args.status ?? (manualOnly || isPentestGoal(active.goal, active.scope) ? 'candidate' : undefined)) as FindingStatus | undefined,
           repro: args.repro_cmd,
           negativeEvidenceIds: negativeIds,
           ...(args.negative_control !== undefined ? { negativeControl: args.negative_control } : {}),
+          ...(args.confidence_rationale !== undefined ? { confidenceRationale: args.confidence_rationale } : {}),
+          ...(args.proof_quotes !== undefined ? { proofQuotes: args.proof_quotes.map((item) => ({ evidenceId: item.evidence_id, quote: item.quote })) } : {}),
           ...(args.poc_id !== undefined ? { pocId: args.poc_id } : {}),
         })
         const f = recorded.finding
@@ -417,7 +437,10 @@ export function registerCaseflowTools(ctx: Context): void {
       if (!active) return 'No active case. begin_case() first — hypotheses need a case.'
       const all = await loadHypotheses(active.dir)
       const open = all.filter((h) => h.status === 'open')
-      if (open.length >= 1) {
+      if (isPentestGoal(active.goal, active.scope)) {
+        const reason = pentestRouteAdmission(all, args.statement)
+        if (reason) return `REJECTED — ${reason}`
+      } else if (open.length >= 1) {
         return [
           `REJECTED — ${open.length} open hypothesis already exists: ${open.map((h) => h.id).join(', ')}.`,
           'Resolve it first with update_hypothesis before creating a new one.',
@@ -548,7 +571,7 @@ export function registerCaseflowTools(ctx: Context): void {
     description:
       'Persist arbitrary output into the active case evidence chain with an E-number. ' +
       'Use for external CLI tools run via shell whose output would otherwise leave no trace. ' +
-      'Findings may cite these ids exactly like tool-generated ones.',
+      'Findings may cite these ids, but imported output is not independently authenticated; it defaults to a candidate conclusion.',
     parameters: {
       label: { type: 'string', required: true, description: 'Short source label, e.g. "themida-dump".' },
       content: { type: 'string', description: 'Text to store.' },
